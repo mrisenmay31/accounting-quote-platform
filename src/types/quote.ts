@@ -1,0 +1,157 @@
+export interface FormData {
+  // Contact Information
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  
+  // Service Selection
+  services: string[];
+  
+  // Individual Tax Details
+  individualTax?: {
+    filingStatus: string;
+    annualIncome: string;
+    incomeTypes: string[];
+    deductionType: string;
+    taxSituations: string[];
+    otherIncomeTypes: string[];
+    additionalConsiderations: string[];
+    interestDividendAmount: string;
+    selfEmploymentBusinessCount: number;
+    k1Count: number;
+    rentalPropertyCount: number;
+    additionalStateCount: number;
+   hasPrimaryHomeSale: boolean;
+   hasInvestmentPropertySale: boolean;
+   hasAdoptedChild: boolean;
+   hasDivorce: boolean;
+   hasMarriage: boolean;
+    hasMultipleStates: boolean;
+    taxYear: string;
+    timeline: string;
+    previousPreparer: string;
+    specialCircumstances: string;
+    otherIncomeDescription: string;
+    hasOtherIncome: string;
+  };
+  
+  // Business Tax Details
+  businessTax?: {
+    businessName?: string;
+    businessType?: string;
+    annualRevenue?: string;
+    numberOfEmployees?: string;
+    entityType: string;
+    businessIndustry: string;
+    numberOfOwners: number;
+    otherSituations: string[];
+    additionalConsiderations: string[];
+    additionalStateCount: number;
+    fixedAssetAcquisitionCount: number;
+    taxYear: string;
+    complexity: string;
+    taxSituations: string[];
+   isFirstYearEntity: boolean;
+   hasOwnershipChanges: boolean;
+   hasFixedAssetAcquisitions: boolean;
+    timeline: string;
+    previousPreparer: string;
+    specialCircumstances: string;
+  };
+  
+  // Bookkeeping Details
+  bookkeeping?: {
+    businessName?: string;
+    businessType?: string;
+    businessIndustry?: string;
+    annualRevenue?: string;
+    numberOfEmployees?: string;
+    currentBookkeepingMethod?: string;
+    currentStatus: string;
+    monthsBehind: string;
+    bankAccounts: number;
+    creditCards: number;
+    bankLoans: number;
+    transactionVolume: number;
+    monthlyTransactions: number;
+    servicesNeeded: string[];
+    frequency: string;
+    servicefrequency: string;
+    additionalConsiderations: string[];
+    needsCleanup: boolean;
+    hasThirdPartyIntegration: boolean;
+    hasFixedAssets: boolean;
+    fixedAssetsCount: number;
+    fixedassets: number;
+    cleanuphours: number;
+    hasInventory: boolean;
+    startTimeline: string;
+    challenges: string;
+  };
+  
+  // Additional Services Details
+  additionalServices?: {
+    selectedAdditionalServices: string[];
+  };
+}
+
+export interface ServiceQuote {
+  name: string;
+  description: string;
+  monthlyFee: number;
+  oneTimeFee: number;
+  annualPrice: number;
+  included: string[];
+  addOns?: string[];
+  pricingFactors?: string[];
+}
+
+export interface QuoteData {
+  services: ServiceQuote[];
+  totalMonthlyFees: number;
+  totalOneTimeFees: number;
+  totalAnnual: number;
+  potentialSavings: number;
+  recommendations: string[];
+  complexity: 'low' | 'medium' | 'high' | 'very-high';
+}
+
+export interface PricingConfig {
+  serviceId: string;
+  pricingRuleId: string;
+  serviceName: string;
+  description: string;
+  pricingType: 'Base Service' | 'Add-on' | 'Discount';
+  basePrice: number;
+  billingFrequency: 'Monthly' | 'One-Time Fee' | 'Annual';
+  active: boolean;
+  triggerFormField?: string;
+  requiredFormValue?: string;
+  comparisonLogic?: 'equals' | 'includes' | 'notEquals' | 'greaterThan' | 'lessThan' | 'contains';
+  perUnitPricing: boolean;
+  unitPrice?: number;
+  unitName?: string;
+  quantitySourceField?: string;
+  advisoryDiscountEligible: boolean;
+  advisoryDiscountPercentage: number;
+  minimumMonthlyFee?: number;
+  minimumMonthlyFeeWithAdvisory?: number;
+  applyMinimumFee?: boolean;
+  includedFeatures: string[];
+  addOns: Array<{
+    name: string;
+    price: number;
+  }>;
+}
+
+export interface ServiceConfig {
+  serviceId: string;
+  title: string;
+  description: string;
+  iconName: string;
+  color: string;
+  featured: boolean;
+  benefits: string[];
+  active: boolean;
+}

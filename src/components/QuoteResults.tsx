@@ -1,0 +1,449 @@
+import React, { useState } from 'react';
+import { Download, Mail, Phone, Calendar, CheckCircle, Star, ArrowRight, Send, X, Calculator, Info, ChevronDown, ChevronUp, TrendingUp, Zap, ClipboardCheck, GraduationCap, Code, Clock } from 'lucide-react';
+import { FormData, QuoteData } from '../types/quote';
+
+interface QuoteResultsProps {
+  formData: FormData;
+  quote: QuoteData | null;
+}
+
+const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const handleSubmitToAirtable = async () => {
+    setIsSubmitting(true);
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('Quote accepted by user:', { formData, quote });
+      setIsSubmitted(true);
+    } catch (error) {
+      console.error('Error processing quote acceptance:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const calculateLockDate = () => {
+    const today = new Date();
+    const lockDate = new Date(today.setDate(today.getDate() + 14));
+    return lockDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const downloadPDF = () => {
+    alert('PDF download coming soon! This would generate a professional PDF of your quote.');
+  };
+
+  const emailQuote = () => {
+    const email = prompt('Enter your email address to receive this quote:');
+    if (email && email.includes('@')) {
+      alert(`Quote will be emailed to: ${email}\n\nThis would trigger your backend to send a formatted email with the quote details.`);
+    } else if (email) {
+      alert('Please enter a valid email address.');
+    }
+  };
+
+  const toggleFaq = (index: number) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
+
+  if (!quote) {
+    return (
+      <div className="text-center py-12">
+        <div className="animate-spin w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full mx-auto mb-4" />
+        <p className="text-gray-600">Calculating your personalized quote...</p>
+      </div>
+    );
+  }
+
+  if (isSubmitted) {
+    return (
+      <div className="text-center py-12 space-y-6">
+        <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
+          <CheckCircle className="w-12 h-12 text-emerald-600" />
+        </div>
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">Quote Submitted Successfully!</h2>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Thank you for your interest in Ledgerly's services. We'll review your requirements and 
+            contact you within 24 hours to discuss your customized quote and next steps.
+          </p>
+        </div>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6 max-w-md mx-auto">
+          <h3 className="font-semibold text-emerald-800 mb-2">What happens next?</h3>
+          <div className="space-y-2 text-sm text-emerald-700">
+            <p>• We'll review your specific requirements</p>
+            <p>• A senior advisor will contact you within 24 hours</p>
+            <p>• We'll schedule a consultation to discuss your needs</p>
+            <p>• You'll receive a detailed proposal and engagement letter</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const hasAdvisoryService = formData.services.includes('advisory');
+  const faqItems = [
+    {
+      question: "Can I start without Advisory?",
+      answer: "Yes—choose a-la-carte pricing. You can upgrade any time and we'll credit your setup fees toward the Advisory package."
+    },
+    {
+      question: "My books are behind—can you help?",
+      answer: "Absolutely. We'll add a one-time cleanup fee (billed hourly) and start with a quick diagnostic to get you current."
+    },
+    {
+      question: "Do you support multi-state returns?",
+      answer: "Yes. We file all required state returns and handle multi-state apportionment. Each additional state is clearly priced in your quote."
+    },
+    {
+      question: "How do payments work?",
+      answer: "Secure Stripe checkout. Monthly services are subscription-based; one-time items (like tax prep) are billed once when services are delivered."
+    },
+    {
+      question: "What if I need to cancel?",
+      answer: "Month-to-month billing after the first 90 days. No long-term contracts or lock-in. We earn your business every month."
+    },
+    {
+      question: "What's included in the Advisory Package?",
+      answer: "Everything you need for year-round tax strategy: business & individual returns, quarterly consultations, monthly access to your CPA team, and proactive tax planning to maximize savings."
+    }
+  ];
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      {/* Quote Container */}
+      <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden mb-24">
+        {/* Progress Bar */}
+        <div className="h-2 bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-t-2xl"></div>
+
+        {/* Quote Header */}
+        <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 text-white p-10 text-center">
+          <h1 className="text-4xl font-bold mb-3 tracking-tight">Your Customized Quote</h1>
+          <p className="text-lg opacity-95 mb-6 max-w-2xl mx-auto">
+            Tailored pricing for Ledgerly's services based on your answers. Lock this quote for 14 days.
+          </p>
+          
+          {/* Value Outcomes Pills */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-6">
+            <div className="bg-white bg-opacity-20 border border-white border-opacity-30 rounded-xl p-4 flex items-center space-x-3 hover:bg-opacity-30 transition-all duration-300">
+              <span className="text-lg flex-shrink-0">🧠</span>
+              <span className="text-sm font-medium">Strategy Over Compliance</span>
+            </div>
+            <div className="bg-white bg-opacity-20 border border-white border-opacity-30 rounded-xl p-4 flex items-center space-x-3 hover:bg-opacity-30 transition-all duration-300">
+              <span className="text-lg flex-shrink-0">🛡️</span>
+              <span className="text-sm font-medium">Clarity That Protects</span>
+            </div>
+            <div className="bg-white bg-opacity-20 border border-white border-opacity-30 rounded-xl p-4 flex items-center space-x-3 hover:bg-opacity-30 transition-all duration-300">
+              <span className="text-lg flex-shrink-0">📈</span>
+              <span className="text-sm font-medium">Aligned Wealth Building</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Summary Section */}
+        <div className="bg-gray-50 p-10 border-b border-gray-200">
+          <div className="grid grid-cols-1 gap-6">
+            {/* Total Investment Card */}
+            <div className="bg-gradient-to-br from-white to-emerald-50/30 rounded-2xl shadow-lg shadow-emerald-500/10 border-2 border-emerald-100 hover:shadow-xl hover:shadow-emerald-500/20 hover:-translate-y-1 transition-all duration-300 overflow-hidden relative">
+              {/* Animated Top Accent Bar */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-600 bg-[length:200%_100%] animate-[shimmer_3s_linear_infinite]"></div>
+
+              {/* Card Header */}
+              <div className="px-7 pt-7 pb-5 text-center relative">
+                <div className="flex items-center justify-center gap-2 text-xs font-bold text-emerald-600 uppercase tracking-wider mb-3">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                  Quote Summary
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2 tracking-tight">Total Estimated Investment</h3>
+                <p className="text-sm text-gray-600 font-medium">Premium tax advisory partnership</p>
+              </div>
+
+              {/* Pricing Hero Section */}
+              <div className="px-7 py-6 bg-gradient-to-br from-emerald-50 via-white to-emerald-50 border-y border-emerald-100 relative overflow-hidden">
+                {/* Decorative radial glow */}
+                <div className="absolute top-[-50%] right-[-20%] w-[300px] h-[300px] bg-emerald-500/8 rounded-full blur-3xl"></div>
+
+                <div className="relative z-10 flex items-stretch justify-center gap-6">
+                  {/* Monthly Partnership Section */}
+                  <div className="flex-1 text-center">
+                    <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Monthly Partnership</div>
+                    <div className="flex items-baseline justify-center space-x-2">
+                      <span className="text-4xl font-bold bg-gradient-to-br from-emerald-700 via-emerald-600 to-emerald-500 bg-clip-text text-transparent">${quote.totalMonthlyFees.toLocaleString()}</span>
+                      <span className="text-xs text-gray-600 font-semibold">PER MONTH</span>
+                    </div>
+                  </div>
+
+                  {quote.totalOneTimeFees > 0 && (
+                    <>
+                      {/* Separator Pill */}
+                      <div className="flex items-center">
+                        <div className="w-px h-16 bg-gradient-to-b from-transparent via-emerald-300 to-transparent"></div>
+                      </div>
+
+                      {/* One-Time Fees Section */}
+                      <div className="flex-1 text-center">
+                        <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">One-Time Fees</div>
+                        <div className="flex items-baseline justify-center space-x-2">
+                          <span className="text-4xl font-bold bg-gradient-to-br from-emerald-700 via-emerald-600 to-emerald-500 bg-clip-text text-transparent">${quote.totalOneTimeFees.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Trust Section */}
+              <div className="px-7 pb-7 pt-6 bg-white">
+                <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 text-center">Why Clients Choose Us</div>
+                <div className="grid grid-cols-2 gap-2 justify-items-center">
+                  <div className="flex items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:from-emerald-50 hover:to-emerald-100 hover:border-emerald-300 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md hover:shadow-emerald-500/10 cursor-default">
+                    <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <div className="text-xs leading-tight whitespace-nowrap">
+                      <span className="font-extrabold text-emerald-600 text-sm">$1,000+</span>
+                      <span className="text-gray-700 font-semibold"> returns filed</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:from-emerald-50 hover:to-emerald-100 hover:border-emerald-300 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md hover:shadow-emerald-500/10 cursor-default">
+                    <ClipboardCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <div className="text-xs leading-tight text-gray-700 font-semibold whitespace-nowrap">
+                      QuickBooks ProAdvisors
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:from-emerald-50 hover:to-emerald-100 hover:border-emerald-300 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md hover:shadow-emerald-500/10 cursor-default">
+                    <GraduationCap className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <div className="text-xs leading-tight text-gray-700 font-semibold whitespace-nowrap">
+                      Certified Tax Pros
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:from-emerald-50 hover:to-emerald-100 hover:border-emerald-300 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md hover:shadow-emerald-500/10 cursor-default">
+                    <Zap className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <div className="text-xs leading-tight text-gray-700 font-semibold whitespace-nowrap">
+                      Cutting-edge strategy
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:from-emerald-50 hover:to-emerald-100 hover:border-emerald-300 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md hover:shadow-emerald-500/10 cursor-default">
+                    <Code className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <div className="text-xs leading-tight text-gray-700 font-semibold whitespace-nowrap">
+                      Tech stack experts
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:from-emerald-50 hover:to-emerald-100 hover:border-emerald-300 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md hover:shadow-emerald-500/10 cursor-default">
+                    <Clock className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <div className="text-xs leading-tight text-gray-700 font-semibold whitespace-nowrap">
+                      Same-day response
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        {/* Services Section */}
+        <div className="p-10">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8 pb-3 border-b-4 border-emerald-500">
+            Service Breakdown
+          </h2>
+          
+          <div className="space-y-6">
+            {quote.services.map((service, index) => (
+              <div key={index} className="bg-white border-2 border-gray-200 rounded-xl p-7 hover:border-emerald-500 hover:shadow-card-hover transition-all duration-300">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-6 pb-4 border-b border-gray-200">
+                  <div className="flex-1 mb-4 md:mb-0">
+                    <h3 className="text-xl font-bold text-emerald-600 mb-2">{service.name}</h3>
+                    <p className="text-sm text-gray-600 leading-relaxed">{service.description}</p>
+                  </div>
+                  <div className="text-right">
+                    {service.monthlyFee > 0 && (
+                      <div className="mb-2">
+                        <span className="text-3xl font-bold text-emerald-600">${service.monthlyFee.toLocaleString()}</span>
+                        <span className="text-sm text-gray-500 block mt-1">Monthly fee</span>
+                      </div>
+                    )}
+                    {service.oneTimeFee > 0 && (
+                      <div className="mb-2">
+                        <span className="text-3xl font-bold text-emerald-600">${service.oneTimeFee.toLocaleString()}</span>
+                        <span className="text-sm text-gray-500 block mt-1">One-time</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="mt-4">
+                  <div className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">
+                    {service.name.includes('Individual Tax') && service.pricingFactors ? 'Your Return Includes:' : 'Included:'}
+                  </div>
+                  <div className="grid gap-3">
+                    {service.included.map((item, idx) => (
+                      <div key={idx} className="flex items-start space-x-3 text-sm text-gray-700">
+                        <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                        <span className="leading-relaxed">{item}</span>
+                      </div>
+                    ))}
+                    {service.pricingFactors && service.pricingFactors.map((factor, idx) => (
+                      <div key={`factor-${idx}`} className="flex items-start space-x-3 text-sm text-gray-700">
+                        <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                        <span className="leading-relaxed">{factor}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Guarantee Section */}
+        <div className="bg-green-50 border-2 border-green-500 rounded-xl p-6 mx-10 my-8">
+          <div className="font-bold text-green-800 text-lg mb-2">Our Promise:</div>
+          <p className="text-green-700 leading-relaxed">
+            If we miss a filing deadline we control, we comp a month of service. Not a fit in 30 days? Switch-out guarantee—no penalty.
+          </p>
+        </div>
+
+        {/* Testimonials Section */}
+        <div className="bg-gray-50 p-10">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8 pb-3 border-b-4 border-emerald-500">
+            What Clients Say
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <div className="font-bold text-gray-900 mb-2">"I enjoy working with Andrew and Mike. Great communication and organization. They make work quick and make it easy."</div>
+              <div className="text-sm text-gray-600">— Konstantin S.</div>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <div className="font-bold text-gray-900 mb-2">"Love working with them. They've adapted to every business change I've had, and helped me through the process of filing everything so I don't need to worry about it."</div>
+              <div className="text-sm text-gray-600">— Chris A.</div>
+            </div>
+          </div>
+        </div>
+
+        {/* FAQ Section */}
+        <div className="p-10">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8 pb-3 border-b-4 border-emerald-500">
+            Frequently Asked Questions
+          </h2>
+          <div className="space-y-3">
+            {faqItems.map((faq, index) => (
+              <div key={index} className="border border-gray-200 rounded-xl p-4 bg-white hover:border-emerald-500 transition-all duration-300">
+                <button
+                  onClick={() => toggleFaq(index)}
+                  className="w-full flex justify-between items-center text-left font-bold text-gray-900"
+                >
+                  <span>{faq.question}</span>
+                  {openFaq === index ? (
+                    <ChevronUp className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                  )}
+                </button>
+                {openFaq === index && (
+                  <div className="mt-3 text-sm text-gray-600 leading-relaxed animate-in slide-in-from-top duration-200">
+                    {faq.answer}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Quote Footer */}
+        <div className="bg-gray-50 border-t border-gray-200 p-6 text-sm text-gray-600 leading-relaxed">
+          <p>
+            <span className="font-semibold text-gray-900">Quote Details:</span> This quote is valid until{' '}
+            <span className="font-semibold text-gray-900">{calculateLockDate()}</span> (14 days).
+            Capacity this month: <span className="font-semibold text-gray-900">3 spots remaining</span>. All services subject to standard engagement terms and conditions.
+            Final pricing may be adjusted based on actual complexity discovered during initial consultation.
+          </p>
+        </div>
+
+        {/* Actions Bar */}
+        <div className="bg-gray-50 border-t border-gray-200 p-6">
+          <div className="flex flex-wrap justify-center gap-3">
+            <button
+              onClick={downloadPDF}
+              className="inline-flex items-center space-x-2 bg-white border-2 border-gray-200 hover:border-emerald-500 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200"
+            >
+              <Download className="w-4 h-4" />
+              <span>Download PDF Quote</span>
+            </button>
+            <button
+              onClick={emailQuote}
+              className="inline-flex items-center space-x-2 bg-white border-2 border-gray-200 hover:border-emerald-500 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200"
+            >
+              <Mail className="w-4 h-4" />
+              <span>Email This Quote</span>
+            </button>
+            <button className="inline-flex items-center space-x-2 bg-white border-2 border-gray-200 hover:border-emerald-500 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200">
+              <Calculator className="w-4 h-4" />
+              <span>Recalculate Quote</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Sticky CTA Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white bg-opacity-95 backdrop-blur-sm border-t border-gray-200 shadow-lg">
+        <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 p-4">
+          <div className="flex-1 text-center md:text-left">
+            <div className="text-xs text-gray-600 mb-1">Today's Total</div>
+            <div className="flex items-baseline space-x-2">
+              <span className="text-2xl font-bold text-emerald-600">
+                ${quote.totalMonthlyFees.toLocaleString()}
+              </span>
+              <span className="text-base text-gray-600 font-normal">/mo</span>
+              {quote.totalOneTimeFees > 0 && (
+                <>
+                  <span className="text-lg text-gray-500 font-normal">+</span>
+                  <span className="text-2xl font-bold text-emerald-600">
+                    ${quote.totalOneTimeFees.toLocaleString()}
+                  </span>
+                  <span className="text-base text-gray-600 font-normal">one-time fees</span>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+            <button
+              onClick={handleSubmitToAirtable}
+              disabled={isSubmitting}
+              className="inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 disabled:from-emerald-400 disabled:to-emerald-500 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Accept Quote & Get Started</span>
+                </>
+              )}
+            </button>
+            <button className="inline-flex items-center justify-center space-x-2 bg-white border-2 border-gray-200 hover:border-emerald-500 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+              <Calendar className="w-4 h-4" />
+              <span>Book 10-min Q&A</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default QuoteResults;

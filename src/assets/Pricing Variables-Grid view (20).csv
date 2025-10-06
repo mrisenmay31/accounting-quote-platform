@@ -1,0 +1,73 @@
+Service ID,Service Name,Pricing Rule ID,Rule Name,Description,Pricing Type,Base Price,Billing Frequency,Active,Trigger Form Field,Required Form Field,Comparison Logic,Per-Unit Pricing,Unit Price,Unit Name,Quantity Source Field,Advisory Discount Eligible,Advisory Discount Percentage
+advisory,1,advisory-base,Advisory Services,Comprehensive advisory package including tax strategy consultations and VIP access,Base Service,$1250.00,Monthly,checked,services,advisory,includes,,,,,,0%
+individual-tax,2,individual-tax-base-single,Filing Status: Single,Individual tax return prep for Single ,Base Service,$600.00,One-Time Fee,checked,"individualTax.filingStatus
+",Single,includes,,,,,checked,100%
+individual-tax,2,individual-tax-base-hoh,Filing Status: Head of Household,Individual tax return prep for Head of Household,Base Service,$600.00,One-Time Fee,checked,"individualTax.filingStatus
+",Head of Household,includes,,,,,checked,100%
+individual-tax,2,individual-tax-base-married-filing-separately,Filing Status:  Married Filing Separately,Individual tax return prep for Married Filing Separately,Base Service,$600.00,One-Time Fee,checked,"individualTax.filingStatus
+",Married Filing Separately,includes,,,,,checked,100%
+individual-tax,2,individual-tax-base-mfj,Filing Status:  Married Filing Jointly,Individual tax return prep for Married Filing Jointly,Base Service,$1125.00,One-Time Fee,checked,"individualTax.filingStatus
+",Married Filing Jointly,includes,,,,,checked,100%
+individual-tax,2,individual-tax-base-widow,Filing Status:  Qualified Widow(er),"Individual tax return prep for Qualified Widow(er)
+",Base Service,$1125.00,One-Time Fee,checked,"individualTax.filingStatus
+",Qualifying Widow(er),includes,,,,,checked,100%
+individual-tax,2,individual-tax-itemized,Itemized Deductions,Additional fee for itemized deductions (Schedule A),Add-on,$300.00,One-Time Fee,checked,"individualTax.deductionType
+",Itemized deductions,equals,,,,,checked,50%
+individual-tax,2,individual-tax-interest-dividend-basic,Interest/Dividend Income < $1500,Basic interest/dividend income under $1500,Add-on,$50.00,One-Time Fee,checked,individualTax.interestDividendAmount,"Less than $1,500
+",includes,,,,,checked,50%
+individual-tax,2,individual-tax-interest-dividend-complex,Interest/Dividend Income > $1500,Significant interest/dividend income over $1500,Add-on,$300.00,One-Time Fee,checked,individualTax.interestDividendAmount,"Greater than $1,500",includes,,,,,checked,50%
+individual-tax,2,individual-tax-self-employment,Self-Employment Income,Schedule C self-employment income,Add-on,$300.00,One-Time Fee,checked,individualTax.incomeTypes,"Self-Employment Income (Do not include any income from Partnerships, S-Corps, or C-Corps)
+",includes,checked,$300.00,business,individualTax.selfEmploymentBusinessCount,checked,50%
+individual-tax,2,individual-tax-investment-income,Investment Income,Significant investment income and transactions,Add-on,$300.00,One-Time Fee,checked,individualTax.incomeTypes,"Investment Income (stocks, bonds)
+",includes,,,,,checked,50%
+individual-tax,2,individual-tax-k1-income,S-Corp/Partnership Income,K-1 income from partnerships or S-Corps,Add-on,,One-Time Fee,checked,individualTax.otherIncomeTypes,S-Corp/Partnership Income,includes,checked,$150.00,K-1,individualTax.k1Count,checked,50%
+individual-tax,2,individual-tax-rental-property,Rental Property Income (Schedule E),Income from rental properties,Add-on,,One-Time Fee,checked,individualTax.otherIncomeTypes,Rental Property Income,includes,checked,$300.00,property,individualTax.rentalPropertyCount,checked,50%
+individual-tax,2,individual-tax-cryptocurrency,Cryptocurrency Sales,Digital asset transactions and sales,Add-on,$300.00,One-Time Fee,checked,individualTax.otherIncomeTypes,Cryptocurrency Sales,includes,,,,,checked,50%
+individual-tax,2,individual-tax-partnership-k1,Publicly Traded Partnership K-1s,K-1s from publicly traded partnerships,Add-on,$300.00,One-Time Fee,checked,individualTax.otherIncomeTypes,Publicly Traded Partnership K-1s,includes,,,,,checked,50%
+individual-tax,2,individual-tax-farm,Farm Income,Schedule F farm income,Add-on,$300.00,One-Time Fee,checked,individualTax.otherIncomeTypes,Farm Income,includes,,,,,checked,50%
+individual-tax,2,individual-tax-gambling-income,Gambling Income,Gambling winnings and losses,Add-on,$300.00,One-Time Fee,checked,individualTax.otherIncomeTypes,Gambling Income,includes,,,,,checked,50%
+individual-tax,2,individual-tax-foreign-income,Foreign Income,Foreign income and assets reporting,Add-on,$900.00,One-Time Fee,checked,individualTax.otherIncomeTypes,"Foreign Income
+",includes,,,,,checked,50%
+individual-tax,2,individual-tax-primary-home-sale,Primary Home Sale,Sale of primary residence,Add-on,$300.00,One-Time Fee,checked,individualTax.additionalConsiderations,Primary home sale,includes,,,,,checked,50%
+individual-tax,2,individual-tax-investment-property-sale,Investment Property Sale,Sale of investment property,Add-on,$300.00,One-Time Fee,checked,individualTax.additionalConsiderations,Investment Property Sale,includes,,,,,checked,50%
+individual-tax,2,individual-tax-multi-state,Multi-State Income,Additional state tax returns,Add-on,$900.00,One-Time Fee,checked,individualTax.additionalConsiderations,Income from multiple states,includes,checked,$300.00,state,individualTax.additionalStateCount,checked,50%
+individual-tax,2,individual-tax-adoption,Adoption,Adoption credit and related expenses,Add-on,$300.00,One-Time Fee,checked,individualTax.additionalConsiderations,Adopted a child,includes,,,,,checked,50%
+individual-tax,2,individual-tax-divorce,Divorce,Divorce-related tax implications,Add-on,$300.00,One-Time Fee,checked,individualTax.additionalConsiderations,Divorce,includes,,,,,checked,50%
+individual-tax,2,individual-tax-marriage,Marriage,Marriage-related tax changes,Add-on,$300.00,One-Time Fee,checked,individualTax.additionalConsiderations,Marriage,includes,,,,,checked,50%
+business-tax,3,business-tax-1120s,S-Corporation (1120S),Base S-Corp tax return preparation,Base Service,$1875.00,One-Time Fee,checked,businessTax.entityType,S-Corporation,equals,,,,,checked,100%
+business-tax,3,business-tax-1065,Partnership (1065),Base partnership tax return preparation,Base Service,$2200.00,One-Time Fee,checked,businessTax.entityType,Partnership,equals,,,,,checked,100%
+business-tax,3,business-tax-1065,Partnership (1065),Base partnership tax return preparation,Base Service,$2200.00,One-Time Fee,checked,businessTax.entityType,LLC,equals,,,,,checked,100%
+business-tax,3,business-tax-1120,C-Corporation (1120),Base C-Corp tax return preparation,Base Service,$2500.00,One-Time Fee,checked,businessTax.entityType,C-Corporation,equals,,,,,checked,100%
+business-tax,3,business-tax-additional-owners,Additional Owners (Legacy),Fee per K-1 beyond 2 included - DEPRECATED,Add-on,,One-Time Fee,,businessTax.numberOfOwners,2,greaterThan,checked,$150.00,K-1,businessTax.numberOfOwners,checked,50%
+business-tax,3,business-tax-additional-owners-partnership,Additional Owners (Partnership),Fee per K-1 beyond 2 for Partnership entities,Add-on,,One-Time Fee,checked,businessTax.entityType,Partnership,equals,checked,$150.00,K-1,businessTax.numberOfOwners,checked,50%
+business-tax,3,business-tax-additional-owners-llc,Additional Owners (LLC),Fee per K-1 beyond 2 for LLC entities,Add-on,,One-Time Fee,checked,businessTax.entityType,LLC,equals,checked,$150.00,K-1,businessTax.numberOfOwners,checked,50%
+business-tax,3,business-tax-additional-owners-scorp,Additional Owners (S-Corp),Fee per K-1 beyond 1 for S-Corporation entities,Add-on,,One-Time Fee,checked,businessTax.entityType,S-Corporation,equals,checked,$150.00,K-1,businessTax.numberOfOwners,checked,50%
+business-tax,3,business-tax-additional-owners-ccorp,Additional Owners (C-Corp),Fee per K-1 beyond 1 for C-Corporation entities,Add-on,,One-Time Fee,checked,businessTax.entityType,C-Corporation,equals,checked,$150.00,K-1,businessTax.numberOfOwners,checked,50%
+business-tax,3,business-tax-additional-state,Additional State Filing,Fee per additional state beyond first,Add-on,,One-Time Fee,checked,businessTax.otherSituations,Multi-state operations,includes,checked,$300.00,state,businessTax.additionalStateCount,checked,50%
+business-tax,3,business-tax-inventory-management,Inventory Management,"Tax compliance for businesses that manufacture, distribute, or sell physical products.",Add-on,$300.00,One-Time Fee,checked,businessTax.otherSituations,Inventory Management,includes,,,,,checked,50%
+business-tax,3,business-tax-equipment-depreciation,Equipment Depreciation,Strategic tax planning for business equipment and asset purchases. ,Add-on,$400.00,One-Time Fee,checked,businessTax.otherSituations,Equipment depreciation,includes,,,,,checked,50%
+business-tax,3,business-tax-international-transactions,International Transactions,"Tax reporting and compliance for businesses with foreign operations, international sales, or cross-border transactions.",Add-on,$900.00,One-Time Fee,checked,businessTax.otherSituations,International transactions,includes,,,,,checked,50%
+business-tax,3,business-tax-rd-tax-credits,R&D Tax Credits,Identification and documentation of qualifying research and development activities to claim federal and state tax credits.,Add-on,$1500.00,One-Time Fee,checked,businessTax.otherSituations,R&D tax credits,includes,,,,,checked,50%
+business-tax,3,business-tax-cost-segregation-studies,Cost Segregation Studies,Detailed analysis of commercial real estate and improvements to accelerate depreciation deductions.,Add-on,$1500.00,One-Time Fee,checked,businessTax.otherSituations,Cost Segregation Studies,includes,,,,,checked,50%
+business-tax,3,business-tax-ownership-change,Ownership Changes,New partners or ownership transfers,Add-on,$300.00,One-Time Fee,checked,businessTax.additionalConsiderations,Ownership changes,includes,,,,,checked,50%
+business-tax,3,business-tax-first-year-entity,First Year Entity,Additional setup for new entities,Add-on,$300.00,One-Time Fee,checked,businessTax.additionalConsiderations,First Year Entity,includes,,,,,checked,50%
+business-tax,3,business-tax-fixed-asset-acquisition,Fixed Asset/Equipment Acquisition,Fee for each fixed asset or equipment acquisition,Add-on,,One-Time Fee,checked,businessTax.additionalConsiderations,Fixed Asset/Equipment acquisitions,includes,checked,$150.00,Fixed Asset,businessTax.fixedAssetAcquisitionCount,checked,50%
+bookkeeping,4,bookkeeping-transaction-fee,Transaction Processing,Fee per monthly transaction processed,Add-on,,Monthly,checked,services,bookkeeping,includes,checked,$3.00,transaction,bookkeeping.monthlyTransactions,checked,50%
+bookkeeping,4,bookkeeping-bank-account,Bank Account Management,Fee per bank account managed,Add-on,,Monthly,checked,services,bookkeeping,includes,checked,$75.00,account,bookkeeping.bankAccounts,checked,50%
+bookkeeping,4,bookkeeping-credit-card,Credit Card Management,Fee per credit card account managed,Add-on,,Monthly,checked,services,bookkeeping,includes,checked,$75.00,card,bookkeeping.creditCards,checked,50%
+bookkeeping,4,bookkeeping-business-loan,Business Loan Management,Fee per business loan account managed,Add-on,,Monthly,checked,services,bookkeeping,includes,checked,$50.00,loan,bookkeeping.bankLoans,checked,50%
+bookkeeping,4,bookkeeping-fixed-assets,Fixed Asset Management,Fee per fixed asset tracked,Add-on,,Monthly,checked,bookkeeping.additionalConsiderations,Fixed Assets/Equipment,includes,checked,$50.00,asset,bookkeeping.fixedassets,checked,50%
+bookkeeping,4,bookkeeping-inventory-management,Inventory Management,Fee for managing inventory,Add-on,$100.00,Monthly,checked,bookkeeping.additionalConsiderations,Inventory Management,includes,,,,,checked,50%
+bookkeeping,4,bookkeeping-qbo-setup,QuickBooks Online Setup,One-time QuickBooks setup and configuration,Add-on,$500.00,One-Time Fee,checked,bookkeeping.additionalConsiderations,QuickBooks setup or training,includes,,,,,checked,50%
+bookkeeping,4,bookkeeping-app-integrations,App Integrations,Third-party application integrations setup,Add-on,$150.00,One-Time Fee,checked,bookkeeping.additionalConsiderations,3rd party app integration,includes,,,,,checked,50%
+bookkeeping,4,bookkeeping-monthly-reports,Monthly Financial Reports,Upgrade to monthly reporting from quarterly,Add-on,$225.00,Monthly,checked,bookkeeping.servicefrequency,Monthly,equals,,,,,checked,50%
+bookkeeping,4,bookkeeping-quarterly-reports,Quarterly Financial Reports,Standard quarterly reporting (included),Add-on,$0.00,Monthly,checked,bookkeeping.servicefrequency,Quarterly,equals,,,,,checked,50%
+bookkeeping,4,bookkeeping-cleanup,Books Cleanup/Catch-up,Catchup bookkeeping services based on months behind (2 hours per month),Add-on,,One-Time Fee,checked,bookkeeping.currentStatus,Books need to be caught up,equals,checked,$300.00,month,bookkeeping.monthsBehind,checked,50%
+bookkeeping,4,bookkeeping-minimum-fee,Bookkeeping Minimum Fee,Minimum monthly fee for bookkeeping services,Base Service,$500.00,Monthly,checked,,,,,,,,checked,50%
+additional-services,5,consultation-comprehensive,2-Hour Comprehensive Consultation,Complete business and tax strategy review,Add-on,$1500.00,One-Time Fee,checked,additionalServices.consultations,2 Hour Comprehensive Consultation,includes,,,,,checked,50%
+additional-services,5,consultation-tax-planning,1-Hour Tax Planning Consultation,Focused tax optimization strategies,Add-on,$750.00,One-Time Fee,checked,additionalServices.consultations,1 Hour Tax Planning Consultation,includes,,,,,checked,50%
+additional-services,5,consultation-bookkeeping,1-Hour Bookkeeping Consultation,Financial record organization guidance,Add-on,$350.00,One-Time Fee,checked,additionalServices.consultations,1 Hour Bookkeeping Consultation,includes,,,,,checked,50%
+additional-services,5,consultation-year-end,2-Hour Year-End Strategy,Annual planning and preparation consultation,Add-on,$1500.00,One-Time Fee,checked,additionalServices.consultations,2 Hour Year-End Strategy Consultation,includes,,,,,checked,50%
+additional-services,5,consultation-general-qa,1-Hour General Q&A,General business and tax questions,Add-on,$300.00,One-Time Fee,checked,additionalServices.consultations,1 Hour General Q&A,includes,,,,,checked,50%
+additional-services,5,scorp-election,S-Corp Election (Form 2553),Filing and compliance checklist included,Add-on,$500.00,One-Time Fee,checked,additionalServices.specializedFilings,Form 2553 S-Corp Election Filing,includes,,,,,checked,50%
+additional-services,5,form-1099,1099 Preparation & Filing,Per form preparation and filing,Add-on,,One-Time Fee,checked,additionalServices.specializedFilings,1099 Filing,includes,checked,$50.00,form,additionalServices.numberOf1099Forms,checked,50%

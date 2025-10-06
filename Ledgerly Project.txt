@@ -1,0 +1,37 @@
+This project is a Ledgerly Quote Calculator, a multi-step web application designed to generate personalized quotes for tax and accounting services.
+
+Project Objectives
+The primary objectives of this project are:
+
+Provide Instant Quotes: Allow prospective clients to quickly get an estimated cost for various tax and accounting services.
+Dynamic Service Selection: Enable users to select services (e.g., Individual Tax, Business Tax, Bookkeeping, Advisory) and dynamically adjust the subsequent form steps based on their choices.
+Personalized Pricing: Calculate quotes based on user inputs, service selections, and predefined pricing rules.
+Integration with External Services: Utilize Airtable for managing pricing and service configurations, and Zapier for processing quote submissions and generating engagement letter content.
+Engagement Letter Automation: Automate the generation of the "Scope of Services" section for engagement letters based on the calculated quote.
+Tech Stack
+Frontend:
+React: JavaScript library for building user interfaces.
+TypeScript: Superset of JavaScript that adds static typing.
+Vite: Fast build tool and development server.
+Tailwind CSS: Utility-first CSS framework for rapid UI development.
+Lucide React: Icon library for UI elements.
+Backend/Integrations:
+Airtable: Used as a data source for dynamic pricing rules and service configurations.
+Zapier: Integrated via webhooks to receive quote submission data and trigger further automation, specifically for generating engagement letter content.
+Environment:
+WebContainer: The application runs within an in-browser Node.js runtime.
+Current Progress and Status
+The core functionality of the quote calculator is implemented and operational:
+
+Multi-Step Form Flow: Users can navigate through various steps, including contact information, service selection, and detailed inputs for individual tax, business tax, and bookkeeping services.
+Dynamic Step Rendering: The sequence of detail steps dynamically adjusts based on the services selected by the user.
+Quote Calculation: The application calculates estimated monthly and one-time fees, potential savings, and complexity based on user inputs and configurations fetched from Airtable.
+Airtable Integration: Pricing and service configurations are successfully fetched from Airtable, allowing for flexible updates without code changes.
+Zapier Webhook Integration: The application is configured to send comprehensive quote data to a Zapier webhook upon initial quote submission.
+Engagement Letter Content Generation: Logic has been prepared within the application to structure the Zapier payload to feed into a Zapier Code action, which then generates the "Scope of Services" text for an engagement letter.
+UI Enhancements: Recent updates include refining the display of pricing in the sticky CTA bar and updating value proposition messages.
+Issues Encountered and Resolutions
+Issue: An error occurred during the fetching of pricing configurations from Airtable, specifically a "Failed to fetch" error, which could lead to application crashes if Airtable was unavailable or misconfigured.
+Resolution: The src/utils/pricingService.ts file was modified to include robust error handling. This ensures that if Airtable API calls fail (e.g., due to network issues or incorrect configuration), the application gracefully falls back to using default, hardcoded pricing and service configurations. This prevents the application from crashing and maintains a functional user experience.
+Next Steps (from recent interactions)
+The project is currently in a state where the frontend is ready to send detailed quote information to Zapier, enabling the automation of engagement letter generation. The next logical step would be to fully configure the Zapier workflow to consume this data and integrate it with a document generation service (e.g., Google Docs) to produce the final engagement letters.

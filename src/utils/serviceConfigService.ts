@@ -1,0 +1,182 @@
+import { ServiceConfig } from '../types/quote';
+
+// Airtable configuration for services
+const AIRTABLE_SERVICES_BASE_ID = import.meta.env.VITE_AIRTABLE_SERVICES_BASE_ID || '';
+const AIRTABLE_SERVICES_API_KEY = import.meta.env.VITE_AIRTABLE_SERVICES_API_KEY || '';
+const AIRTABLE_SERVICES_TABLE_NAME = 'Services';
+
+export interface AirtableServiceRecord {
+  id: string;
+  fields: {
+    'Service ID': string;
+    'Title': string;
+    'Description': string;
+    'Icon Name': string;
+    'Color': string;
+    'Featured': boolean;
+    'Benefits': string;
+    'Quote Included Features': string;
+    'Active': boolean;
+    'Service Order': number;
+  };
+}
+
+// Default service configuration (fallback if Airtable is unavailable)
+const defaultServiceConfig: ServiceConfig[] = [
+  {
+    serviceId: 'advisory',
+    title: 'Advisory Services',
+    description: 'Strategic financial guidance and individual/business consulting',
+    iconName: 'TrendingUp',
+    color: 'emerald',
+    featured: true,
+    benefits: ['Year-Round Partnership', 'Complete Tax Services', 'VIP Access', '50% Discount on all additional services'],
+    active: true
+  },
+  {
+    serviceId: 'individual-tax',
+    title: 'Individual Tax Preparation',
+    description: 'Personal tax returns and planning',
+    iconName: 'FileText',
+    color: 'blue',
+    featured: false,
+    benefits: ['Tax return preparation', 'Tax planning', 'Audit support', 'Quarterly estimates'],
+    active: true
+  },
+  {
+    serviceId: 'business-tax',
+    title: 'Business Tax Services',
+    description: 'Corporate tax preparation and compliance',
+    iconName: 'Calculator',
+    color: 'purple',
+    featured: false,
+    benefits: ['Business tax returns', 'Tax compliance', 'Entity selection', 'Tax optimization'],
+    active: true
+  },
+  {
+    serviceId: 'bookkeeping',
+    title: 'Bookkeeping Services',
+    description: 'Monthly financial record keeping',
+    iconName: 'BookOpen',
+    color: 'orange',
+    featured: false,
+    benefits: ['Monthly reconciliation', 'Financial statements', 'Transaction categorization', 'QuickBooks setup'],
+    active: true
+  },
+  {
+    serviceId: 'additional-services',
+    title: 'Additional Services',
+    description: 'Professional consultations, specialized filings, and strategic planning services',
+    iconName: 'FileText',
+    color: 'gray',
+    featured: false,
+    benefits: ['Tax planning', 'Specialized filings & elections', 'Custom consulting solutions', 'Project-based bookkeeping'],
+    active: true
+  }
+];
+
+// Parse JSON strings from Airtable fields
+const parseJsonField = (field: string | undefined): any => {
+  if (!field) return [];
+  try {
+    return JSON.parse(field);
+  } catch (error) {
+    console.warn('Failed to parse JSON field:', field, error);
+    return [];
+  }
+};
+
+// Convert Airtable record to ServiceConfig
+const convertAirtableServiceRecord = (record: AirtableServiceRecord): ServiceConfig => {
+  const fields = record.fields;
+  
+  return {
+    serviceId: fields['Service ID'],
+    title: fields['Title'],
+    description: fields['Description'],
+    iconName: fields['Icon Name'],
+    color: fields['Color'],
+    featured: fields['Featured'] || false,
+    benefits: parseJsonField(fields['Benefits']),
+    quoteIncludedFeatures: parseJsonField(fields['Quote Included Features']),
+    active: fields['Active'] || false,
+    serviceOrder: fields['Service Order'] || 999
+  };
+};
+
+// Fetch service configuration from Airtable
+export const fetchServiceConfig = async (): Promise<ServiceConfig[]> => {
+  // Return default config if Airtable is not configured
+  if (!AIRTABLE_SERVICES_BASE_ID || !AIRTABLE_SERVICES_API_KEY) {
+    console.warn('Airtable services configuration not found. Using default services.');
+    return defaultServiceConfig;
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.airtable.com/v0/${AIRTABLE_SERVICES_BASE_ID}/${AIRTABLE_SERVICES_TABLE_NAME}?filterByFormula={Active}=TRUE()`,
+      {
+        headers: {
+          'Authorization': `Bearer ${AIRTABLE_SERVICES_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Airtable API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data.records || data.records.length === 0) {
+      console.warn('No active service records found in Airtable. Using default services.');
+      return defaultServiceConfig;
+    }
+
+    const serviceConfig = data.records.map((record: AirtableServiceRecord) => 
+      convertAirtableServiceRecord(record)
+    ).sort((a, b) => a.serviceOrder - b.serviceOrder);
+
+    console.log('Successfully fetched service configuration from Airtable:', serviceConfig);
+    return serviceConfig;
+
+  } catch (error) {
+    console.error('Error fetching service configuration from Airtable:', error);
+    console.log('Falling back to default service configuration');
+    // Always return default config on any error to ensure app continues working
+    return [...defaultServiceConfig];
+  }
+};
+
+// Get service configuration for a specific service
+export const getServiceConfig = (
+  serviceConfigs: ServiceConfig[], 
+  serviceId: string
+): ServiceConfig | null => {
+  return serviceConfigs.find(config => config.serviceId === serviceId) || null;
+};
+
+// Cache service configuration to avoid repeated API calls
+let cachedServiceConfig: ServiceConfig[] | null = null;
+let serviceCacheTimestamp: number = 0;
+const SERVICE_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+export const getCachedServiceConfig = async (): Promise<ServiceConfig[]> => {
+  const now = Date.now();
+  
+  if (cachedServiceConfig && (now - serviceCacheTimestamp) < SERVICE_CACHE_DURATION) {
+    return cachedServiceConfig;
+  }
+  
+  cachedServiceConfig = await fetchServiceConfig();
+  serviceCacheTimestamp = now;
+  
+  return cachedServiceConfig;
+};
+
+// Clear service cache (useful for testing or manual refresh)
+export const clearServiceCache = (): void => {
+  cachedServiceConfig = null;
+  serviceCacheTimestamp = 0;
+};

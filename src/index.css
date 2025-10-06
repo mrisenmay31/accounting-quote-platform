@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand-green: #2d6a4f;
+    --brand-green-light: #40916c;
+    --accent-orange: #f97316;
+    --success-green: #16a34a;
+    --warning-yellow: #f59e0b;
+    --gold-bg: #fef3c7;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --bg-light: #f8fafb;
+    --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #e8f0f3 100%);
+    --border-color: #e2e8f0;
+    --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --card-shadow-hover: 0 8px 24px rgba(64, 145, 108, 0.15);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .bg-brand-green {
+    background-color: var(--brand-green);
+  }
+  
+  .bg-brand-green-light {
+    background-color: var(--brand-green-light);
+  }
+  
+  .text-brand-green {
+    color: var(--brand-green);
+  }
+  
+  .text-brand-green-light {
+    color: var(--brand-green-light);
+  }
+  
+  .border-brand-green {
+    border-color: var(--brand-green);
+  }
+  
+  .shadow-card {
+    box-shadow: var(--card-shadow);
+  }
+  
+  .shadow-card-hover {
+    box-shadow: var(--card-shadow-hover);
+  }
+  
+  .bg-gradient-brand {
+    background: var(--bg-gradient);
+  }
+}
+
+@layer utilities {
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  @keyframes glow {
+    0%, 100% {
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+    }
+    50% {
+      box-shadow: 0 4px 20px rgba(251, 191, 36, 0.5);
+    }
+  }
+}
