@@ -1,10 +1,13 @@
 import { supabase, Quote } from './supabaseClient';
 import { FormData, QuoteData } from '../types/quote';
+import { saveQuoteToAirtable } from './airtableQuoteStorage';
+import { TenantConfig } from './tenantService';
 
 export interface SaveQuoteParams {
   tenantId: string;
   formData: FormData;
   quoteData: QuoteData;
+  tenant: TenantConfig;
 }
 
 const generateQuoteNumber = (): string => {
@@ -13,40 +16,31 @@ const generateQuoteNumber = (): string => {
   return `Q-${timestamp}-${random}`;
 };
 
-export const saveQuote = async (params: SaveQuoteParams): Promise<Quote | null> => {
-  const { tenantId, formData, quoteData } = params;
+export const saveQuote = async (params: SaveQuoteParams): Promise<any> => {
+  const { tenantId, formData, quoteData, tenant } = params;
 
   try {
-    const quoteNumber = generateQuoteNumber();
-    const customerName = `${formData.firstName} ${formData.lastName}`.trim();
-    const customerEmail = formData.email;
+    const airtableResult = await saveQuoteToAirtable(
+      formData,
+      quoteData,
+      {
+        baseId: tenant.airtable.servicesBaseId,
+        apiKey: tenant.airtable.servicesApiKey,
+      }
+    );
 
-    const quoteRecord = {
-      tenant_id: tenantId,
-      quote_number: quoteNumber,
-      customer_email: customerEmail,
-      customer_name: customerName,
-      form_data: formData,
-      quote_data: quoteData,
-      total_monthly_fees: quoteData.totalMonthlyFees,
-      total_one_time_fees: quoteData.totalOneTimeFees,
-      total_annual: quoteData.totalAnnual,
-      services_selected: formData.services,
-    };
-
-    const { data, error } = await supabase
-      .from('quotes')
-      .insert(quoteRecord)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error saving quote to database:', error);
+    if (!airtableResult.success) {
+      console.error('Failed to save quote to Airtable:', airtableResult.error);
       return null;
     }
 
-    console.log('Quote saved successfully:', data);
-    return data;
+    console.log('Quote saved to Airtable successfully:', airtableResult.recordId);
+
+    return {
+      id: airtableResult.recordId,
+      quote_number: airtableResult.quoteNumber,
+      airtable_record_id: airtableResult.recordId,
+    };
   } catch (error) {
     console.error('Unexpected error saving quote:', error);
     return null;

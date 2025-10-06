@@ -233,6 +233,7 @@ const QuoteCalculator: React.FC = () => {
         tenantId: tenant.id,
         formData,
         quoteData: quote,
+        tenant: tenant,
       });
 
       // Send quote data to tenant's Zapier webhook
