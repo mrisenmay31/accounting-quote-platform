@@ -1,0 +1,216 @@
+
+Project Summary: Multi-Tenant Quote Calculator Platform
+
+Current State:
+
+You have a working single-tenant quote calculator for Ledgerly (accounting firm) that generates automated quotes for tax, bookkeeping, and advisory services. The application is functional and currently in production.
+
+Tech Stack:
+
+Frontend:
+
+React 18 with TypeScript
+Vite as build tool
+Tailwind CSS for styling
+Lucide React for icons
+React Hook Form for form management
+Multi-step wizard interface (contact info → service selection → service details → quote results)
+Data & Integration:
+
+Airtable as pricing engine (2 bases: Pricing Variables + Services Configuration)
+Zapier webhook for engagement letter generation
+Complex rule-based pricing calculator with conditional logic
+In-memory caching for Airtable data (5-minute TTL)
+Deployment:
+
+Vercel hosting
+Environment variables for Airtable credentials and Zapier webhook
+Pricing Logic Complexity:
+
+The calculator handles sophisticated pricing rules including:
+
+Base prices with unit-based calculations (per return, per entity, per transaction volume)
+Business structure multipliers (LLC, S-Corp, C-Corp, Partnership)
+State complexity adjustments (multi-state operations)
+Revenue tier pricing (different rates for different business sizes)
+Advisory service bundle discounts
+Conditional minimums and maximums
+Service interdependencies (e.g., bookkeeping affects tax pricing)
+All pricing rules are stored in Airtable and fetched dynamically, making them non-technical user editable.
+
+What We're Building:
+
+A multi-tenant SaaS platform where 5-10 (eventually hundreds) of accounting firms can each have their own branded quote calculator with firm-specific pricing, running on a single codebase.
+
+Key Requirements:
+
+Each tenant gets a subdomain (firmname.platform.com) or custom domain
+Full white-label branding (logo, colors, firm name, tagline)
+Tenant-specific Airtable base for their unique pricing
+Shared codebase with zero per-tenant code forks
+Common services (individual tax, business tax, bookkeeping) across all tenants
+Custom services (advisory, niche specialties) configurable per tenant
+Architectural Decision:
+
+Create a new repository (separate from existing Ledgerly codebase) that:
+
+Copies Ledgerly code as foundation (95% reusable)
+Adds multi-tenant infrastructure on top
+Keeps original Ledgerly repo as reference/backup
+Migrates Ledgerly to become "Tenant #1" in new platform
+Why separate repo: Preserves working Ledgerly, allows clean architecture, provides rollback safety, enables independent evolution.
+
+Multi-Tenant Architecture:
+
+Bolt Database for tenant management:
+
+tenants table: stores tenant metadata, branding, Airtable credentials, feature flags, webhook URLs
+quotes table: centralized quote storage across all tenants with RLS policies
+Optional tables: tenant_service_overrides, tenant_form_fields for deep customization
+Per-tenant Airtable bases:
+
+Each tenant gets their own cloned Airtable base (identical schema)
+Tenant controls their pricing rules via Airtable (non-technical editing)
+Base IDs stored in Bolt Database tenant record, not environment variables
+Single React app with dynamic tenant loading:
+
+Tenant resolver parses subdomain/domain on app load
+Fetches tenant config from Bolt Database
+Applies branding theme via CSS custom properties
+Routes Airtable calls to tenant-specific base
+All components access tenant via React context
+Quote flow:
+
+Load tenant config from Bolt Database (subdomain → tenant lookup)
+Fetch pricing from tenant's Airtable base
+User completes form with tenant branding applied
+Calculate quote using existing logic (unchanged)
+Store quote in Bolt Database with tenant_id
+Send to tenant's Zapier webhook for engagement letter
+Display results with tenant branding
+Implementation Plan (Sequenced):
+
+Phase 1: Foundation (Next Steps)
+
+Create Bolt Database tables (tenants, quotes) with RLS policies
+Build Bolt Database client utility (src/utils/Bolt DatabaseClient.ts)
+Create tenant resolver (src/utils/tenantResolver.ts) - parses subdomain, fetches config
+Build tenant context provider (src/contexts/TenantContext.tsx) - makes tenant available app-wide
+Implement dynamic theming (src/utils/themeApplier.ts) - CSS variable injection
+Phase 2: Integration
+6. Update Airtable utilities to accept tenant config parameters (pricingService.ts, serviceConfigService.ts)
+7. Modify App.tsx to wrap with TenantProvider and handle loading/error states
+8. Update QuoteCalculator to consume tenant context for branding
+9. Add quote storage to Bolt Database (src/utils/tenantStorage.ts)
+10. Maintain Zapier integration with tenant-specific webhook URLs
+
+Phase 3: Testing & Launch
+11. Seed Ledgerly tenant data in Bolt Database
+12. Test locally with subdomain simulation (localhost query param or /etc/hosts)
+13. Deploy to Vercel with wildcard DNS (*.platform.com)
+14. Configure ledgerly.platform.com as first tenant
+15. Validate quote flow matches original Ledgerly exactly
+
+Phase 4: Scaling
+16. Create Airtable template base for cloning
+17. Build tenant onboarding workflow
+18. Onboard additional accounting firms
+19. Optional: build tenant admin dashboard for self-service
+
+Potential Hurdles & Challenges:
+
+1. Tenant Isolation & Security
+
+Risk: Tenant A accessing Tenant B's quotes or pricing
+Mitigation: Proper RLS policies in Bolt Database, tenant-scoped Airtable credentials, thorough testing
+2. Airtable Rate Limits
+
+Risk: With many tenants, hitting Airtable API rate limits (5 requests/second/base)
+Mitigation: Current 5-minute caching helps, consider longer TTL or Redis for shared caching layer
+3. Performance at Scale
+
+Risk: Tenant config lookup on every page load could slow down app
+Mitigation: Cache tenant configs in browser session storage, implement CDN caching headers, consider edge functions
+4. Airtable Credential Management
+
+Risk: Storing API keys in Bolt Database, potential exposure
+Mitigation: Encrypt sensitive fields, use Bolt Database's built-in encryption, consider vault service for production
+Alternative: Shared Airtable API key with per-tenant base access (if tenants trust platform)
+5. DNS & Subdomain Management
+
+Risk: Manual DNS configuration for each tenant is error-prone
+Mitigation: Automate via Vercel API or DNS provider API, provide clear documentation
+Custom domains: Requires tenant to configure CNAME, SSL cert generation
+6. Pricing Logic Divergence
+
+Risk: Some tenants may need calculation logic that differs from standard
+Mitigation: Store override functions in tenant config, most use standard logic, handle edge cases gracefully
+Future: Plugin architecture for custom calculation modules
+7. Airtable Schema Drift
+
+Risk: Tenants modify their Airtable schema, breaking integration
+Mitigation: Clear documentation, schema validation on fetch, graceful degradation if fields missing
+Consider: Lock down Airtable schema, provide UI for editing values only
+8. Migration Complexity
+
+Risk: Ensuring multi-tenant Ledgerly behaves identically to original
+Mitigation: Comprehensive testing checklist, parallel run period, easy rollback to original
+9. Quote Data Volume
+
+Risk: Central quotes table grows large, query performance degrades
+Mitigation: Proper indexing (tenant_id, created_at), pagination, archival strategy for old quotes
+10. Tenant Onboarding Friction
+
+Risk: Manual tenant setup is time-consuming and error-prone
+Mitigation: Build onboarding automation, Airtable base cloning script, self-service portal eventually
+11. Support & Debugging
+
+Risk: Hard to debug tenant-specific issues across many configurations
+Mitigation: Comprehensive logging with tenant context, admin dashboard with tenant switching, monitoring per tenant
+Critical Success Factors:
+
+Keep 95% of code identical - Only add tenant awareness layer, don't rewrite logic
+Ledgerly must work perfectly - First tenant validates entire architecture
+Airtable stays as pricing source - Don't migrate pricing to Bolt Database initially (too complex)
+Cache aggressively - Minimize Airtable API calls and Bolt Database lookups
+Plan for schema changes - Airtable structure will evolve, handle gracefully
+Immediate Next Steps:
+
+Create new GitHub repository (e.g., accounting-quote-platform)
+Copy entire Ledgerly codebase to new repo as starting point
+Set up Bolt Database project if not already done
+Begin implementing tenant infrastructure (Phase 1 above)
+Test with Ledgerly as first tenant before onboarding others
+Timeline Estimate:
+
+Phase 1 (Foundation): 2-3 days - Bolt Database setup, tenant resolver, context, theming
+Phase 2 (Integration): 2-3 days - Update Airtable utilities, modify components, quote storage
+Phase 3 (Testing): 1-2 days - Seed data, local testing, deployment, DNS configuration
+Phase 4 (Scaling): Ongoing - Template creation, onboarding automation, admin dashboard
+Total to first working tenant: ~1 week of focused development
+
+Key Files to Modify/Create:
+
+New files:
+
+src/utils/Bolt DatabaseClient.ts
+src/utils/tenantResolver.ts
+src/contexts/TenantContext.tsx
+src/utils/themeApplier.ts
+src/utils/tenantStorage.ts
+src/components/TenantLogo.tsx
+Modified files:
+
+src/App.tsx (wrap with TenantProvider)
+src/components/QuoteCalculator.tsx (consume tenant context)
+src/utils/pricingService.ts (accept tenant config)
+src/utils/serviceConfigService.ts (accept tenant config)
+.env.example (add Bolt Database, remove tenant-specific Airtable vars)
+Unchanged (95% of codebase):
+
+All form detail components
+Quote calculation logic (src/utils/quoteCalculator.ts)
+Type definitions
+UI components
+Styling approach
+This summary should give your technical team or future self everything needed to understand the current state and execute the multi-tenant migration.
