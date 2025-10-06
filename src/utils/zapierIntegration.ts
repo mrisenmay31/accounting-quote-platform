@@ -1,6 +1,6 @@
 import { FormData, QuoteData, ServiceQuote } from '../types/quote';
 
-// Zapier webhook configuration
+// Zapier webhook configuration (fallback to env var for development)
 const ZAPIER_WEBHOOK_URL = import.meta.env.VITE_ZAPIER_WEBHOOK_URL || '';
 
 // Helper function to extract individual service fees from quote data
@@ -103,11 +103,12 @@ const extractIndividualServiceFees = (services: ServiceQuote[], formData: FormDa
   return fees;
 };
 
-export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteData): Promise<boolean> => {
-  console.log('ZAPIER_WEBHOOK_URL from env:', ZAPIER_WEBHOOK_URL);
+export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteData, webhookUrl?: string): Promise<boolean> => {
+  const url = webhookUrl || ZAPIER_WEBHOOK_URL;
+  console.log('Using Zapier webhook URL:', url);
 
-  if (!ZAPIER_WEBHOOK_URL) {
-    console.error('Zapier webhook URL not configured. Please check VITE_ZAPIER_WEBHOOK_URL in .env file');
+  if (!url) {
+    console.error('Zapier webhook URL not configured');
     return true; // Return true for demo purposes when webhook is not configured
   }
 
@@ -268,10 +269,10 @@ export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteD
   };
 
   try {
-    console.log('Sending request to Zapier webhook:', ZAPIER_WEBHOOK_URL);
+    console.log('Sending request to Zapier webhook:', url);
     console.log('Payload:', payload);
-    
-    const response = await fetch(ZAPIER_WEBHOOK_URL, {
+
+    const response = await fetch(url, {
       method: 'POST',
       body: JSON.stringify(payload)
     });

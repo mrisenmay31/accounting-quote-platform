@@ -1,9 +1,14 @@
 import { ServiceConfig } from '../types/quote';
 
-// Airtable configuration for services
+// Airtable configuration for services (fallback to env vars for development)
 const AIRTABLE_SERVICES_BASE_ID = import.meta.env.VITE_AIRTABLE_SERVICES_BASE_ID || '';
 const AIRTABLE_SERVICES_API_KEY = import.meta.env.VITE_AIRTABLE_SERVICES_API_KEY || '';
 const AIRTABLE_SERVICES_TABLE_NAME = 'Services';
+
+export interface AirtableConfig {
+  baseId: string;
+  apiKey: string;
+}
 
 export interface AirtableServiceRecord {
   id: string;
@@ -105,19 +110,23 @@ const convertAirtableServiceRecord = (record: AirtableServiceRecord): ServiceCon
 };
 
 // Fetch service configuration from Airtable
-export const fetchServiceConfig = async (): Promise<ServiceConfig[]> => {
+export const fetchServiceConfig = async (airtableConfig?: AirtableConfig): Promise<ServiceConfig[]> => {
+  // Use tenant-specific config or fall back to environment variables
+  const baseId = airtableConfig?.baseId || AIRTABLE_SERVICES_BASE_ID;
+  const apiKey = airtableConfig?.apiKey || AIRTABLE_SERVICES_API_KEY;
+
   // Return default config if Airtable is not configured
-  if (!AIRTABLE_SERVICES_BASE_ID || !AIRTABLE_SERVICES_API_KEY) {
+  if (!baseId || !apiKey) {
     console.warn('Airtable services configuration not found. Using default services.');
     return defaultServiceConfig;
   }
 
   try {
     const response = await fetch(
-      `https://api.airtable.com/v0/${AIRTABLE_SERVICES_BASE_ID}/${AIRTABLE_SERVICES_TABLE_NAME}?filterByFormula={Active}=TRUE()`,
+      `https://api.airtable.com/v0/${baseId}/${AIRTABLE_SERVICES_TABLE_NAME}?filterByFormula={Active}=TRUE()`,
       {
         headers: {
-          'Authorization': `Bearer ${AIRTABLE_SERVICES_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
         }
       }
@@ -157,26 +166,31 @@ export const getServiceConfig = (
   return serviceConfigs.find(config => config.serviceId === serviceId) || null;
 };
 
-// Cache service configuration to avoid repeated API calls
-let cachedServiceConfig: ServiceConfig[] | null = null;
-let serviceCacheTimestamp: number = 0;
+// Cache service configuration to avoid repeated API calls (tenant-scoped)
+const serviceCache = new Map<string, { config: ServiceConfig[]; timestamp: number }>();
 const SERVICE_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-export const getCachedServiceConfig = async (): Promise<ServiceConfig[]> => {
+export const getCachedServiceConfig = async (airtableConfig?: AirtableConfig): Promise<ServiceConfig[]> => {
+  const cacheKey = airtableConfig ? `${airtableConfig.baseId}:${airtableConfig.apiKey}` : 'default';
   const now = Date.now();
-  
-  if (cachedServiceConfig && (now - serviceCacheTimestamp) < SERVICE_CACHE_DURATION) {
-    return cachedServiceConfig;
+
+  const cached = serviceCache.get(cacheKey);
+  if (cached && (now - cached.timestamp) < SERVICE_CACHE_DURATION) {
+    return cached.config;
   }
-  
-  cachedServiceConfig = await fetchServiceConfig();
-  serviceCacheTimestamp = now;
-  
-  return cachedServiceConfig;
+
+  const config = await fetchServiceConfig(airtableConfig);
+  serviceCache.set(cacheKey, { config, timestamp: now });
+
+  return config;
 };
 
 // Clear service cache (useful for testing or manual refresh)
-export const clearServiceCache = (): void => {
-  cachedServiceConfig = null;
-  serviceCacheTimestamp = 0;
+export const clearServiceCache = (airtableConfig?: AirtableConfig): void => {
+  if (airtableConfig) {
+    const cacheKey = `${airtableConfig.baseId}:${airtableConfig.apiKey}`;
+    serviceCache.delete(cacheKey);
+  } else {
+    serviceCache.clear();
+  }
 };

@@ -10,13 +10,17 @@ import BusinessTaxDetails from './BusinessTaxDetails';
 import BookkeepingDetails from './BookkeepingDetails';
 import AdditionalServicesDetails from './AdditionalServicesDetails';
 import QuoteResults from './QuoteResults';
+import TenantLogo from './TenantLogo';
 import { FormData, QuoteData } from '../types/quote';
 import { calculateQuote } from '../utils/quoteCalculator';
 import { getCachedPricingConfig, PricingConfig } from '../utils/pricingService';
 import { getCachedServiceConfig, ServiceConfig } from '../utils/serviceConfigService';
 import { sendQuoteToZapierWebhook } from '../utils/zapierIntegration';
+import { useTenant } from '../contexts/TenantContext';
+import { saveQuote } from '../utils/quoteStorage';
 
 const QuoteCalculator: React.FC = () => {
+  const { tenant } = useTenant();
   const [currentStep, setCurrentStep] = useState(1);
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [pricingConfig, setPricingConfig] = useState<PricingConfig[]>([]);
@@ -160,16 +164,28 @@ const QuoteCalculator: React.FC = () => {
   // Load pricing configuration on component mount
   useEffect(() => {
     const loadConfigurations = async () => {
+      if (!tenant) return;
+
       try {
         setIsLoadingPricing(true);
         setIsLoadingServices(true);
-        
+
+        const airtableConfig = {
+          baseId: tenant.airtable.pricingBaseId,
+          apiKey: tenant.airtable.pricingApiKey,
+        };
+
+        const servicesConfig = {
+          baseId: tenant.airtable.servicesBaseId,
+          apiKey: tenant.airtable.servicesApiKey,
+        };
+
         // Load pricing and service configurations in parallel
         const [pricingData, serviceData] = await Promise.all([
-          getCachedPricingConfig(),
-          getCachedServiceConfig()
+          getCachedPricingConfig(airtableConfig),
+          getCachedServiceConfig(servicesConfig)
         ]);
-        
+
         setPricingConfig(pricingData);
         setServiceConfig(serviceData);
       } catch (error) {
@@ -182,7 +198,7 @@ const QuoteCalculator: React.FC = () => {
     };
 
     loadConfigurations();
-  }, []);
+  }, [tenant]);
 
   const updateFormData = (updates: Partial<FormData>) => {
     const newFormData = { ...formData, ...updates };
@@ -205,16 +221,23 @@ const QuoteCalculator: React.FC = () => {
 
   const handleGetQuoteAndSubmit = async () => {
     setIsSubmittingInitialQuote(true);
-    
+
     try {
-      if (!quote) {
-        console.warn('Quote data is not available for submission');
+      if (!quote || !tenant) {
+        console.warn('Quote data or tenant is not available for submission');
         return;
       }
-      
-      // Send quote data to Zapier webhook
-      await sendQuoteToZapierWebhook(formData, quote);
-      
+
+      // Save quote to database
+      await saveQuote({
+        tenantId: tenant.id,
+        formData,
+        quoteData: quote,
+      });
+
+      // Send quote data to tenant's Zapier webhook
+      await sendQuoteToZapierWebhook(formData, quote, tenant.zapierWebhookUrl);
+
       // Advance to quote results page regardless of webhook success/failure
       nextStep();
     } catch (error) {
@@ -327,18 +350,20 @@ const QuoteCalculator: React.FC = () => {
     }
   };
 
+  if (!tenant) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-orange-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-emerald-100">
         <div className="max-w-4xl mx-auto px-6 py-6">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center">
-              <Calculator className="w-6 h-6 text-white" />
-            </div>
+            <TenantLogo logoUrl={tenant.logoUrl} firmName={tenant.firmName} className="w-10 h-10" />
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Ledgerly Quote Calculator</h1>
-              <p className="text-emerald-600 font-medium">Get your personalized tax & accounting quote</p>
+              <h1 className="text-2xl font-bold text-gray-900">{tenant.firmName} Quote Calculator</h1>
+              <p className="text-emerald-600 font-medium">{tenant.firmTagline || 'Get your personalized tax & accounting quote'}</p>
             </div>
           </div>
         </div>

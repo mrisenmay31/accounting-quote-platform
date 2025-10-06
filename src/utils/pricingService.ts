@@ -1,9 +1,14 @@
 import { PricingConfig } from '../types/quote';
 
-// Airtable configuration for pricing
+// Airtable configuration for pricing (fallback to env vars for development)
 const AIRTABLE_PRICING_BASE_ID = import.meta.env.VITE_AIRTABLE_PRICING_BASE_ID || '';
 const AIRTABLE_PRICING_API_KEY = import.meta.env.VITE_AIRTABLE_PRICING_API_KEY || '';
 const AIRTABLE_PRICING_TABLE_NAME = 'Pricing Variables';
+
+export interface AirtableConfig {
+  baseId: string;
+  apiKey: string;
+}
 
 export interface AirtablePricingRecord {
   id: string;
@@ -287,22 +292,26 @@ const convertAirtableRecord = (record: AirtablePricingRecord): PricingConfig => 
 };
 
 // Fetch pricing configuration from Airtable
-export const fetchPricingConfig = async (): Promise<PricingConfig[]> => {
+export const fetchPricingConfig = async (airtableConfig?: AirtableConfig): Promise<PricingConfig[]> => {
+  // Use tenant-specific config or fall back to environment variables
+  const baseId = airtableConfig?.baseId || AIRTABLE_PRICING_BASE_ID;
+  const apiKey = airtableConfig?.apiKey || AIRTABLE_PRICING_API_KEY;
+
   // Return default config if Airtable is not configured
-  if (!AIRTABLE_PRICING_BASE_ID || !AIRTABLE_PRICING_API_KEY) {
+  if (!baseId || !apiKey) {
     console.warn('Airtable pricing configuration not found. Using default pricing.');
     return defaultPricingConfig;
   }
 
   try {
-    const url = `https://api.airtable.com/v0/${AIRTABLE_PRICING_BASE_ID}/${AIRTABLE_PRICING_TABLE_NAME}?filterByFormula={Active}=TRUE()`;
+    const url = `https://api.airtable.com/v0/${baseId}/${AIRTABLE_PRICING_TABLE_NAME}?filterByFormula={Active}=TRUE()`;
     console.log('Fetching pricing config from:', url);
-    
+
     const response = await fetch(
       url,
       {
         headers: {
-          'Authorization': `Bearer ${AIRTABLE_PRICING_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
         }
       }
@@ -343,26 +352,31 @@ export const getServicePricing = (
   return pricingConfig.find(config => config.serviceId === serviceId) || null;
 };
 
-// Cache pricing configuration to avoid repeated API calls
-let cachedPricingConfig: PricingConfig[] | null = null;
-let cacheTimestamp: number = 0;
+// Cache pricing configuration to avoid repeated API calls (tenant-scoped)
+const pricingCache = new Map<string, { config: PricingConfig[]; timestamp: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-export const getCachedPricingConfig = async (): Promise<PricingConfig[]> => {
+export const getCachedPricingConfig = async (airtableConfig?: AirtableConfig): Promise<PricingConfig[]> => {
+  const cacheKey = airtableConfig ? `${airtableConfig.baseId}:${airtableConfig.apiKey}` : 'default';
   const now = Date.now();
-  
-  if (cachedPricingConfig && (now - cacheTimestamp) < CACHE_DURATION) {
-    return cachedPricingConfig;
+
+  const cached = pricingCache.get(cacheKey);
+  if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+    return cached.config;
   }
-  
-  cachedPricingConfig = await fetchPricingConfig();
-  cacheTimestamp = now;
-  
-  return cachedPricingConfig;
+
+  const config = await fetchPricingConfig(airtableConfig);
+  pricingCache.set(cacheKey, { config, timestamp: now });
+
+  return config;
 };
 
 // Clear pricing cache (useful for testing or manual refresh)
-export const clearPricingCache = (): void => {
-  cachedPricingConfig = null;
-  cacheTimestamp = 0;
+export const clearPricingCache = (airtableConfig?: AirtableConfig): void => {
+  if (airtableConfig) {
+    const cacheKey = `${airtableConfig.baseId}:${airtableConfig.apiKey}`;
+    pricingCache.delete(cacheKey);
+  } else {
+    pricingCache.clear();
+  }
 };
