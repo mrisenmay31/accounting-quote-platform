@@ -49,15 +49,27 @@ const generateColorShades = (baseColor: string): Record<string, string> => {
 export const applyTheme = (tenant: TenantConfig): void => {
   const root = document.documentElement;
 
+  const primaryColor = tenant.primaryColor.startsWith('#') ? tenant.primaryColor : `#${tenant.primaryColor}`;
+  const secondaryColor = tenant.secondaryColor.startsWith('#') ? tenant.secondaryColor : `#${tenant.secondaryColor}`;
+
+  console.log('[ThemeApplier] Applied theme:', {
+    firmName: tenant.firmName,
+    primaryColor,
+    secondaryColor,
+    logoUrl: tenant.logoUrl
+  });
+
   root.style.setProperty('--tenant-firm-name', tenant.firmName);
   root.style.setProperty('--tenant-firm-tagline', tenant.firmTagline || '');
+  root.style.setProperty('--primary-color', primaryColor);
+  root.style.setProperty('--secondary-color', secondaryColor);
 
-  const primaryShades = generateColorShades(tenant.primaryColor);
+  const primaryShades = generateColorShades(primaryColor);
   Object.entries(primaryShades).forEach(([shade, color]) => {
     root.style.setProperty(`--tenant-primary-${shade}`, color);
   });
 
-  const secondaryShades = generateColorShades(tenant.secondaryColor);
+  const secondaryShades = generateColorShades(secondaryColor);
   Object.entries(secondaryShades).forEach(([shade, color]) => {
     root.style.setProperty(`--tenant-secondary-${shade}`, color);
   });

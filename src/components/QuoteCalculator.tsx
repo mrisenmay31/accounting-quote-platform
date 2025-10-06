@@ -356,15 +356,15 @@ const QuoteCalculator: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-orange-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-emerald-100">
+      <div className="bg-white shadow-sm border-b" style={{ borderColor: 'var(--tenant-primary-100, #e5e7eb)' }}>
         <div className="max-w-4xl mx-auto px-6 py-6">
           <div className="flex items-center space-x-3">
             <TenantLogo logoUrl={tenant.logoUrl} firmName={tenant.firmName} className="w-10 h-10" />
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{tenant.firmName} Quote Calculator</h1>
-              <p className="text-emerald-600 font-medium">{tenant.firmTagline || 'Get your personalized tax & accounting quote'}</p>
+              <p className="font-medium" style={{ color: 'var(--tenant-primary-600, #10b981)' }}>{tenant.firmTagline || 'Get your personalized tax & accounting quote'}</p>
             </div>
           </div>
         </div>
@@ -372,9 +372,9 @@ const QuoteCalculator: React.FC = () => {
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-6 py-8">
-        <div className="bg-white rounded-2xl shadow-xl border border-emerald-100 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-xl border overflow-hidden" style={{ borderColor: 'var(--tenant-primary-100, #e5e7eb)' }}>
           {/* Step Indicator */}
-          <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 px-8 py-6">
+          <div className="px-8 py-6" style={{ background: `linear-gradient(to right, var(--tenant-primary-600, #10b981), var(--tenant-primary-700, #059669))` }}>
             <StepIndicator 
               steps={conceptualSteps}
               currentStep={currentConceptualStepNumber} 
@@ -405,7 +405,12 @@ const QuoteCalculator: React.FC = () => {
                     <button
                       onClick={handleGetQuoteAndSubmit}
                       disabled={!canProceed() || isSubmittingInitialQuote}
-                      className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
+                      className="flex items-center space-x-2 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
+                      style={{
+                        backgroundColor: 'var(--tenant-primary-600, #10b981)',
+                      }}
+                      onMouseEnter={(e) => !isSubmittingInitialQuote && (e.currentTarget.style.backgroundColor = 'var(--tenant-primary-700, #059669)')}
+                      onMouseLeave={(e) => !isSubmittingInitialQuote && (e.currentTarget.style.backgroundColor = 'var(--tenant-primary-600, #10b981)')}
                     >
                       {isSubmittingInitialQuote ? (
                         <>
@@ -423,7 +428,12 @@ const QuoteCalculator: React.FC = () => {
                     <button
                       onClick={nextStep}
                       disabled={!canProceed()}
-                      className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
+                      className="flex items-center space-x-2 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
+                      style={{
+                        backgroundColor: 'var(--tenant-primary-600, #10b981)',
+                      }}
+                      onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--tenant-primary-700, #059669)')}
+                      onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--tenant-primary-600, #10b981)')}
                     >
                       <span>Continue</span>
                       <ArrowRight className="w-4 h-4" />
@@ -439,15 +449,15 @@ const QuoteCalculator: React.FC = () => {
         <div className="mt-8 text-center">
           <div className="flex items-center justify-center space-x-6 text-sm text-gray-600">
             <div className="flex items-center space-x-2">
-              <CheckCircle className="w-4 h-4 text-emerald-600" />
+              <CheckCircle className="w-4 h-4" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
               <span>Secure & Confidential</span>
             </div>
             <div className="flex items-center space-x-2">
-              <CheckCircle className="w-4 h-4 text-emerald-600" />
+              <CheckCircle className="w-4 h-4" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
               <span>No Obligation</span>
             </div>
             <div className="flex items-center space-x-2">
-              <CheckCircle className="w-4 h-4 text-emerald-600" />
+              <CheckCircle className="w-4 h-4" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
               <span>Instant Quote</span>
             </div>
           </div>
