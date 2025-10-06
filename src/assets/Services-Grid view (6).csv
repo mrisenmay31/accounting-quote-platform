@@ -1,0 +1,8 @@
+﻿Service ID,Service Order,Active,Featured,Title,Description,Icon Name,Color,Benefits,Quote Included Features
+individual-tax,1,checked,,Individual Tax Preparation,"Complete preparation and filing of your individual tax return (Form 1040)
+
+",FileText,blue,"[""Complete tax return preparation and filing"", ""Year-end strategy consultation and comprehensive review"", ""Tax planning consultation for liability minimization"", ""50% discount pricing for Advisory clients""]",
+business-tax,2,checked,,Business Tax Preparation,Professional business tax return preparation and filing for all entity types,Building,emerald,"[""Complete business tax return preparation for all entities"", ""Year-end strategy consultation and business review"", ""Tax planning consultation for business optimization"", ""50% discount pricing for Advisory clients""]",
+bookkeeping,3,checked,,Bookkeeping & Accounting,"Comprehensive bookkeeping services including transaction management, reconciliations, and financial reporting to keep books current and compliant",Calculator,gray,"[""Complete transaction entry and bank reconciliation"", ""Month-end close with professional accounting adjustments"", ""Quarterly financial reports (P&L, Balance Sheet, Cash Flow)"", ""QuickBooks setup with 3rd party integrations and cleanup""]",
+additional-services,4,checked,,Additional Services,"Professional consultations, specialized filings, and strategic planning services
+",Settings,purple,"[""Tax planning"", ""Specialized filings & elections"", ""Custom consulting solutions"", ""Project-based bookkeeping""]",

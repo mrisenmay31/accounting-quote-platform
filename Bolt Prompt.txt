@@ -1,0 +1,333 @@
+I need to refactor my multi-tenant quote calculator to save quotes directly to each tenant's Airtable base instead of Supabase. I have Beth's (Elevated Tax & Accounting) Airtable structure ready with 4 tables.
+
+**Current Architecture:**
+- Pricing engine: ✅ Already fetches from Airtable (pricingService, serviceConfigService)
+- Quote storage: ❌ Currently saves to Supabase quotes table, then Zapier
+- Need: Save directly to Airtable "Client Quotes" table (74 columns)
+
+**Beth's Airtable Structure (All in ONE base):**
+
+Table 1: Firm Info
+- Firm Name
+- Primary Brand Color
+- Secondary Brand Color  
+- Services Offered
+
+Table 2: Services  
+- Service ID (individual-tax, business-tax, bookkeeping, additional-services)
+- Service Order, Active, Featured, Title, Description, Icon Name, Color, Benefits
+
+Table 3: Pricing Variables (67 rules)
+- Service ID, Pricing Rule ID, Rule Name, Description
+- Pricing Type, Base Price, Billing Frequency, Active
+- Trigger Form Field, Required Form Field, Comparison Logic
+- Per-Unit Pricing, Unit Price, Unit Name, Quantity Source Field
+
+Table 4: Client Quotes (74 columns - this is the NEW integration)
+Core: Date, First Name, Last Name, Full Name, Email, Phone, Quote Status, Services Requested
+Individual Tax: 18 fields (Individual Tax - Filing Status, Individual Tax - Annual Income, etc.)
+Business Tax: 15 fields (Business Tax - Entity Type, Business Tax - Annual Revenue, etc.)
+Bookkeeping: 15 fields (Bookkeeping - Monthly Transactions, Bookkeeping - Bank Accounts, etc.)
+Additional Services: 1 field (Additional Services - Selected)
+Calculated: Individual Tax Prep Fees, Business Tax Prep Fees, Monthly Bookkeeping Fees, Monthly Fees, One-Time Fees, Total Monthly Fees
+Workflow: Lead Source, Assignment, Next Follow-up Date, Engagement Letter
+
+**What I Need You To Build:**
+
+### 1. CREATE FILE: src/utils/airtableQuoteStorage.ts
+
+Build a utility that saves completed quotes to Airtable's "Client Quotes" table:
+
+import { FormData, QuoteData } from '../types/quote';
+
+interface AirtableQuoteConfig {
+baseId: string;
+apiKey: string;
+}
+
+export const saveQuoteToAirtable = async (
+formData: FormData,
+quoteData: QuoteData,
+config: AirtableQuoteConfig
+): Promise<{ success: boolean; recordId?: string; error?: string }> => {
+// Implementation requirements:
+
+// 1. Generate unique quote number: Q-YYYYMMDD-XXXX (random 4 chars)
+
+// 2. Map form data to Airtable column names:
+// formData.firstName → "First Name"
+// formData.lastName → "Last Name"
+// formData.email → "Email"
+// formData.phone → "Phone"
+// formData.services → "Services Requested" (join with commas)
+//
+// formData.individualTax.filingStatus → "Individual Tax - Filing Status"
+// formData.individualTax.annualIncome → "Individual Tax - Annual Income"
+// formData.individualTax.incomeTypes → "Individual Tax - Income Types" (join with commas)
+// ... map all 18 Individual Tax fields
+//
+// formData.businessTax.entityType → "Business Tax - Entity Type"
+// formData.businessTax.annualRevenue → "Business Tax - Annual Revenue"
+// ... map all 15 Business Tax fields
+//
+// formData.bookkeeping.monthlyTransactions → "Bookkeeping - Monthly Transactions"
+// formData.bookkeeping.bankAccounts → "Bookkeeping - Bank Accounts"
+// ... map all 15 Bookkeeping fields
+//
+// formData.additionalServices.selectedAdditionalServices → "Additional Services - Selected" (join with commas)
+
+// 3. Calculate and map financial totals from quoteData:
+// Individual Tax service fees → "Individual Tax Prep Fees"
+// Business Tax service fees → "Business Tax Prep Fees"
+// Bookkeeping monthly fees → "Monthly Bookkeeping Fees"
+// Sum of all monthly → "Monthly Fees"
+// Sum of all one-time → "One-Time Fees"
+// quoteData.totalMonthlyFees → "Total Monthly Fees"
+
+// 4. Set defaults:
+// "Date" → new Date().toISOString()
+// "Quote Status" → "New Quote"
+// "Full Name" → ${firstName} ${lastName}
+
+// 5. Only populate service-specific columns if that service was selected
+// Example: Only fill "Individual Tax - *" fields if formData.services.includes('individual-tax')
+
+// 6. POST to Airtable REST API:
+// URL: https://api.airtable.com/v0/{baseId}/Client%20Quotes
+// Headers: { Authorization: Bearer ${apiKey}, Content-Type: 'application/json' }
+// Body: { fields: { ... all mapped fields ... } }
+
+// 7. Handle errors gracefully:
+// - Airtable rate limits (5 requests/second)
+// - Invalid field names
+// - Missing required fields
+// - Network errors
+
+// 8. Return: { success: true, recordId: 'recXXXXXX' } on success
+// { success: false, error: 'message' } on failure
+};
+
+text
+
+### 2. UPDATE FILE: src/utils/quoteStorage.ts
+
+Modify to use Airtable instead of Supabase for quote storage:
+
+// Keep existing imports
+import { saveQuoteToAirtable } from './airtableQuoteStorage';
+
+// REPLACE the saveQuote function:
+export const saveQuote = async (params: {
+tenantId: string;
+formData: FormData;
+quoteData: QuoteData;
+tenant: TenantConfig; // ADD tenant config parameter
+}): Promise<any> => {
+const { tenantId, formData, quoteData, tenant } = params;
+
+try {
+// Save directly to tenant's Airtable base
+const airtableResult = await saveQuoteToAirtable(
+formData,
+quoteData,
+{
+baseId: tenant.airtable.servicesBaseId, // Same base has all 4 tables
+apiKey: tenant.airtable.servicesApiKey
+}
+);
+
+text
+if (!airtableResult.success) {
+  console.error('Failed to save quote to Airtable:', airtableResult.error);
+  return null;
+}
+
+console.log('Quote saved to Airtable successfully:', airtableResult.recordId);
+
+// Optional: Keep minimal record in Supabase for analytics (tenant_id, quote_number, created_at)
+// Or completely remove Supabase quote storage
+
+return {
+  id: airtableResult.recordId,
+  quote_number: airtableResult.quoteNumber, // Return from saveQuoteToAirtable
+  airtable_record_id: airtableResult.recordId
+};
+} catch (error) {
+console.error('Unexpected error saving quote:', error);
+return null;
+}
+};
+
+// KEEP existing functions: getQuotesByTenant, getQuotesByEmail, getQuoteById
+// (These may still query Supabase for historical data or can be deprecated)
+
+text
+
+### 3. UPDATE FILE: src/components/QuoteCalculator.tsx
+
+Modify the handleGetQuoteAndSubmit function to pass tenant config:
+
+Find this section (around line 200):
+const handleGetQuoteAndSubmit = async () => {
+setIsSubmittingInitialQuote(true);
+try {
+if (!quote || !tenant) {
+console.warn('Quote data or tenant is not available for submission');
+return;
+}
+
+text
+// Save quote to database
+await saveQuote({
+  tenantId: tenant.id,
+  formData,
+  quoteData: quote,
+  tenant: tenant, // ADD THIS LINE - pass full tenant config
+});
+text
+
+### 4. DETAILED FIELD MAPPING REFERENCE
+
+Here's the complete mapping for airtableQuoteStorage.ts:
+
+**Core Fields:**
+const airtableFields = {
+"Date": new Date().toISOString(),
+"First Name": formData.firstName,
+"Last Name": formData.lastName,
+"Full Name": ${formData.firstName} ${formData.lastName}.trim(),
+"Email": formData.email,
+"Phone": formData.phone,
+"Quote Status": "New Quote",
+"Services Requested": formData.services.join(', '),
+};
+
+text
+
+**Individual Tax Fields (only if formData.services.includes('individual-tax')):**
+if (formData.services.includes('individual-tax') && formData.individualTax) {
+Object.assign(airtableFields, {
+"Individual Tax - Filing Status": formData.individualTax.filingStatus,
+"Individual Tax - Annual Income": formData.individualTax.annualIncome,
+"Individual Tax - Tax Year": formData.individualTax.taxYear,
+"Individual Tax - Timeline": formData.individualTax.timeline,
+"Individual Tax - Income Types": formData.individualTax.incomeTypes?.join(', '),
+"Individual Tax - Deduction Type": formData.individualTax.deductionType,
+"Individual Tax - K1 Count": formData.individualTax.k1Count,
+"Individual Tax - Interest/Dividend Amount": formData.individualTax.interestDividendAmount,
+"Individual Tax - Rental Property Count": formData.individualTax.rentalPropertyCount,
+"Individual Tax - Other Types of Income": formData.individualTax.otherIncomeTypes?.join(', '),
+"Individual Tax - Self-Employment Business Count": formData.individualTax.selfEmploymentBusinessCount,
+"Individual Tax - Additional Considerations": formData.individualTax.additionalConsiderations?.join(', '),
+"Individual Tax - Additional State Count": formData.individualTax.additionalStateCount,
+"Individual Tax - Has Other Income": formData.individualTax.hasOtherIncome,
+"Individual Tax - Other Income": formData.individualTax.otherIncomeDescription,
+"Individual Tax - Previous Preparer": formData.individualTax.previousPreparer,
+"Individual Tax - Special Circumstances": formData.individualTax.specialCircumstances,
+});
+}
+
+text
+
+**Business Tax Fields (only if formData.services.includes('business-tax')):**
+if (formData.services.includes('business-tax') && formData.businessTax) {
+Object.assign(airtableFields, {
+"Business Tax - Business Name": formData.businessTax.businessName,
+"Business Tax - Annual Revenue": formData.businessTax.annualRevenue,
+"Business Tax - Entity Type": formData.businessTax.entityType,
+"Business Tax - Business Industry": formData.businessTax.businessIndustry,
+"Business Tax - Tax Year": formData.businessTax.taxYear,
+"Business Tax - Timeline": formData.businessTax.timeline,
+"Business Tax - Number of Owners": formData.businessTax.numberOfOwners,
+"Business Tax - Number of Employees": formData.businessTax.numberOfEmployees,
+"Business Tax - Other Tax Situations": formData.businessTax.otherSituations?.join(', '),
+"Business Tax - Additional Considerations": formData.businessTax.additionalConsiderations?.join(', '),
+"Business Tax - Additional State Count": formData.businessTax.additionalStateCount,
+"Business Tax - Fixed Asset Acquisition Count": formData.businessTax.fixedAssetAcquisitionCount,
+"Business Tax - Previous Preparer": formData.businessTax.previousPreparer,
+"Business Tax - Special Circumstances": formData.businessTax.specialCircumstances,
+});
+}
+
+text
+
+**Bookkeeping Fields (only if formData.services.includes('bookkeeping')):**
+if (formData.services.includes('bookkeeping') && formData.bookkeeping) {
+Object.assign(airtableFields, {
+"Bookkeeping - Business Name": formData.bookkeeping.businessName,
+"Bookkeeping - Annual Revenue": formData.bookkeeping.annualRevenue,
+"Bookkeeping - Business Type": formData.bookkeeping.businessType,
+"Bookkeeping - Business Industry": formData.bookkeeping.businessIndustry,
+"Bookkeeping - Current Status": formData.bookkeeping.currentStatus,
+"Bookkeeping - Current Bookkeeping Method": formData.bookkeeping.currentBookkeepingMethod,
+"Bookkeeping - Bank Accounts": formData.bookkeeping.bankAccounts,
+"Bookkeeping - Credit Cards": formData.bookkeeping.creditCards,
+"Bookkeeping - Bank Loans": formData.bookkeeping.bankLoans,
+"Bookkeeping - Monthly Transactions": formData.bookkeeping.monthlyTransactions,
+"Bookkeeping - Service Frequency": formData.bookkeeping.servicefrequency,
+"Bookkeeping - Additional Considerations": formData.bookkeeping.additionalConsiderations?.join(', '),
+"Bookkeeping - Cleanup Hours": formData.bookkeeping.cleanuphours,
+"Bookkeeping - Start Timeline": formData.bookkeeping.startTimeline,
+"Bookkeeping - Challenges": formData.bookkeeping.challenges,
+});
+}
+
+text
+
+**Additional Services:**
+if (formData.services.includes('additional-services') && formData.additionalServices) {
+airtableFields["Additional Services - Selected"] = formData.additionalServices.selectedAdditionalServices?.join(', ');
+}
+
+text
+
+**Calculated Financial Fields:**
+// Calculate service-specific fees
+const individualTaxFees = quoteData.services
+.find(s => s.name.toLowerCase().includes('individual tax'))?.oneTimeFee || 0;
+
+const businessTaxFees = quoteData.services
+.find(s => s.name.toLowerCase().includes('business tax'))?.oneTimeFee || 0;
+
+const bookkeepingMonthlyFees = quoteData.services
+.find(s => s.name.toLowerCase().includes('bookkeeping'))?.monthlyFee || 0;
+
+const bookkeepingCleanupFees = quoteData.services
+.find(s => s.name.toLowerCase().includes('bookkeeping'))?.oneTimeFee || 0;
+
+Object.assign(airtableFields, {
+"Individual Tax Prep Fees": individualTaxFees,
+"Business Tax Prep Fees": businessTaxFees,
+"Monthly Bookkeeping Fees": bookkeepingMonthlyFees,
+"Catchup Bookkeeping Fees": bookkeepingCleanupFees,
+"Monthly Fees": quoteData.totalMonthlyFees,
+"One-Time Fees": quoteData.totalOneTimeFees,
+"Total Monthly Fees": quoteData.totalMonthlyFees,
+});
+
+text
+
+**IMPORTANT IMPLEMENTATION NOTES:**
+
+1. **Airtable API Rate Limiting**: The API allows 5 requests/second. Add a retry mechanism for 429 errors.
+
+2. **Field Name Exact Match**: Airtable field names are case-sensitive and must exactly match the CSV column headers (with spaces and hyphens).
+
+3. **Array Fields**: Join arrays with `, ` (comma + space) for Airtable's multiple select fields.
+
+4. **Numeric Fields**: Ensure numbers are sent as numbers, not strings. Convert formData string values to numbers for count fields.
+
+5. **Empty Values**: Don't send undefined or null - omit fields entirely if no value exists.
+
+6. **Table Name Encoding**: "Client Quotes" must be URL-encoded as "Client%20Quotes" in the API endpoint.
+
+7. **Error Messages**: Show user-friendly error messages. Never expose raw Airtable API errors to users.
+
+8. **Testing**: After implementation, test with all 4 service combinations:
+   - Individual Tax only
+   - Business Tax only
+   - Bookkeeping only
+   - All services combined
+
+Please implement these changes maintaining all existing pricing calculation logic, form validation, and UI/UX. The calculator should continue to work exactly as before, just saving to Airtable instead of Supabase.
+
