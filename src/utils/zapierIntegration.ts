@@ -1,4 +1,5 @@
 import { FormData, QuoteData, ServiceQuote } from '../types/quote';
+import { generateQuoteId } from './quoteIdGenerator';
 
 // Zapier webhook configuration (fallback to env var for development)
 const ZAPIER_WEBHOOK_URL = import.meta.env.VITE_ZAPIER_WEBHOOK_URL || '';
@@ -103,7 +104,7 @@ const extractIndividualServiceFees = (services: ServiceQuote[], formData: FormDa
   return fees;
 };
 
-export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteData, webhookUrl?: string): Promise<{ success: boolean; recordId?: string }> => {
+export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteData, webhookUrl?: string): Promise<{ success: boolean; recordId?: string; quoteId?: string }> => {
   const url = webhookUrl || ZAPIER_WEBHOOK_URL;
   console.log('Using Zapier webhook URL:', url);
 
@@ -111,6 +112,10 @@ export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteD
     console.error('Zapier webhook URL not configured');
     return { success: true }; // Return success for demo purposes when webhook is not configured
   }
+
+  // Generate Quote ID
+  const quoteId = generateQuoteId();
+  console.log('📋 Generated Quote ID:', quoteId);
 
   // Extract individual service fees
   const individualFees = extractIndividualServiceFees(quote.services, formData, quote);
@@ -126,6 +131,9 @@ export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteD
   console.log('=========================================');
 
   const payload = {
+    // Quote ID (Frontend Generated)
+    quoteId: quoteId,
+
     // Contact Information
     firstName: formData.firstName || '',
     lastName: formData.lastName || '',
@@ -322,7 +330,7 @@ export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteD
     console.log('================================');
 
     console.log('Successfully sent quote data to Zapier webhook');
-    return { success: true, recordId };
+    return { success: true, recordId, quoteId };
   } catch (error) {
     console.error('Error sending quote data to Zapier webhook:', error);
     console.error('Error details:', {
@@ -330,7 +338,7 @@ export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteD
       name: error instanceof Error ? error.name : 'Unknown',
       stack: error instanceof Error ? error.stack : 'No stack trace'
     });
-    return { success: false };
+    return { success: false, quoteId };
   }
 };
 
