@@ -13,17 +13,21 @@ const IncludedFeaturesCard: React.FC<IncludedFeaturesCardProps> = ({ title, feat
 
   return (
     <div
-      className="rounded-xl p-6 mt-6"
+      className="rounded-xl border mt-8"
       style={{
         backgroundColor: 'rgba(92, 225, 165, 0.1)',
-        border: '1px solid var(--secondary-color, #10b981)',
+        borderColor: 'var(--secondary-color, #10b981)',
+        padding: '1.5rem',
       }}
     >
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-4">
         <div
-          className="rounded-full p-3 flex items-center justify-center flex-shrink-0"
+          className="flex items-center justify-center flex-shrink-0"
           style={{
             backgroundColor: 'var(--secondary-color, #10b981)',
+            borderRadius: '50%',
+            width: '48px',
+            height: '48px',
           }}
         >
           <CheckCircle className="w-6 h-6 text-white" />
@@ -36,18 +40,25 @@ const IncludedFeaturesCard: React.FC<IncludedFeaturesCardProps> = ({ title, feat
         </h3>
       </div>
 
-      <ul className="space-y-3 ml-2">
+      <ul className="space-y-2">
         {features.map((feature, index) => (
-          <li key={index} className="flex items-start gap-3">
+          <li key={index} className="flex items-start gap-2">
             <span
-              className="text-lg font-bold mt-1 flex-shrink-0"
-              style={{ color: 'var(--secondary-color, #10b981)' }}
+              className="text-base font-semibold flex-shrink-0"
+              style={{
+                color: 'var(--secondary-color, #10b981)',
+                lineHeight: '1.5rem',
+                marginTop: '0.125rem',
+              }}
             >
               •
             </span>
             <span
               className="flex-1"
-              style={{ color: 'var(--primary-color, #1e3a5f)' }}
+              style={{
+                color: 'var(--primary-color, #1e3a5f)',
+                lineHeight: '1.5rem',
+              }}
             >
               {feature}
             </span>
