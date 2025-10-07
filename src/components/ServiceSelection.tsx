@@ -21,6 +21,18 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({
     return Icon || LucideIcons.FileText;
   };
 
+  // Map Tailwind color names to hex values
+  const getColorValues = (color: string) => {
+    const colorMap: Record<string, { main: string; light: string; lighter: string; ring: string }> = {
+      blue: { main: '#2563eb', light: '#dbeafe', lighter: '#eff6ff', ring: '#bfdbfe' },
+      emerald: { main: '#10b981', light: '#d1fae5', lighter: '#f0fdf4', ring: '#a7f3d0' },
+      purple: { main: '#9333ea', light: '#e9d5ff', lighter: '#faf5ff', ring: '#d8b4fe' },
+      orange: { main: '#f97316', light: '#fed7aa', lighter: '#fff7ed', ring: '#fdba74' },
+      gray: { main: '#6b7280', light: '#e5e7eb', lighter: '#f9fafb', ring: '#d1d5db' },
+    };
+    return colorMap[color] || colorMap.gray;
+  };
+
   const toggleService = (serviceId: string) => {
     const currentServices = formData.services || [];
     const isSelected = currentServices.includes(serviceId);
@@ -81,6 +93,7 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({
         {services.map((service) => {
           const isSelected = formData.services.includes(service.serviceId);
           const Icon = getIconComponent(service.iconName);
+          const colors = getColorValues(service.color);
 
           return (
             <div
@@ -88,18 +101,20 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({
               onClick={() => toggleService(service.serviceId)}
               className="relative p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 transform hover:scale-105"
               style={{
-                borderColor: isSelected ? 'var(--primary-color, #10b981)' : '#e5e7eb',
-                backgroundColor: isSelected ? 'var(--tenant-primary-50, #f0fdf4)' : 'white',
-                boxShadow: isSelected ? '0 0 0 3px var(--tenant-primary-100, #dcfce7)' : 'none',
+                borderColor: isSelected ? colors.main : '#e5e7eb',
+                backgroundColor: isSelected ? colors.lighter : 'white',
+                boxShadow: isSelected ? `0 0 0 3px ${colors.ring}` : 'none',
               }}
               onMouseEnter={(e) => {
                 if (!isSelected) {
-                  e.currentTarget.style.borderColor = 'var(--tenant-primary-300, #a7f3d0)';
+                  e.currentTarget.style.borderColor = colors.light;
+                  e.currentTarget.style.backgroundColor = colors.lighter;
                 }
               }}
               onMouseLeave={(e) => {
                 if (!isSelected) {
                   e.currentTarget.style.borderColor = '#e5e7eb';
+                  e.currentTarget.style.backgroundColor = 'white';
                 }
               }}
             >
