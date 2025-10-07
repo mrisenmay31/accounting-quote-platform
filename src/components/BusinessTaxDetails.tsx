@@ -1,16 +1,13 @@
 import React from 'react';
 import { Building, DollarSign, Users, Calendar, TrendingUp, CheckCircle, FileText } from 'lucide-react';
-import { FormData, ServiceConfig } from '../types/quote';
-import IncludedFeaturesCard from './IncludedFeaturesCard';
+import { FormData } from '../types/quote';
 
 interface BusinessTaxDetailsProps {
   formData: FormData;
   updateFormData: (updates: Partial<FormData>) => void;
-  serviceConfig?: ServiceConfig[];
 }
 
-const BusinessTaxDetails: React.FC<BusinessTaxDetailsProps> = ({ formData, updateFormData, serviceConfig }) => {
-  const currentService = serviceConfig?.find(s => s.serviceId === 'business-tax');
+const BusinessTaxDetails: React.FC<BusinessTaxDetailsProps> = ({ formData, updateFormData }) => {
   const businessTypes = [
     'Sole Proprietorship',
     'Partnership', 
@@ -471,10 +468,26 @@ const BusinessTaxDetails: React.FC<BusinessTaxDetailsProps> = ({ formData, updat
       </div>
 
       {/* Information Box */}
-      <IncludedFeaturesCard
-        title={currentService?.includedFeaturesCardTitle || ''}
-        features={currentService?.includedFeaturesCardList || []}
-      />
+      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
+        <div className="flex items-start space-x-3">
+          <div className="w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+            <CheckCircle className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-emerald-800 mb-2">What's Included in Our Business Tax Service</h3>
+            <ul className="space-y-1 text-sm text-emerald-700">
+              <li>• Complete business tax return preparation (1120S, 1065, 1120)</li>
+              <li>• Quarterly tax compliance and estimated payments</li>
+              <li>• Sales tax filing assistance (if applicable)</li>
+              <li>• Payroll tax compliance support</li>
+              <li>• Strategic tax planning and optimization</li>
+              <li>• Entity structure recommendations</li>
+              <li>• Year-round business tax advice and support</li>
+              <li>• Audit support and representation</li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

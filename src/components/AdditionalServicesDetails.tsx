@@ -1,7 +1,6 @@
 import React from 'react';
 import { FileText, Clock, Users, Calculator, CheckCircle, DollarSign } from 'lucide-react';
-import { FormData, PricingConfig, ServiceConfig } from '../types/quote';
-import IncludedFeaturesCard from './IncludedFeaturesCard';
+import { FormData, PricingConfig } from '../types/quote';
 
 interface AdditionalServicesDetailsProps {
   formData: FormData;
@@ -11,14 +10,13 @@ interface AdditionalServicesDetailsProps {
   isLoading?: boolean;
 }
 
-const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
-  formData,
-  updateFormData,
+const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({ 
+  formData, 
+  updateFormData, 
   pricingConfig,
   serviceConfig,
-  isLoading = false
+  isLoading = false 
 }) => {
-  const currentService = serviceConfig?.find((s: ServiceConfig) => s.serviceId === 'additional-services');
   // Filter pricing config for additional services add-ons
   const additionalServiceRules = pricingConfig.filter(rule => 
     rule.serviceId === 'additional-services' && 
@@ -222,11 +220,6 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
           </div>
         </div>
       </div>
-
-      <IncludedFeaturesCard
-        title={currentService?.includedFeaturesCardTitle || ''}
-        features={currentService?.includedFeaturesCardList || []}
-      />
     </div>
   );
 };

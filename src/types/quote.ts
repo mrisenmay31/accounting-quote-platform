@@ -154,10 +154,4 @@ export interface ServiceConfig {
   featured: boolean;
   benefits: string[];
   active: boolean;
-  serviceOrder?: number;
-  quoteIncludedFeatures?: string[];
-
-  // NEW: Detailed "What's Included" card fields
-  includedFeaturesCardTitle?: string;
-  includedFeaturesCardList?: string[];
 }

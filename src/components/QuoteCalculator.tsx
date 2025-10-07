@@ -305,26 +305,23 @@ const QuoteCalculator: React.FC = () => {
         );
       case 'individual-tax':
         return (
-          <IndividualTaxDetails
-            formData={formData}
-            updateFormData={updateFormData}
-            serviceConfig={serviceConfig}
+          <IndividualTaxDetails 
+            formData={formData} 
+            updateFormData={updateFormData} 
           />
         );
       case 'business-tax':
         return (
-          <BusinessTaxDetails
-            formData={formData}
-            updateFormData={updateFormData}
-            serviceConfig={serviceConfig}
+          <BusinessTaxDetails 
+            formData={formData} 
+            updateFormData={updateFormData} 
           />
         );
       case 'bookkeeping':
         return (
-          <BookkeepingDetails
-            formData={formData}
-            updateFormData={updateFormData}
-            serviceConfig={serviceConfig}
+          <BookkeepingDetails 
+            formData={formData} 
+            updateFormData={updateFormData} 
           />
         );
       case 'additional-services':
