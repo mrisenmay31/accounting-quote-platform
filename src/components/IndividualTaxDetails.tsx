@@ -1,6 +1,7 @@
 import React from 'react';
 import { FileText, DollarSign, Calendar, Home, Briefcase, TrendingUp, Users, CheckCircle, Info } from 'lucide-react';
 import { FormData, ServiceConfig } from '../types/quote';
+import { useTenant } from '../contexts/TenantContext';
 
 interface IndividualTaxDetailsProps {
   formData: FormData;
@@ -9,6 +10,7 @@ interface IndividualTaxDetailsProps {
 }
 
 const IndividualTaxDetails: React.FC<IndividualTaxDetailsProps> = ({ formData, updateFormData, serviceConfig = [] }) => {
+  const { firmInfo } = useTenant();
   const [showDeductionInfo, setShowDeductionInfo] = React.useState(false);
 
   const filingStatuses = [
@@ -552,14 +554,14 @@ const IndividualTaxDetails: React.FC<IndividualTaxDetailsProps> = ({ formData, u
             Who prepared your taxes last year?
           </label>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {['Self-prepared (TurboTax, etc.)', 'Other CPA/Tax Professional', 'Ledgerly', 'First time filing'].map((option) => (
+            {['Self-prepared (TurboTax, etc.)', 'Other CPA/Tax Professional', firmInfo?.firmName || 'Ledgerly', 'First time filing'].map((option) => (
               <button
                 key={option}
-                onClick={() => updateFormData({ 
-                  individualTax: { 
-                    ...formData.individualTax, 
-                    previousPreparer: option 
-                  } 
+                onClick={() => updateFormData({
+                  individualTax: {
+                    ...formData.individualTax,
+                    previousPreparer: option
+                  }
                 })}
                 className={`p-3 text-left border-2 rounded-lg transition-all duration-200 text-sm ${
                   formData.individualTax?.previousPreparer === option

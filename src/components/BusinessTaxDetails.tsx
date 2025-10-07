@@ -424,14 +424,14 @@ const BusinessTaxDetails: React.FC<BusinessTaxDetailsProps> = ({ formData, updat
             Who prepared your business taxes last year?
           </label>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {['Self-prepared', 'Other CPA/Tax Professional', 'Ledgerly', 'First time filing'].map((option) => (
+            {['Self-prepared', 'Other CPA/Tax Professional', firmInfo?.firmName || 'Ledgerly', 'First time filing'].map((option) => (
               <button
                 key={option}
-                onClick={() => updateFormData({ 
-                  businessTax: { 
-                    ...formData.businessTax, 
-                    previousPreparer: option 
-                  } 
+                onClick={() => updateFormData({
+                  businessTax: {
+                    ...formData.businessTax,
+                    previousPreparer: option
+                  }
                 })}
                 className={`p-3 text-left border-2 rounded-lg transition-all duration-200 text-sm ${
                   formData.businessTax?.previousPreparer === option
