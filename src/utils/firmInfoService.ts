@@ -3,6 +3,36 @@ export interface FirmInfo {
   primaryBrandColor: string;
   secondaryBrandColor: string;
   servicesOffered: string;
+
+  // Quote Page Content
+  quoteHeaderTitle?: string;
+  quoteHeaderSubtitle?: string;
+  quoteLockDays?: number;
+
+  // Value Propositions
+  valueProp1Title?: string;
+  valueProp1Icon?: string;
+  valueProp2Title?: string;
+  valueProp2Icon?: string;
+  valueProp3Title?: string;
+  valueProp3Icon?: string;
+
+  // Trust Badges
+  trustBadge1?: string;
+  trustBadge2?: string;
+  trustBadge3?: string;
+  trustBadge4?: string;
+  trustBadge5?: string;
+  trustBadge6?: string;
+
+  // Promise/Guarantee
+  promiseCalloutText?: string;
+
+  // Testimonials
+  testimonial1ClientName?: string;
+  testimonial1Text?: string;
+  testimonial2ClientName?: string;
+  testimonial2Text?: string;
 }
 
 interface FirmInfoCache {
@@ -62,9 +92,45 @@ export const getFirmInfo = async (
       primaryBrandColor: fields['Primary Brand Color'] || '',
       secondaryBrandColor: fields['Secondary Brand Color'] || '',
       servicesOffered: fields['Services Offered'] || '',
+
+      // Quote Page Content
+      quoteHeaderTitle: fields['Quote Header Title'] || 'Your Customized Quote',
+      quoteHeaderSubtitle: fields['Quote Header Subtitle'] || '',
+      quoteLockDays: fields['Quote Lock Days'] || 14,
+
+      // Value Propositions
+      valueProp1Title: fields['Value Prop 1 Title'] || '',
+      valueProp1Icon: fields['Value Prop 1 Icon'] || '',
+      valueProp2Title: fields['Value Prop 2 Title'] || '',
+      valueProp2Icon: fields['Value Prop 2 Icon'] || '',
+      valueProp3Title: fields['Value Prop 3 Title'] || '',
+      valueProp3Icon: fields['Value Prop 3 Icon'] || '',
+
+      // Trust Badges
+      trustBadge1: fields['Trust Badge 1'] || '',
+      trustBadge2: fields['Trust Badge 2'] || '',
+      trustBadge3: fields['Trust Badge 3'] || '',
+      trustBadge4: fields['Trust Badge 4'] || '',
+      trustBadge5: fields['Trust Badge 5'] || '',
+      trustBadge6: fields['Trust Badge 6'] || '',
+
+      // Promise
+      promiseCalloutText: fields['Promise Callout Text'] || '',
+
+      // Testimonials
+      testimonial1ClientName: fields['Client Testimonial 1 - Client Name'] || '',
+      testimonial1Text: fields['Client Testimonial 1 - Testimonial Text'] || '',
+      testimonial2ClientName: fields['Client Testimonial 2 - Client Name'] || '',
+      testimonial2Text: fields['Client Testimonial 2 - Testimonial Text'] || '',
     };
 
-    console.log('[FirmInfoService] Successfully fetched', firmInfo);
+    console.log('[FirmInfoService] Successfully fetched', {
+      firmName: firmInfo.firmName,
+      quoteHeaderTitle: firmInfo.quoteHeaderTitle,
+      valueProp1Title: firmInfo.valueProp1Title,
+      trustBadge1: firmInfo.trustBadge1,
+      testimonial1ClientName: firmInfo.testimonial1ClientName,
+    });
 
     firmInfoCache.set(cacheKey, {
       data: firmInfo,

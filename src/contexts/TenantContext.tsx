@@ -2,10 +2,11 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { TenantConfig } from '../utils/tenantService';
 import { resolveTenant } from '../utils/tenantResolver';
 import { applyTheme } from '../utils/themeApplier';
-import { getFirmInfo } from '../utils/firmInfoService';
+import { getFirmInfo, FirmInfo } from '../utils/firmInfoService';
 
 interface TenantContextValue {
   tenant: TenantConfig | null;
+  firmInfo: FirmInfo | null;
   isLoading: boolean;
   error: string | null;
   refetchTenant: () => Promise<void>;
@@ -27,6 +28,7 @@ interface TenantProviderProps {
 
 export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
+  const [firmInfo, setFirmInfo] = useState<FirmInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,11 +42,13 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
       if (result.error || !result.tenant) {
         setError(result.error || 'Failed to load tenant configuration');
         setTenant(null);
+        setFirmInfo(null);
         setIsLoading(false);
         return;
       }
 
       let tenantConfig = result.tenant;
+      let loadedFirmInfo: FirmInfo | null = null;
 
       console.log('[TenantContext] Base tenant config loaded from Supabase', {
         subdomain: tenantConfig.subdomain,
@@ -57,24 +61,24 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
       if (tenantConfig.airtable.servicesBaseId && tenantConfig.airtable.servicesApiKey) {
         console.log('[TenantContext] Fetching Firm Info from Airtable...');
 
-        const firmInfo = await getFirmInfo(
+        loadedFirmInfo = await getFirmInfo(
           tenantConfig.airtable.servicesBaseId,
           tenantConfig.airtable.servicesApiKey
         );
 
-        if (firmInfo) {
+        if (loadedFirmInfo) {
           console.log('[TenantContext] Merging Airtable Firm Info with Supabase config', {
-            airtableFirmName: firmInfo.firmName,
-            airtablePrimaryColor: firmInfo.primaryBrandColor,
-            airtableSecondaryColor: firmInfo.secondaryBrandColor
+            airtableFirmName: loadedFirmInfo.firmName,
+            airtablePrimaryColor: loadedFirmInfo.primaryBrandColor,
+            airtableSecondaryColor: loadedFirmInfo.secondaryBrandColor
           });
 
           // Merge Airtable branding over Supabase defaults
           tenantConfig = {
             ...tenantConfig,
-            firmName: firmInfo.firmName || tenantConfig.firmName,
-            primaryColor: (firmInfo.primaryBrandColor || tenantConfig.primaryColor).replace('#', ''),
-            secondaryColor: (firmInfo.secondaryBrandColor || tenantConfig.secondaryColor).replace('#', ''),
+            firmName: loadedFirmInfo.firmName || tenantConfig.firmName,
+            primaryColor: (loadedFirmInfo.primaryBrandColor || tenantConfig.primaryColor).replace('#', ''),
+            secondaryColor: (loadedFirmInfo.secondaryBrandColor || tenantConfig.secondaryColor).replace('#', ''),
           };
 
           console.log('[TenantContext] Final merged tenant config', {
@@ -90,6 +94,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
       }
 
       setTenant(tenantConfig);
+      setFirmInfo(loadedFirmInfo);
       applyTheme(tenantConfig);
 
       if (tenantConfig.firmName) {
@@ -114,6 +119,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
 
   const value: TenantContextValue = {
     tenant,
+    firmInfo,
     isLoading,
     error,
     refetchTenant,

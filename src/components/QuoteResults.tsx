@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Download, Mail, Phone, Calendar, CheckCircle, Star, ArrowRight, Send, X, Calculator, Info, ChevronDown, ChevronUp, TrendingUp, Zap, ClipboardCheck, GraduationCap, Code, Clock } from 'lucide-react';
 import { FormData, QuoteData } from '../types/quote';
+import { useTenant } from '../contexts/TenantContext';
 
 interface QuoteResultsProps {
   formData: FormData;
@@ -8,6 +9,7 @@ interface QuoteResultsProps {
 }
 
 const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
+  const { tenant, firmInfo } = useTenant();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
@@ -29,7 +31,8 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
 
   const calculateLockDate = () => {
     const today = new Date();
-    const lockDate = new Date(today.setDate(today.getDate() + 14));
+    const days = firmInfo?.quoteLockDays || 14;
+    const lockDate = new Date(today.setDate(today.getDate() + days));
     return lockDate.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -57,7 +60,7 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
   if (!quote) {
     return (
       <div className="text-center py-12">
-        <div className="animate-spin w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full mx-auto mb-4" />
+        <div className="animate-spin w-8 h-8 border-4 border-t-transparent rounded-full mx-auto mb-4" style={{ borderColor: 'var(--tenant-primary-600, #10b981)', borderTopColor: 'transparent' }} />
         <p className="text-gray-600">Calculating your personalized quote...</p>
       </div>
     );
@@ -66,19 +69,19 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
   if (isSubmitted) {
     return (
       <div className="text-center py-12 space-y-6">
-        <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
-          <CheckCircle className="w-12 h-12 text-emerald-600" />
+        <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto" style={{ backgroundColor: 'var(--tenant-primary-100, #d1fae5)' }}>
+          <CheckCircle className="w-12 h-12" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
         </div>
         <div>
           <h2 className="text-3xl font-bold text-gray-900 mb-3">Quote Submitted Successfully!</h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Thank you for your interest in Ledgerly's services. We'll review your requirements and 
+            Thank you for your interest in {tenant?.firmName || 'our'} services. We'll review your requirements and
             contact you within 24 hours to discuss your customized quote and next steps.
           </p>
         </div>
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6 max-w-md mx-auto">
-          <h3 className="font-semibold text-emerald-800 mb-2">What happens next?</h3>
-          <div className="space-y-2 text-sm text-emerald-700">
+        <div className="rounded-lg p-6 max-w-md mx-auto" style={{ backgroundColor: 'var(--tenant-primary-50, #f0fdf4)', borderWidth: '1px', borderStyle: 'solid', borderColor: 'var(--tenant-primary-200, #d1fae5)' }}>
+          <h3 className="font-semibold mb-2" style={{ color: 'var(--tenant-primary-800, #065f46)' }}>What happens next?</h3>
+          <div className="space-y-2 text-sm" style={{ color: 'var(--tenant-primary-700, #047857)' }}>
             <p>• We'll review your specific requirements</p>
             <p>• A senior advisor will contact you within 24 hours</p>
             <p>• We'll schedule a consultation to discuss your needs</p>
@@ -122,29 +125,35 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
       {/* Quote Container */}
       <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden mb-24">
         {/* Progress Bar */}
-        <div className="h-2 bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-t-2xl"></div>
+        <div className="h-2 rounded-t-2xl" style={{ background: 'linear-gradient(to right, var(--tenant-primary-600, #10b981), var(--tenant-primary-500, #10b981))' }}></div>
 
         {/* Quote Header */}
-        <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 text-white p-10 text-center">
-          <h1 className="text-4xl font-bold mb-3 tracking-tight">Your Customized Quote</h1>
+        <div className="text-white p-10 text-center" style={{ background: 'linear-gradient(to bottom right, var(--tenant-primary-600, #10b981), var(--tenant-primary-700, #059669))' }}>
+          <h1 className="text-4xl font-bold mb-3 tracking-tight">{firmInfo?.quoteHeaderTitle || 'Your Customized Quote'}</h1>
           <p className="text-lg opacity-95 mb-6 max-w-2xl mx-auto">
-            Tailored pricing for Ledgerly's services based on your answers. Lock this quote for 14 days.
+            {firmInfo?.quoteHeaderSubtitle || `Tailored pricing for ${tenant?.firmName || 'our'} services based on your answers. Lock this quote for ${firmInfo?.quoteLockDays || 14} days.`}
           </p>
           
           {/* Value Outcomes Pills */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-6">
-            <div className="bg-white bg-opacity-20 border border-white border-opacity-30 rounded-xl p-4 flex items-center space-x-3 hover:bg-opacity-30 transition-all duration-300">
-              <span className="text-lg flex-shrink-0">🧠</span>
-              <span className="text-sm font-medium">Strategy Over Compliance</span>
-            </div>
-            <div className="bg-white bg-opacity-20 border border-white border-opacity-30 rounded-xl p-4 flex items-center space-x-3 hover:bg-opacity-30 transition-all duration-300">
-              <span className="text-lg flex-shrink-0">🛡️</span>
-              <span className="text-sm font-medium">Clarity That Protects</span>
-            </div>
-            <div className="bg-white bg-opacity-20 border border-white border-opacity-30 rounded-xl p-4 flex items-center space-x-3 hover:bg-opacity-30 transition-all duration-300">
-              <span className="text-lg flex-shrink-0">📈</span>
-              <span className="text-sm font-medium">Aligned Wealth Building</span>
-            </div>
+            {firmInfo?.valueProp1Title && (
+              <div className="bg-white bg-opacity-20 border border-white border-opacity-30 rounded-xl p-4 flex items-center space-x-3 hover:bg-opacity-30 transition-all duration-300">
+                <span className="text-lg flex-shrink-0">{firmInfo.valueProp1Icon || '✓'}</span>
+                <span className="text-sm font-medium">{firmInfo.valueProp1Title}</span>
+              </div>
+            )}
+            {firmInfo?.valueProp2Title && (
+              <div className="bg-white bg-opacity-20 border border-white border-opacity-30 rounded-xl p-4 flex items-center space-x-3 hover:bg-opacity-30 transition-all duration-300">
+                <span className="text-lg flex-shrink-0">{firmInfo.valueProp2Icon || '✓'}</span>
+                <span className="text-sm font-medium">{firmInfo.valueProp2Title}</span>
+              </div>
+            )}
+            {firmInfo?.valueProp3Title && (
+              <div className="bg-white bg-opacity-20 border border-white border-opacity-30 rounded-xl p-4 flex items-center space-x-3 hover:bg-opacity-30 transition-all duration-300">
+                <span className="text-lg flex-shrink-0">{firmInfo.valueProp3Icon || '✓'}</span>
+                <span className="text-sm font-medium">{firmInfo.valueProp3Title}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -176,7 +185,7 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
                   <div className="flex-1 text-center">
                     <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Monthly Partnership</div>
                     <div className="flex items-baseline justify-center space-x-2">
-                      <span className="text-4xl font-bold bg-gradient-to-br from-emerald-700 via-emerald-600 to-emerald-500 bg-clip-text text-transparent">${quote.totalMonthlyFees.toLocaleString()}</span>
+                      <span className="text-4xl font-bold" style={{ background: 'linear-gradient(to bottom right, var(--tenant-primary-700, #047857), var(--tenant-primary-600, #10b981), var(--tenant-primary-500, #10b981))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>${quote.totalMonthlyFees.toLocaleString()}</span>
                       <span className="text-xs text-gray-600 font-semibold">PER MONTH</span>
                     </div>
                   </div>
@@ -204,48 +213,125 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
               <div className="px-7 pb-7 pt-6 bg-white">
                 <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 text-center">Why Clients Choose Us</div>
                 <div className="grid grid-cols-2 gap-2 justify-items-center">
-                  <div className="flex items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:from-emerald-50 hover:to-emerald-100 hover:border-emerald-300 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md hover:shadow-emerald-500/10 cursor-default">
-                    <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                    <div className="text-xs leading-tight whitespace-nowrap">
-                      <span className="font-extrabold text-emerald-600 text-sm">$1,000+</span>
-                      <span className="text-gray-700 font-semibold"> returns filed</span>
+                  {firmInfo?.trustBadge1 && (
+                    <div className="flex items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md cursor-default"
+                         style={{
+                           borderColor: 'var(--tenant-primary-200, #d1fae5)',
+                         }}
+                         onMouseEnter={(e) => {
+                           e.currentTarget.style.background = 'linear-gradient(to bottom right, var(--tenant-primary-50, #f0fdf4), var(--tenant-primary-100, #dcfce7))';
+                           e.currentTarget.style.borderColor = 'var(--tenant-primary-300, #a7f3d0)';
+                         }}
+                         onMouseLeave={(e) => {
+                           e.currentTarget.style.background = 'linear-gradient(to bottom right, rgb(249, 250, 251), rgb(243, 244, 246))';
+                           e.currentTarget.style.borderColor = 'var(--tenant-primary-200, #d1fae5)';
+                         }}>
+                      <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
+                      <div className="text-xs leading-tight text-gray-700 font-semibold whitespace-nowrap">
+                        {firmInfo.trustBadge1}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="flex items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:from-emerald-50 hover:to-emerald-100 hover:border-emerald-300 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md hover:shadow-emerald-500/10 cursor-default">
-                    <ClipboardCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                    <div className="text-xs leading-tight text-gray-700 font-semibold whitespace-nowrap">
-                      QuickBooks ProAdvisors
+                  {firmInfo?.trustBadge2 && (
+                    <div className="flex items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md cursor-default"
+                         style={{
+                           borderColor: 'var(--tenant-primary-200, #d1fae5)',
+                         }}
+                         onMouseEnter={(e) => {
+                           e.currentTarget.style.background = 'linear-gradient(to bottom right, var(--tenant-primary-50, #f0fdf4), var(--tenant-primary-100, #dcfce7))';
+                           e.currentTarget.style.borderColor = 'var(--tenant-primary-300, #a7f3d0)';
+                         }}
+                         onMouseLeave={(e) => {
+                           e.currentTarget.style.background = 'linear-gradient(to bottom right, rgb(249, 250, 251), rgb(243, 244, 246))';
+                           e.currentTarget.style.borderColor = 'var(--tenant-primary-200, #d1fae5)';
+                         }}>
+                      <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
+                      <div className="text-xs leading-tight text-gray-700 font-semibold whitespace-nowrap">
+                        {firmInfo.trustBadge2}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="flex items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:from-emerald-50 hover:to-emerald-100 hover:border-emerald-300 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md hover:shadow-emerald-500/10 cursor-default">
-                    <GraduationCap className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                    <div className="text-xs leading-tight text-gray-700 font-semibold whitespace-nowrap">
-                      Certified Tax Pros
+                  {firmInfo?.trustBadge3 && (
+                    <div className="flex items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md cursor-default"
+                         style={{
+                           borderColor: 'var(--tenant-primary-200, #d1fae5)',
+                         }}
+                         onMouseEnter={(e) => {
+                           e.currentTarget.style.background = 'linear-gradient(to bottom right, var(--tenant-primary-50, #f0fdf4), var(--tenant-primary-100, #dcfce7))';
+                           e.currentTarget.style.borderColor = 'var(--tenant-primary-300, #a7f3d0)';
+                         }}
+                         onMouseLeave={(e) => {
+                           e.currentTarget.style.background = 'linear-gradient(to bottom right, rgb(249, 250, 251), rgb(243, 244, 246))';
+                           e.currentTarget.style.borderColor = 'var(--tenant-primary-200, #d1fae5)';
+                         }}>
+                      <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
+                      <div className="text-xs leading-tight text-gray-700 font-semibold whitespace-nowrap">
+                        {firmInfo.trustBadge3}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="flex items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:from-emerald-50 hover:to-emerald-100 hover:border-emerald-300 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md hover:shadow-emerald-500/10 cursor-default">
-                    <Zap className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                    <div className="text-xs leading-tight text-gray-700 font-semibold whitespace-nowrap">
-                      Cutting-edge strategy
+                  {firmInfo?.trustBadge4 && (
+                    <div className="flex items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md cursor-default"
+                         style={{
+                           borderColor: 'var(--tenant-primary-200, #d1fae5)',
+                         }}
+                         onMouseEnter={(e) => {
+                           e.currentTarget.style.background = 'linear-gradient(to bottom right, var(--tenant-primary-50, #f0fdf4), var(--tenant-primary-100, #dcfce7))';
+                           e.currentTarget.style.borderColor = 'var(--tenant-primary-300, #a7f3d0)';
+                         }}
+                         onMouseLeave={(e) => {
+                           e.currentTarget.style.background = 'linear-gradient(to bottom right, rgb(249, 250, 251), rgb(243, 244, 246))';
+                           e.currentTarget.style.borderColor = 'var(--tenant-primary-200, #d1fae5)';
+                         }}>
+                      <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
+                      <div className="text-xs leading-tight text-gray-700 font-semibold whitespace-nowrap">
+                        {firmInfo.trustBadge4}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="flex items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:from-emerald-50 hover:to-emerald-100 hover:border-emerald-300 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md hover:shadow-emerald-500/10 cursor-default">
-                    <Code className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                    <div className="text-xs leading-tight text-gray-700 font-semibold whitespace-nowrap">
-                      Tech stack experts
+                  {firmInfo?.trustBadge5 && (
+                    <div className="flex items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md cursor-default"
+                         style={{
+                           borderColor: 'var(--tenant-primary-200, #d1fae5)',
+                         }}
+                         onMouseEnter={(e) => {
+                           e.currentTarget.style.background = 'linear-gradient(to bottom right, var(--tenant-primary-50, #f0fdf4), var(--tenant-primary-100, #dcfce7))';
+                           e.currentTarget.style.borderColor = 'var(--tenant-primary-300, #a7f3d0)';
+                         }}
+                         onMouseLeave={(e) => {
+                           e.currentTarget.style.background = 'linear-gradient(to bottom right, rgb(249, 250, 251), rgb(243, 244, 246))';
+                           e.currentTarget.style.borderColor = 'var(--tenant-primary-200, #d1fae5)';
+                         }}>
+                      <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
+                      <div className="text-xs leading-tight text-gray-700 font-semibold whitespace-nowrap">
+                        {firmInfo.trustBadge5}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="flex items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:from-emerald-50 hover:to-emerald-100 hover:border-emerald-300 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md hover:shadow-emerald-500/10 cursor-default">
-                    <Clock className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                    <div className="text-xs leading-tight text-gray-700 font-semibold whitespace-nowrap">
-                      Same-day response
+                  {firmInfo?.trustBadge6 && (
+                    <div className="flex items-center justify-center gap-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md cursor-default"
+                         style={{
+                           borderColor: 'var(--tenant-primary-200, #d1fae5)',
+                         }}
+                         onMouseEnter={(e) => {
+                           e.currentTarget.style.background = 'linear-gradient(to bottom right, var(--tenant-primary-50, #f0fdf4), var(--tenant-primary-100, #dcfce7))';
+                           e.currentTarget.style.borderColor = 'var(--tenant-primary-300, #a7f3d0)';
+                         }}
+                         onMouseLeave={(e) => {
+                           e.currentTarget.style.background = 'linear-gradient(to bottom right, rgb(249, 250, 251), rgb(243, 244, 246))';
+                           e.currentTarget.style.borderColor = 'var(--tenant-primary-200, #d1fae5)';
+                         }}>
+                      <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
+                      <div className="text-xs leading-tight text-gray-700 font-semibold whitespace-nowrap">
+                        {firmInfo.trustBadge6}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -255,28 +341,33 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
 
         {/* Services Section */}
         <div className="p-10">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8 pb-3 border-b-4 border-emerald-500">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8 pb-3 border-b-4" style={{ borderColor: 'var(--tenant-primary-500, #10b981)' }}>
             Service Breakdown
           </h2>
           
           <div className="space-y-6">
             {quote.services.map((service, index) => (
-              <div key={index} className="bg-white border-2 border-gray-200 rounded-xl p-7 hover:border-emerald-500 hover:shadow-card-hover transition-all duration-300">
+              <div key={index} className="bg-white border-2 border-gray-200 rounded-xl p-7 hover:shadow-card-hover transition-all duration-300"
+                   style={{
+                     borderColor: '#e5e7eb',
+                   }}
+                   onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)'}
+                   onMouseLeave={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}>
                 <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-6 pb-4 border-b border-gray-200">
                   <div className="flex-1 mb-4 md:mb-0">
-                    <h3 className="text-xl font-bold text-emerald-600 mb-2">{service.name}</h3>
+                    <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--tenant-primary-600, #10b981)' }}>{service.name}</h3>
                     <p className="text-sm text-gray-600 leading-relaxed">{service.description}</p>
                   </div>
                   <div className="text-right">
                     {service.monthlyFee > 0 && (
                       <div className="mb-2">
-                        <span className="text-3xl font-bold text-emerald-600">${service.monthlyFee.toLocaleString()}</span>
+                        <span className="text-3xl font-bold" style={{ color: 'var(--tenant-primary-600, #10b981)' }}>${service.monthlyFee.toLocaleString()}</span>
                         <span className="text-sm text-gray-500 block mt-1">Monthly fee</span>
                       </div>
                     )}
                     {service.oneTimeFee > 0 && (
                       <div className="mb-2">
-                        <span className="text-3xl font-bold text-emerald-600">${service.oneTimeFee.toLocaleString()}</span>
+                        <span className="text-3xl font-bold" style={{ color: 'var(--tenant-primary-600, #10b981)' }}>${service.oneTimeFee.toLocaleString()}</span>
                         <span className="text-sm text-gray-500 block mt-1">One-time</span>
                       </div>
                     )}
@@ -290,13 +381,13 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
                   <div className="grid gap-3">
                     {service.included.map((item, idx) => (
                       <div key={idx} className="flex items-start space-x-3 text-sm text-gray-700">
-                        <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                        <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--tenant-primary-500, #10b981)' }} />
                         <span className="leading-relaxed">{item}</span>
                       </div>
                     ))}
                     {service.pricingFactors && service.pricingFactors.map((factor, idx) => (
                       <div key={`factor-${idx}`} className="flex items-start space-x-3 text-sm text-gray-700">
-                        <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                        <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--tenant-primary-500, #10b981)' }} />
                         <span className="leading-relaxed">{factor}</span>
                       </div>
                     ))}
@@ -308,47 +399,60 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
         </div>
 
         {/* Guarantee Section */}
-        <div className="bg-green-50 border-2 border-green-500 rounded-xl p-6 mx-10 my-8">
-          <div className="font-bold text-green-800 text-lg mb-2">Our Promise:</div>
-          <p className="text-green-700 leading-relaxed">
-            If we miss a filing deadline we control, we comp a month of service. Not a fit in 30 days? Switch-out guarantee—no penalty.
-          </p>
-        </div>
+        {firmInfo?.promiseCalloutText && (
+          <div className="bg-green-50 border-2 border-green-500 rounded-xl p-6 mx-10 my-8">
+            <div className="font-bold text-green-800 text-lg mb-2">Our Promise:</div>
+            <p className="text-green-700 leading-relaxed">
+              {firmInfo.promiseCalloutText}
+            </p>
+          </div>
+        )}
 
         {/* Testimonials Section */}
-        <div className="bg-gray-50 p-10">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8 pb-3 border-b-4 border-emerald-500">
-            What Clients Say
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <div className="font-bold text-gray-900 mb-2">"I enjoy working with Andrew and Mike. Great communication and organization. They make work quick and make it easy."</div>
-              <div className="text-sm text-gray-600">— Konstantin S.</div>
-            </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <div className="font-bold text-gray-900 mb-2">"Love working with them. They've adapted to every business change I've had, and helped me through the process of filing everything so I don't need to worry about it."</div>
-              <div className="text-sm text-gray-600">— Chris A.</div>
+        {(firmInfo?.testimonial1Text || firmInfo?.testimonial2Text) && (
+          <div className="bg-gray-50 p-10">
+            <h2 className="text-3xl font-bold text-gray-900 mb-8 pb-3 border-b-4" style={{ borderColor: 'var(--tenant-primary-500, #10b981)' }}>
+              What Clients Say
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {firmInfo?.testimonial1Text && (
+                <div className="bg-white border border-gray-200 rounded-xl p-6">
+                  <div className="font-bold text-gray-900 mb-2">"{firmInfo.testimonial1Text}"</div>
+                  <div className="text-sm text-gray-600">— {firmInfo.testimonial1ClientName}</div>
+                </div>
+              )}
+              {firmInfo?.testimonial2Text && (
+                <div className="bg-white border border-gray-200 rounded-xl p-6">
+                  <div className="font-bold text-gray-900 mb-2">"{firmInfo.testimonial2Text}"</div>
+                  <div className="text-sm text-gray-600">— {firmInfo.testimonial2ClientName}</div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        )}
 
         {/* FAQ Section */}
         <div className="p-10">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8 pb-3 border-b-4 border-emerald-500">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8 pb-3 border-b-4" style={{ borderColor: 'var(--tenant-primary-500, #10b981)' }}>
             Frequently Asked Questions
           </h2>
           <div className="space-y-3">
             {faqItems.map((faq, index) => (
-              <div key={index} className="border border-gray-200 rounded-xl p-4 bg-white hover:border-emerald-500 transition-all duration-300">
+              <div key={index} className="border border-gray-200 rounded-xl p-4 bg-white transition-all duration-300"
+                   style={{
+                     borderColor: '#e5e7eb',
+                   }}
+                   onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)'}
+                   onMouseLeave={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}>
                 <button
                   onClick={() => toggleFaq(index)}
                   className="w-full flex justify-between items-center text-left font-bold text-gray-900"
                 >
                   <span>{faq.question}</span>
                   {openFaq === index ? (
-                    <ChevronUp className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                    <ChevronUp className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
                   ) : (
-                    <ChevronDown className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                    <ChevronDown className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
                   )}
                 </button>
                 {openFaq === index && (
@@ -365,7 +469,7 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
         <div className="bg-gray-50 border-t border-gray-200 p-6 text-sm text-gray-600 leading-relaxed">
           <p>
             <span className="font-semibold text-gray-900">Quote Details:</span> This quote is valid until{' '}
-            <span className="font-semibold text-gray-900">{calculateLockDate()}</span> (14 days).
+            <span className="font-semibold text-gray-900">{calculateLockDate()}</span> ({firmInfo?.quoteLockDays || 14} days).
             Capacity this month: <span className="font-semibold text-gray-900">3 spots remaining</span>. All services subject to standard engagement terms and conditions.
             Final pricing may be adjusted based on actual complexity discovered during initial consultation.
           </p>
@@ -376,19 +480,52 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
           <div className="flex flex-wrap justify-center gap-3">
             <button
               onClick={downloadPDF}
-              className="inline-flex items-center space-x-2 bg-white border-2 border-gray-200 hover:border-emerald-500 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200"
+              className="inline-flex items-center space-x-2 bg-white border-2 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200"
+              style={{
+                borderColor: '#e5e7eb',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)';
+                e.currentTarget.style.backgroundColor = '#f9fafb';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#e5e7eb';
+                e.currentTarget.style.backgroundColor = 'white';
+              }}
             >
               <Download className="w-4 h-4" />
               <span>Download PDF Quote</span>
             </button>
             <button
               onClick={emailQuote}
-              className="inline-flex items-center space-x-2 bg-white border-2 border-gray-200 hover:border-emerald-500 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200"
+              className="inline-flex items-center space-x-2 bg-white border-2 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200"
+              style={{
+                borderColor: '#e5e7eb',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)';
+                e.currentTarget.style.backgroundColor = '#f9fafb';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#e5e7eb';
+                e.currentTarget.style.backgroundColor = 'white';
+              }}
             >
               <Mail className="w-4 h-4" />
               <span>Email This Quote</span>
             </button>
-            <button className="inline-flex items-center space-x-2 bg-white border-2 border-gray-200 hover:border-emerald-500 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200">
+            <button className="inline-flex items-center space-x-2 bg-white border-2 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200"
+                    style={{
+                      borderColor: '#e5e7eb',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)';
+                      e.currentTarget.style.backgroundColor = '#f9fafb';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#e5e7eb';
+                      e.currentTarget.style.backgroundColor = 'white';
+                    }}>
               <Calculator className="w-4 h-4" />
               <span>Recalculate Quote</span>
             </button>
@@ -402,14 +539,14 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
           <div className="flex-1 text-center md:text-left">
             <div className="text-xs text-gray-600 mb-1">Today's Total</div>
             <div className="flex items-baseline space-x-2">
-              <span className="text-2xl font-bold text-emerald-600">
+              <span className="text-2xl font-bold" style={{ color: 'var(--tenant-primary-600, #10b981)' }}>
                 ${quote.totalMonthlyFees.toLocaleString()}
               </span>
               <span className="text-base text-gray-600 font-normal">/mo</span>
               {quote.totalOneTimeFees > 0 && (
                 <>
                   <span className="text-lg text-gray-500 font-normal">+</span>
-                  <span className="text-2xl font-bold text-emerald-600">
+                  <span className="text-2xl font-bold" style={{ color: 'var(--tenant-primary-600, #10b981)' }}>
                     ${quote.totalOneTimeFees.toLocaleString()}
                   </span>
                   <span className="text-base text-gray-600 font-normal">one-time fees</span>
@@ -421,7 +558,14 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
             <button
               onClick={handleSubmitToAirtable}
               disabled={isSubmitting}
-              className="inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 disabled:from-emerald-400 disabled:to-emerald-500 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg"
+              className="inline-flex items-center justify-center space-x-2 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:shadow-lg"
+              style={{
+                background: isSubmitting
+                  ? 'linear-gradient(to right, var(--tenant-primary-400, #34d399), var(--tenant-primary-500, #10b981))'
+                  : 'linear-gradient(to right, var(--tenant-primary-600, #10b981), var(--tenant-primary-700, #059669))',
+              }}
+              onMouseEnter={(e) => !isSubmitting && (e.currentTarget.style.background = 'linear-gradient(to right, var(--tenant-primary-700, #059669), var(--tenant-primary-800, #065f46))', e.currentTarget.style.transform = 'scale(1.05)')}
+              onMouseLeave={(e) => !isSubmitting && (e.currentTarget.style.background = 'linear-gradient(to right, var(--tenant-primary-600, #10b981), var(--tenant-primary-700, #059669))', e.currentTarget.style.transform = 'scale(1)')}
             >
               {isSubmitting ? (
                 <>
@@ -435,7 +579,18 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
                 </>
               )}
             </button>
-            <button className="inline-flex items-center justify-center space-x-2 bg-white border-2 border-gray-200 hover:border-emerald-500 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+            <button className="inline-flex items-center justify-center space-x-2 bg-white border-2 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-all duration-200"
+                    style={{
+                      borderColor: '#e5e7eb',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)';
+                      e.currentTarget.style.backgroundColor = '#f9fafb';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#e5e7eb';
+                      e.currentTarget.style.backgroundColor = 'white';
+                    }}>
               <Calendar className="w-4 h-4" />
               <span>Book 10-min Q&A</span>
             </button>
