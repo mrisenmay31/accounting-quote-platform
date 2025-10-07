@@ -262,6 +262,116 @@ const QuoteCalculator: React.FC = () => {
     }
   };
 
+  const resetQuote = () => {
+    // Reset all form data to initial state
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      services: [],
+      individualTax: {
+        filingStatus: '',
+        annualIncome: '',
+        incomeTypes: [],
+        deductionType: '',
+        taxSituations: [],
+        otherIncomeTypes: [],
+        additionalConsiderations: [],
+        interestDividendAmount: '',
+        selfEmploymentBusinessCount: 0,
+        k1Count: 0,
+        rentalPropertyCount: 0,
+        additionalStateCount: 0,
+        hasPrimaryHomeSale: false,
+        hasInvestmentPropertySale: false,
+        hasAdoptedChild: false,
+        hasDivorce: false,
+        hasMarriage: false,
+        hasMultipleStates: false,
+        taxYear: '',
+        timeline: '',
+        previousPreparer: '',
+        specialCircumstances: '',
+        otherIncomeDescription: '',
+        hasOtherIncome: ''
+      },
+      businessTax: {
+        businessName: '',
+        businessType: '',
+        annualRevenue: '',
+        numberOfEmployees: '',
+        entityType: '',
+        businessIndustry: '',
+        numberOfOwners: 0,
+        otherSituations: [],
+        additionalConsiderations: [],
+        additionalStateCount: 0,
+        fixedAssetAcquisitionCount: 0,
+        taxYear: '',
+        complexity: '',
+        taxSituations: [],
+        isFirstYearEntity: false,
+        hasOwnershipChanges: false,
+        hasFixedAssetAcquisitions: false,
+        timeline: '',
+        previousPreparer: '',
+        specialCircumstances: ''
+      },
+      bookkeeping: {
+        businessName: '',
+        businessType: '',
+        businessIndustry: '',
+        annualRevenue: '',
+        numberOfEmployees: '',
+        currentBookkeepingMethod: '',
+        currentStatus: '',
+        monthsBehind: '',
+        bankAccounts: 0,
+        creditCards: 0,
+        bankLoans: 0,
+        transactionVolume: 0,
+        monthlyTransactions: 0,
+        servicesNeeded: [],
+        frequency: '',
+        servicefrequency: '',
+        additionalConsiderations: [],
+        needsCleanup: false,
+        hasThirdPartyIntegration: false,
+        hasFixedAssets: false,
+        fixedAssetsCount: 0,
+        fixedassets: 0,
+        cleanuphours: 0,
+        hasInventory: false,
+        startTimeline: '',
+        challenges: ''
+      },
+      additionalServices: {
+        selectedAdditionalServices: []
+      }
+    });
+
+    // Clear quote data
+    setQuote(null);
+
+    // Clear localStorage
+    localStorage.removeItem('quoteData');
+    localStorage.removeItem('currentQuote');
+
+    // Clear sessionStorage
+    sessionStorage.removeItem('quoteData');
+    sessionStorage.removeItem('currentQuote');
+
+    // Reset to step 1
+    setCurrentStep(1);
+
+    // Scroll to top
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
   // Scroll to top when step changes
   useEffect(() => {
     window.scrollTo({
@@ -339,9 +449,10 @@ const QuoteCalculator: React.FC = () => {
         );
       case 'quote':
         return (
-          <QuoteResults 
-            formData={formData} 
-            quote={quote} 
+          <QuoteResults
+            formData={formData}
+            quote={quote}
+            onRecalculate={resetQuote}
           />
         );
       default:

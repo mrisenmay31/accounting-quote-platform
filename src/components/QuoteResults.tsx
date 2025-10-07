@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
-import { Download, Mail, Phone, Calendar, CheckCircle, Star, ArrowRight, Send, X, Calculator, Info, ChevronDown, ChevronUp, TrendingUp, Zap, ClipboardCheck, GraduationCap, Code, Clock } from 'lucide-react';
+import { Download, Mail, Phone, Calendar, CheckCircle, Star, ArrowRight, Send, X, Calculator, Info, ChevronDown, ChevronUp, TrendingUp, Zap, ClipboardCheck, GraduationCap, Code, Clock, RefreshCw, AlertCircle } from 'lucide-react';
 import { FormData, QuoteData } from '../types/quote';
 import { useTenant } from '../contexts/TenantContext';
 
 interface QuoteResultsProps {
   formData: FormData;
   quote: QuoteData | null;
+  onRecalculate?: () => void;
 }
 
-const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
+const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, onRecalculate }) => {
   const { tenant, firmInfo } = useTenant();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [showRecalculateModal, setShowRecalculateModal] = useState(false);
 
   const handleSubmitToAirtable = async () => {
     setIsSubmitting(true);
@@ -55,6 +57,21 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
 
   const toggleFaq = (index: number) => {
     setOpenFaq(openFaq === index ? null : index);
+  };
+
+  const handleRecalculateClick = () => {
+    setShowRecalculateModal(true);
+  };
+
+  const handleConfirmRecalculate = () => {
+    setShowRecalculateModal(false);
+    if (onRecalculate) {
+      onRecalculate();
+    }
+  };
+
+  const handleCancelRecalculate = () => {
+    setShowRecalculateModal(false);
   };
 
   if (!quote) {
@@ -514,19 +531,21 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
               <Mail className="w-4 h-4" />
               <span>Email This Quote</span>
             </button>
-            <button className="inline-flex items-center space-x-2 bg-white border-2 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200"
-                    style={{
-                      borderColor: '#e5e7eb',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)';
-                      e.currentTarget.style.backgroundColor = '#f9fafb';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = '#e5e7eb';
-                      e.currentTarget.style.backgroundColor = 'white';
-                    }}>
-              <Calculator className="w-4 h-4" />
+            <button
+              onClick={handleRecalculateClick}
+              className="inline-flex items-center space-x-2 bg-white border-2 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200"
+              style={{
+                borderColor: '#e5e7eb',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)';
+                e.currentTarget.style.backgroundColor = '#f9fafb';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#e5e7eb';
+                e.currentTarget.style.backgroundColor = 'white';
+              }}>
+              <RefreshCw className="w-4 h-4" />
               <span>Recalculate Quote</span>
             </button>
           </div>
@@ -597,6 +616,57 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote }) => {
           </div>
         </div>
       </div>
+
+      {/* Recalculate Confirmation Modal */}
+      {showRecalculateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--tenant-primary-100, #dcfce7)' }}>
+                  <AlertCircle className="w-6 h-6" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900">Start Over?</h3>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              <p className="text-gray-600 leading-relaxed">
+                This will clear your current quote and start fresh. Are you sure you want to continue?
+              </p>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 bg-gray-50 rounded-b-2xl flex flex-col sm:flex-row gap-3 justify-end">
+              <button
+                onClick={handleCancelRecalculate}
+                className="px-6 py-3 border-2 border-gray-300 bg-white text-gray-700 font-semibold rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmRecalculate}
+                className="px-6 py-3 text-white font-semibold rounded-lg transition-all duration-200 hover:shadow-lg"
+                style={{
+                  background: 'linear-gradient(to right, var(--tenant-primary-600, #10b981), var(--tenant-primary-700, #059669))',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(to right, var(--tenant-primary-700, #059669), var(--tenant-primary-800, #065f46))';
+                  e.currentTarget.style.transform = 'scale(1.02)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(to right, var(--tenant-primary-600, #10b981), var(--tenant-primary-700, #059669))';
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                Yes, Start Over
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
