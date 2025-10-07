@@ -154,4 +154,6 @@ export interface ServiceConfig {
   featured: boolean;
   benefits: string[];
   active: boolean;
+  includedFeaturesCardTitle?: string;
+  includedFeaturesCardList?: string[];
 }

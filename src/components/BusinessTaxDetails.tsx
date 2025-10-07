@@ -1,13 +1,14 @@
 import React from 'react';
 import { Building, DollarSign, Users, Calendar, TrendingUp, CheckCircle, FileText } from 'lucide-react';
-import { FormData } from '../types/quote';
+import { FormData, ServiceConfig } from '../types/quote';
 
 interface BusinessTaxDetailsProps {
   formData: FormData;
   updateFormData: (updates: Partial<FormData>) => void;
+  serviceConfig?: ServiceConfig[];
 }
 
-const BusinessTaxDetails: React.FC<BusinessTaxDetailsProps> = ({ formData, updateFormData }) => {
+const BusinessTaxDetails: React.FC<BusinessTaxDetailsProps> = ({ formData, updateFormData, serviceConfig = [] }) => {
   const businessTypes = [
     'Sole Proprietorship',
     'Partnership', 
@@ -474,16 +475,20 @@ const BusinessTaxDetails: React.FC<BusinessTaxDetailsProps> = ({ formData, updat
             <CheckCircle className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-emerald-800 mb-2">What's Included in Our Business Tax Service</h3>
+            <h3 className="font-semibold text-emerald-800 mb-2">{serviceConfig.find(s => s.serviceId === 'business-tax')?.includedFeaturesCardTitle || "What's Included in Our Business Tax Service"}</h3>
             <ul className="space-y-1 text-sm text-emerald-700">
-              <li>• Complete business tax return preparation (1120S, 1065, 1120)</li>
-              <li>• Quarterly tax compliance and estimated payments</li>
-              <li>• Sales tax filing assistance (if applicable)</li>
-              <li>• Payroll tax compliance support</li>
-              <li>• Strategic tax planning and optimization</li>
-              <li>• Entity structure recommendations</li>
-              <li>• Year-round business tax advice and support</li>
-              <li>• Audit support and representation</li>
+              {(serviceConfig.find(s => s.serviceId === 'business-tax')?.includedFeaturesCardList || [
+                'Complete business tax return preparation (1120S, 1065, 1120)',
+                'Quarterly tax compliance and estimated payments',
+                'Sales tax filing assistance (if applicable)',
+                'Payroll tax compliance support',
+                'Strategic tax planning and optimization',
+                'Entity structure recommendations',
+                'Year-round business tax advice and support',
+                'Audit support and representation'
+              ]).map((feature, index) => (
+                <li key={index}>• {feature}</li>
+              ))}
             </ul>
           </div>
         </div>

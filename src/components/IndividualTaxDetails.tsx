@@ -1,13 +1,14 @@
 import React from 'react';
 import { FileText, DollarSign, Calendar, Home, Briefcase, TrendingUp, Users, CheckCircle, Info } from 'lucide-react';
-import { FormData } from '../types/quote';
+import { FormData, ServiceConfig } from '../types/quote';
 
 interface IndividualTaxDetailsProps {
   formData: FormData;
   updateFormData: (updates: Partial<FormData>) => void;
+  serviceConfig?: ServiceConfig[];
 }
 
-const IndividualTaxDetails: React.FC<IndividualTaxDetailsProps> = ({ formData, updateFormData }) => {
+const IndividualTaxDetails: React.FC<IndividualTaxDetailsProps> = ({ formData, updateFormData, serviceConfig = [] }) => {
   const [showDeductionInfo, setShowDeductionInfo] = React.useState(false);
 
   const filingStatuses = [
@@ -599,15 +600,19 @@ const IndividualTaxDetails: React.FC<IndividualTaxDetailsProps> = ({ formData, u
             <CheckCircle className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-emerald-800 mb-2">What's Included in Our Individual Tax Service</h3>
+            <h3 className="font-semibold text-emerald-800 mb-2">{serviceConfig.find(s => s.serviceId === 'individual-tax')?.includedFeaturesCardTitle || "What's Included in Our Individual Tax Service"}</h3>
             <ul className="space-y-1 text-sm text-emerald-700">
-              <li>• Complete federal and state tax return preparation</li>
-              <li>• Tax planning consultation to minimize future liability</li>
-              <li>• Quarterly estimated tax calculations (if needed)</li>
-              <li>• Audit support and representation</li>
-              <li>• Prior year amendments (if needed)</li>
-              <li>• Secure document portal for easy file sharing</li>
-              <li>• Year-round tax advice and support</li>
+              {(serviceConfig.find(s => s.serviceId === 'individual-tax')?.includedFeaturesCardList || [
+                'Complete federal and state tax return preparation',
+                'Tax planning consultation to minimize future liability',
+                'Quarterly estimated tax calculations (if needed)',
+                'Audit support and representation',
+                'Prior year amendments (if needed)',
+                'Secure document portal for easy file sharing',
+                'Year-round tax advice and support'
+              ]).map((feature, index) => (
+                <li key={index}>• {feature}</li>
+              ))}
             </ul>
           </div>
         </div>
