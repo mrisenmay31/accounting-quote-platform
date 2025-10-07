@@ -103,13 +103,13 @@ const extractIndividualServiceFees = (services: ServiceQuote[], formData: FormDa
   return fees;
 };
 
-export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteData, webhookUrl?: string): Promise<boolean> => {
+export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteData, webhookUrl?: string): Promise<{ success: boolean; recordId?: string }> => {
   const url = webhookUrl || ZAPIER_WEBHOOK_URL;
   console.log('Using Zapier webhook URL:', url);
 
   if (!url) {
     console.error('Zapier webhook URL not configured');
-    return true; // Return true for demo purposes when webhook is not configured
+    return { success: true }; // Return success for demo purposes when webhook is not configured
   }
 
   // Extract individual service fees
@@ -279,17 +279,34 @@ export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteD
 
     console.log('Response status:', response.status);
     console.log('Response ok:', response.ok);
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Zapier webhook response error:', errorText);
       throw new Error(`Zapier webhook error: ${response.status} ${response.statusText}`);
     }
 
-    const responseData = await response.text();
-    console.log('Zapier webhook response:', responseData);
+    const responseText = await response.text();
+    console.log('Zapier webhook response:', responseText);
+
+    // Try to parse the response as JSON to extract the Record ID
+    let recordId: string | undefined;
+    try {
+      const responseData = JSON.parse(responseText);
+
+      // Zapier returns the Airtable Record ID in the "id" field
+      if (responseData.id) {
+        recordId = responseData.id;
+        console.log('✅ Quote Record ID captured:', recordId);
+      } else {
+        console.warn('⚠️ Warning: No Record ID returned from Zapier');
+      }
+    } catch (parseError) {
+      console.log('Response is not JSON, continuing without Record ID');
+    }
+
     console.log('Successfully sent quote data to Zapier webhook');
-    return true;
+    return { success: true, recordId };
   } catch (error) {
     console.error('Error sending quote data to Zapier webhook:', error);
     console.error('Error details:', {
@@ -297,7 +314,7 @@ export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteD
       name: error instanceof Error ? error.name : 'Unknown',
       stack: error instanceof Error ? error.stack : 'No stack trace'
     });
-    return false;
+    return { success: false };
   }
 };
 

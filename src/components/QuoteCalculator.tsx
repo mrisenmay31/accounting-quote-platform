@@ -237,7 +237,15 @@ const QuoteCalculator: React.FC = () => {
       });
 
       // Send quote data to tenant's Zapier webhook
-      await sendQuoteToZapierWebhook(formData, quote, tenant.zapierWebhookUrl);
+      const webhookResult = await sendQuoteToZapierWebhook(formData, quote, tenant.zapierWebhookUrl);
+
+      // Capture and store the Record ID if returned
+      if (webhookResult.recordId) {
+        localStorage.setItem('currentQuoteRecordId', webhookResult.recordId);
+        console.log('✅ Quote Record ID saved to localStorage:', webhookResult.recordId);
+      } else {
+        console.warn('⚠️ Warning: No Record ID returned from Zapier webhook');
+      }
 
       // Advance to quote results page regardless of webhook success/failure
       nextStep();
@@ -357,6 +365,7 @@ const QuoteCalculator: React.FC = () => {
     // Clear localStorage
     localStorage.removeItem('quoteData');
     localStorage.removeItem('currentQuote');
+    localStorage.removeItem('currentQuoteRecordId');
 
     // Clear sessionStorage
     sessionStorage.removeItem('quoteData');
