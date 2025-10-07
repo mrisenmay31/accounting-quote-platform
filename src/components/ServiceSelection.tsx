@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, FileText, Calculator, BookOpen, Star, ArrowRight, Divide as LucideIcon } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { FormData, ServiceConfig } from '../types/quote';
 
 interface ServiceSelectionProps {
@@ -9,72 +9,27 @@ interface ServiceSelectionProps {
   isLoading?: boolean;
 }
 
-// Icon mapping for Airtable icon names to Lucide React components
-const iconMap: Record<string, LucideIcon> = {
-  TrendingUp,
-  FileText,
-  Calculator,
-  BookOpen,
-  Star
-};
-
-const ServiceSelection: React.FC<ServiceSelectionProps> = ({ 
-  formData, 
-  updateFormData, 
-  services, 
-  isLoading = false 
+const ServiceSelection: React.FC<ServiceSelectionProps> = ({
+  formData,
+  updateFormData,
+  services,
+  isLoading = false
 }) => {
   // Get icon component from icon name
-  const getIconComponent = (iconName: string): LucideIcon => {
-    return iconMap[iconName] || FileText; // Default to FileText if icon not found
+  const getIconComponent = (iconName: string) => {
+    const Icon = LucideIcons[iconName as keyof typeof LucideIcons] as React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+    return Icon || LucideIcons.FileText;
   };
 
   const toggleService = (serviceId: string) => {
     const currentServices = formData.services || [];
     const isSelected = currentServices.includes(serviceId);
-    
+
     const newServices = isSelected
       ? currentServices.filter(id => id !== serviceId)
       : [...currentServices, serviceId];
-    
-    updateFormData({ services: newServices });
-  };
 
-  const getColorClasses = (color: string, isSelected: boolean, isFeatured: boolean = false) => {
-    const colors = {
-      emerald: {
-        border: isSelected ? 'border-emerald-500 ring-2 ring-emerald-200' : 'border-emerald-200 hover:border-emerald-300',
-        bg: isSelected ? 'bg-emerald-50' : 'bg-white hover:bg-emerald-25',
-        icon: 'text-emerald-600',
-        badge: 'bg-emerald-600 text-white'
-      },
-      blue: {
-        border: isSelected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-blue-300',
-        bg: isSelected ? 'bg-blue-50' : 'bg-white hover:bg-blue-25',
-        icon: 'text-blue-600',
-        badge: 'bg-blue-600 text-white'
-      },
-      purple: {
-        border: isSelected ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200 hover:border-purple-300',
-        bg: isSelected ? 'bg-purple-50' : 'bg-white hover:bg-purple-25',
-        icon: 'text-purple-600',
-        badge: 'bg-purple-600 text-white'
-      },
-      orange: {
-        border: isSelected ? 'border-orange-500 ring-2 ring-orange-200' : 'border-gray-200 hover:border-orange-300',
-        bg: isSelected ? 'bg-orange-50' : 'bg-white hover:bg-orange-25',
-        icon: 'text-orange-600',
-        badge: 'bg-orange-600 text-white'
-      },
-      gray: {
-        border: isSelected ? 'border-gray-500 ring-2 ring-gray-200' : 'border-gray-200 hover:border-gray-300',
-        bg: isSelected ? 'bg-gray-50' : 'bg-white hover:bg-gray-25',
-        icon: 'text-gray-600',
-        badge: 'bg-gray-600 text-white'
-      }
-    };
-    
-    return colors[color as keyof typeof colors];
+    updateFormData({ services: newServices });
   };
 
   if (isLoading) {
@@ -89,7 +44,7 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({
           </p>
         </div>
         <div className="flex justify-center">
-          <div className="animate-spin w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full" />
+          <div className="animate-spin w-8 h-8 border-4 border-t-transparent rounded-full" style={{ borderColor: 'var(--primary-color, #10b981)', borderTopColor: 'transparent' }} />
         </div>
       </div>
     );
@@ -125,27 +80,41 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {services.map((service) => {
           const isSelected = formData.services.includes(service.serviceId);
-          const colorClasses = getColorClasses(service.color, isSelected, service.featured);
           const Icon = getIconComponent(service.iconName);
 
           return (
             <div
               key={service.serviceId}
               onClick={() => toggleService(service.serviceId)}
-              className={`relative p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 transform hover:scale-105 ${colorClasses.border} ${colorClasses.bg}`}
+              className="relative p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 transform hover:scale-105"
+              style={{
+                borderColor: isSelected ? 'var(--primary-color, #10b981)' : '#e5e7eb',
+                backgroundColor: isSelected ? 'var(--tenant-primary-50, #f0fdf4)' : 'white',
+                boxShadow: isSelected ? '0 0 0 3px var(--tenant-primary-100, #dcfce7)' : 'none',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSelected) {
+                  e.currentTarget.style.borderColor = 'var(--tenant-primary-300, #a7f3d0)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isSelected) {
+                  e.currentTarget.style.borderColor = '#e5e7eb';
+                }
+              }}
             >
               {service.featured && (
                 <div className="absolute -top-3 left-6">
-                  <div className="bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center space-x-1">
-                    <Star className="w-3 h-3" />
+                  <div className="text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center space-x-1" style={{ backgroundColor: 'var(--secondary-color, #f97316)' }}>
+                    <LucideIcons.Star className="w-3 h-3" />
                     <span>RECOMMENDED</span>
                   </div>
                 </div>
               )}
 
               <div className="flex items-start space-x-4">
-                <Icon className="w-12 h-12 text-orange-500 flex-shrink-0" />
-                
+                <Icon className="w-12 h-12 flex-shrink-0" style={{ color: 'var(--primary-color, #10b981)' }} />
+
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-gray-900 mb-2">
                     {service.title}
@@ -153,11 +122,11 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({
                   <p className="text-gray-600 mb-4">
                     {service.description}
                   </p>
-                  
+
                   <div className="space-y-2">
                     {service.benefits.map((benefit, index) => (
                       <div key={index} className="flex items-center space-x-2">
-                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--primary-color, #10b981)' }} />
                         <span className="text-sm text-gray-700">{benefit}</span>
                       </div>
                     ))}
@@ -166,8 +135,8 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({
 
                 {isSelected && (
                   <div className="flex-shrink-0">
-                    <div className="w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center">
-                      <ArrowRight className="w-4 h-4 text-white" />
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--primary-color, #10b981)' }}>
+                      <LucideIcons.ArrowRight className="w-4 h-4 text-white" />
                     </div>
                   </div>
                 )}
@@ -178,15 +147,21 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({
       </div>
 
       {formData.services.length > 0 && (
-        <div className="bg-gradient-to-r from-emerald-50 to-orange-50 border border-emerald-200 rounded-lg p-6">
-          <h3 className="font-semibold text-emerald-800 mb-3">Selected Services:</h3>
+        <div className="rounded-lg p-6" style={{
+          background: 'linear-gradient(to right, var(--tenant-primary-50, #f0fdf4), var(--tenant-secondary-50, #fff7ed))',
+          borderWidth: '1px',
+          borderStyle: 'solid',
+          borderColor: 'var(--tenant-primary-200, #d1fae5)',
+        }}>
+          <h3 className="font-semibold mb-3" style={{ color: 'var(--tenant-primary-800, #065f46)' }}>Selected Services:</h3>
           <div className="flex flex-wrap gap-2">
             {formData.services.map((serviceId) => {
               const service = services.find(s => s.serviceId === serviceId);
               return (
                 <span
                   key={serviceId}
-                  className="bg-emerald-600 text-white px-3 py-1 rounded-full text-sm font-medium"
+                  className="text-white px-3 py-1 rounded-full text-sm font-medium"
+                  style={{ backgroundColor: 'var(--primary-color, #10b981)' }}
                 >
                   {service?.title}
                 </span>
