@@ -4,6 +4,10 @@ export interface FirmInfo {
   secondaryBrandColor: string;
   servicesOffered: string;
 
+  // Tool Branding
+  toolName?: string;
+  toolTagline?: string;
+
   // Quote Page Content
   quoteHeaderTitle?: string;
   quoteHeaderSubtitle?: string;
@@ -92,6 +96,10 @@ export const getFirmInfo = async (
       primaryBrandColor: fields['Primary Brand Color'] || '',
       secondaryBrandColor: fields['Secondary Brand Color'] || '',
       servicesOffered: fields['Services Offered'] || '',
+
+      // Tool Branding
+      toolName: fields['Tool Name'] || 'Quote Calculator',
+      toolTagline: fields['Tool Tagline'] || '',
 
       // Quote Page Content
       quoteHeaderTitle: fields['Quote Header Title'] || 'Your Customized Quote',

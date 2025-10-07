@@ -20,7 +20,7 @@ import { useTenant } from '../contexts/TenantContext';
 import { saveQuote } from '../utils/quoteStorage';
 
 const QuoteCalculator: React.FC = () => {
-  const { tenant } = useTenant();
+  const { tenant, firmInfo } = useTenant();
   const [currentStep, setCurrentStep] = useState(1);
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [pricingConfig, setPricingConfig] = useState<PricingConfig[]>([]);
@@ -361,10 +361,19 @@ const QuoteCalculator: React.FC = () => {
       <div className="bg-white shadow-sm border-b" style={{ borderColor: 'var(--tenant-primary-100, #e5e7eb)' }}>
         <div className="max-w-4xl mx-auto px-6 py-6">
           <div className="flex items-center space-x-3">
-            <TenantLogo logoUrl={tenant.logoUrl} firmName={tenant.firmName} className="w-10 h-10" />
+            <div
+              className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: 'var(--primary-color, #10b981)' }}
+            >
+              <Calculator className="w-6 h-6 text-white" />
+            </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{tenant.firmName} Quote Calculator</h1>
-              <p className="font-medium" style={{ color: 'var(--tenant-primary-600, #10b981)' }}>{tenant.firmTagline || 'Get your personalized tax & accounting quote'}</p>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {tenant.firmName} {firmInfo?.toolName || 'Quote Calculator'}
+              </h1>
+              <p className="font-medium" style={{ color: 'var(--tenant-primary-600, #10b981)' }}>
+                {firmInfo?.toolTagline || tenant.firmTagline || 'Get your personalized tax & accounting quote'}
+              </p>
             </div>
           </div>
         </div>
