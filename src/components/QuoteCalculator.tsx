@@ -239,12 +239,18 @@ const QuoteCalculator: React.FC = () => {
       // Send quote data to tenant's Zapier webhook
       const webhookResult = await sendQuoteToZapierWebhook(formData, quote, tenant.zapierWebhookUrl);
 
-      // Capture and store the Record ID if returned
-      if (webhookResult.recordId) {
+      // Capture and store the Airtable Record ID if returned
+      if (webhookResult.recordId && webhookResult.recordId.startsWith('rec')) {
         localStorage.setItem('currentQuoteRecordId', webhookResult.recordId);
-        console.log('✅ Quote Record ID saved to localStorage:', webhookResult.recordId);
+        console.log('✅ Airtable Record ID saved to localStorage:', webhookResult.recordId);
+        console.log('Verify by running: localStorage.getItem("currentQuoteRecordId")');
+      } else if (webhookResult.recordId) {
+        console.error('❌ Invalid Airtable Record ID format:', webhookResult.recordId);
+        console.error('Expected Record ID starting with "rec", but got:', webhookResult.recordId);
+        console.error('This appears to be a local UUID instead of an Airtable Record ID');
       } else {
         console.warn('⚠️ Warning: No Record ID returned from Zapier webhook');
+        console.warn('Make sure your Zapier webhook is configured to return the Airtable Record ID');
       }
 
       // Advance to quote results page regardless of webhook success/failure

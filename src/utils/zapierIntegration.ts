@@ -287,23 +287,39 @@ export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteD
     }
 
     const responseText = await response.text();
-    console.log('Zapier webhook response:', responseText);
+    console.log('=== ZAPIER WEBHOOK RESPONSE ===');
+    console.log('Raw response text:', responseText);
 
     // Try to parse the response as JSON to extract the Record ID
     let recordId: string | undefined;
     try {
       const responseData = JSON.parse(responseText);
+      console.log('Parsed response object:', responseData);
+      console.log('Response ID field:', responseData.id);
 
       // Zapier returns the Airtable Record ID in the "id" field
       if (responseData.id) {
         recordId = responseData.id;
-        console.log('✅ Quote Record ID captured:', recordId);
+
+        // Validate that this is an Airtable Record ID (starts with "rec")
+        if (recordId.startsWith('rec')) {
+          console.log('✅ Valid Airtable Record ID captured:', recordId);
+        } else {
+          console.error('❌ ERROR: Invalid Airtable Record ID format:', recordId);
+          console.error('Expected ID starting with "rec", got:', recordId);
+          console.error('Full response:', responseData);
+          // Clear the recordId if it's not a valid Airtable ID
+          recordId = undefined;
+        }
       } else {
-        console.warn('⚠️ Warning: No Record ID returned from Zapier');
+        console.warn('⚠️ Warning: No Record ID found in response');
+        console.warn('Response structure:', Object.keys(responseData));
       }
     } catch (parseError) {
       console.log('Response is not JSON, continuing without Record ID');
+      console.log('Parse error:', parseError);
     }
+    console.log('================================');
 
     console.log('Successfully sent quote data to Zapier webhook');
     return { success: true, recordId };
