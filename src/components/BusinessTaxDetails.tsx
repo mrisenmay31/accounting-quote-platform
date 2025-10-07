@@ -1,6 +1,8 @@
 import React from 'react';
 import { Building, DollarSign, Users, Calendar, TrendingUp, CheckCircle, FileText } from 'lucide-react';
 import { FormData, ServiceConfig } from '../types/quote';
+import { DynamicFormField } from './DynamicFormField';
+import { useTenant } from '../contexts/TenantContext';
 
 interface BusinessTaxDetailsProps {
   formData: FormData;
@@ -9,6 +11,7 @@ interface BusinessTaxDetailsProps {
 }
 
 const BusinessTaxDetails: React.FC<BusinessTaxDetailsProps> = ({ formData, updateFormData, serviceConfig = [] }) => {
+  const { firmInfo } = useTenant();
   const businessTypes = [
     'Sole Proprietorship',
     'Partnership', 
@@ -139,28 +142,22 @@ const BusinessTaxDetails: React.FC<BusinessTaxDetailsProps> = ({ formData, updat
         </div>
 
         {/* Annual Revenue */}
-        <div className="space-y-3">
-          <label className="block text-sm font-semibold text-gray-700 flex items-center space-x-2">
-            <DollarSign className="w-4 h-4 text-emerald-600" />
-            <span>Annual Revenue *</span>
-          </label>
-          <select
-            value={formData.businessTax?.annualRevenue || ''}
-            onChange={(e) => updateFormData({ 
-              businessTax: { 
-                ...formData.businessTax, 
-                annualRevenue: e.target.value 
-              } 
-            })}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-            required
-          >
-            <option value="">Select revenue range</option>
-            {revenueRanges.map((range) => (
-              <option key={range} value={range}>{range}</option>
-            ))}
-          </select>
-        </div>
+        <DynamicFormField
+          label="Annual Revenue"
+          fieldName="businessTax.annualRevenue"
+          fieldType={firmInfo?.annualRevenueFieldType || 'dropdown'}
+          options={firmInfo?.annualRevenueOptions && firmInfo.annualRevenueOptions.length > 0 ? firmInfo.annualRevenueOptions : revenueRanges}
+          value={formData.businessTax?.annualRevenue || ''}
+          onChange={(value) => updateFormData({
+            businessTax: {
+              ...formData.businessTax,
+              annualRevenue: value.toString()
+            }
+          })}
+          required={true}
+          placeholder="Enter annual revenue"
+          icon={<DollarSign className="w-4 h-4 text-emerald-600" />}
+        />
       </div>
 
       {/* Business Type and Business Industry */}

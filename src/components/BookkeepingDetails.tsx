@@ -1,6 +1,8 @@
 import React from 'react';
 import { BookOpen, DollarSign, Users, Calendar, TrendingUp, Building, CheckCircle, FileText } from 'lucide-react';
 import { FormData, ServiceConfig } from '../types/quote';
+import { DynamicFormField } from './DynamicFormField';
+import { useTenant } from '../contexts/TenantContext';
 
 interface BookkeepingDetailsProps {
   formData: FormData;
@@ -9,6 +11,7 @@ interface BookkeepingDetailsProps {
 }
 
 const BookkeepingDetails: React.FC<BookkeepingDetailsProps> = ({ formData, updateFormData, serviceConfig = [] }) => {
+  const { firmInfo } = useTenant();
   const businessTypes = [
     'Sole Proprietorship',
     'Partnership',
@@ -136,23 +139,17 @@ const BookkeepingDetails: React.FC<BookkeepingDetailsProps> = ({ formData, updat
         </div>
 
         {/* Annual Revenue */}
-        <div className="space-y-3">
-          <label className="block text-sm font-semibold text-gray-700 flex items-center space-x-2">
-            <DollarSign className="w-4 h-4 text-emerald-600" />
-            <span>Annual Revenue *</span>
-          </label>
-          <select
-            value={formData.annualRevenue}
-            onChange={(e) => updateFormData({ annualRevenue: e.target.value })}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-            required
-          >
-            <option value="">Select revenue range</option>
-            {revenueRanges.map((range) => (
-              <option key={range} value={range}>{range}</option>
-            ))}
-          </select>
-        </div>
+        <DynamicFormField
+          label="Annual Revenue"
+          fieldName="annualRevenue"
+          fieldType={firmInfo?.annualRevenueFieldType || 'dropdown'}
+          options={firmInfo?.annualRevenueOptions && firmInfo.annualRevenueOptions.length > 0 ? firmInfo.annualRevenueOptions : revenueRanges}
+          value={formData.annualRevenue || ''}
+          onChange={(value) => updateFormData({ annualRevenue: value.toString() })}
+          required={true}
+          placeholder="Enter annual revenue"
+          icon={<DollarSign className="w-4 h-4 text-emerald-600" />}
+        />
       </div>
 
       {/* Business Type and Annual Revenue */}
@@ -349,31 +346,23 @@ const BookkeepingDetails: React.FC<BookkeepingDetailsProps> = ({ formData, updat
           </div>
         </div>
       </div>
-      <div className="space-y-4">
-        <label className="text-sm font-semibold text-gray-700 flex items-center space-x-2">
-          <TrendingUp className="w-5 h-5 text-emerald-600" />
-          <span>Monthly Transaction Volume</span>
-        </label>
-        <p className="text-sm text-gray-600">
-          Across your financial accounts, list your average monthly transaction volume (both deposits and expenses)
-        </p>
-        
-        <div className="space-y-3">
-          <input
-            type="number"
-            min="0"
-            value={formData.bookkeeping?.monthlyTransactions || ''}
-            onChange={(e) => updateFormData({
-              bookkeeping: {
-                ...formData.bookkeeping,
-                monthlyTransactions: parseInt(e.target.value) || 0
-              }
-            })}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-            placeholder="Enter number of transactions"
-          />
-        </div>
-      </div>
+      <DynamicFormField
+        label="Monthly Transaction Volume"
+        fieldName="monthlyTransactions"
+        fieldType={firmInfo?.monthlyTransactionsFieldType || 'number'}
+        options={firmInfo?.monthlyTransactionsOptions || []}
+        value={formData.bookkeeping?.monthlyTransactions || ''}
+        onChange={(value) => updateFormData({
+          bookkeeping: {
+            ...formData.bookkeeping,
+            monthlyTransactions: typeof value === 'string' ? (parseInt(value) || 0) : value
+          }
+        })}
+        required={false}
+        placeholder="Enter number of transactions"
+        icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
+        description="Across your financial accounts, list your average monthly transaction volume (both deposits and expenses)"
+      />
 
       {/* Service Frequency */}
       <div className="space-y-3">
