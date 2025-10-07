@@ -74,7 +74,7 @@ export interface FormData {
     creditCards: number;
     bankLoans: number;
     transactionVolume: number;
-    monthlyTransactions: number;
+    monthlyTransactions: number | string;
     servicesNeeded: string[];
     frequency: string;
     servicefrequency: string;

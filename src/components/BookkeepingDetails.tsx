@@ -352,12 +352,19 @@ const BookkeepingDetails: React.FC<BookkeepingDetailsProps> = ({ formData, updat
         fieldType={firmInfo?.monthlyTransactionsFieldType || 'number'}
         options={firmInfo?.monthlyTransactionsOptions || []}
         value={formData.bookkeeping?.monthlyTransactions || ''}
-        onChange={(value) => updateFormData({
-          bookkeeping: {
-            ...formData.bookkeeping,
-            monthlyTransactions: typeof value === 'string' ? (parseInt(value) || 0) : value
-          }
-        })}
+        onChange={(value) => {
+          const fieldType = firmInfo?.monthlyTransactionsFieldType || 'number';
+          const processedValue = fieldType === 'number'
+            ? (typeof value === 'string' ? (parseInt(value) || 0) : value)
+            : value;
+
+          updateFormData({
+            bookkeeping: {
+              ...formData.bookkeeping,
+              monthlyTransactions: processedValue
+            }
+          });
+        }}
         required={false}
         placeholder="Enter number of transactions"
         icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
