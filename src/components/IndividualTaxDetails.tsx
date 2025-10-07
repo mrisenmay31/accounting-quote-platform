@@ -1,13 +1,16 @@
 import React from 'react';
 import { FileText, DollarSign, Calendar, Home, Briefcase, TrendingUp, Users, CheckCircle, Info } from 'lucide-react';
-import { FormData } from '../types/quote';
+import { FormData, ServiceConfig } from '../types/quote';
+import IncludedFeaturesCard from './IncludedFeaturesCard';
 
 interface IndividualTaxDetailsProps {
   formData: FormData;
   updateFormData: (updates: Partial<FormData>) => void;
+  serviceConfig?: ServiceConfig[];
 }
 
-const IndividualTaxDetails: React.FC<IndividualTaxDetailsProps> = ({ formData, updateFormData }) => {
+const IndividualTaxDetails: React.FC<IndividualTaxDetailsProps> = ({ formData, updateFormData, serviceConfig }) => {
+  const currentService = serviceConfig?.find(s => s.serviceId === 'individual-tax');
   const [showDeductionInfo, setShowDeductionInfo] = React.useState(false);
 
   const filingStatuses = [
@@ -593,25 +596,10 @@ const IndividualTaxDetails: React.FC<IndividualTaxDetailsProps> = ({ formData, u
       </div>
 
       {/* Information Box */}
-      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
-        <div className="flex items-start space-x-3">
-          <div className="w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-            <CheckCircle className="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-emerald-800 mb-2">What's Included in Our Individual Tax Service</h3>
-            <ul className="space-y-1 text-sm text-emerald-700">
-              <li>• Complete federal and state tax return preparation</li>
-              <li>• Tax planning consultation to minimize future liability</li>
-              <li>• Quarterly estimated tax calculations (if needed)</li>
-              <li>• Audit support and representation</li>
-              <li>• Prior year amendments (if needed)</li>
-              <li>• Secure document portal for easy file sharing</li>
-              <li>• Year-round tax advice and support</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+      <IncludedFeaturesCard
+        title={currentService?.includedFeaturesCardTitle || ''}
+        features={currentService?.includedFeaturesCardList || []}
+      />
     </div>
   );
 };

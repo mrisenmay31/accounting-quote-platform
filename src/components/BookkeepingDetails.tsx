@@ -1,13 +1,16 @@
 import React from 'react';
 import { BookOpen, DollarSign, Users, Calendar, TrendingUp, Building, CheckCircle, FileText } from 'lucide-react';
-import { FormData } from '../types/quote';
+import { FormData, ServiceConfig } from '../types/quote';
+import IncludedFeaturesCard from './IncludedFeaturesCard';
 
 interface BookkeepingDetailsProps {
   formData: FormData;
   updateFormData: (updates: Partial<FormData>) => void;
+  serviceConfig?: ServiceConfig[];
 }
 
-const BookkeepingDetails: React.FC<BookkeepingDetailsProps> = ({ formData, updateFormData }) => {
+const BookkeepingDetails: React.FC<BookkeepingDetailsProps> = ({ formData, updateFormData, serviceConfig }) => {
+  const currentService = serviceConfig?.find(s => s.serviceId === 'bookkeeping');
   const businessTypes = [
     'Sole Proprietorship',
     'Partnership',
@@ -505,26 +508,10 @@ const BookkeepingDetails: React.FC<BookkeepingDetailsProps> = ({ formData, updat
       </div>
 
       {/* Information Box */}
-      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
-        <div className="flex items-start space-x-3">
-          <div className="w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-            <CheckCircle className="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-emerald-800 mb-2">What's Included in Our Bookkeeping Service</h3>
-            <ul className="space-y-1 text-sm text-emerald-700">
-              <li>• Monthly bank and credit card reconciliation</li>
-              <li>• Transaction categorization and coding</li>
-              <li>• Financial statement preparation (P&L, Balance Sheet)</li>
-              <li>• Accounts payable and receivable management</li>
-              <li>• Monthly financial reports and insights</li>
-              <li>• QuickBooks setup, maintenance, and training</li>
-              <li>• Dedicated bookkeeper and account manager</li>
-              <li>• Secure document portal and communication</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+      <IncludedFeaturesCard
+        title={currentService?.includedFeaturesCardTitle || ''}
+        features={currentService?.includedFeaturesCardList || []}
+      />
     </div>
   );
 };
