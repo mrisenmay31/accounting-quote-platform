@@ -492,10 +492,6 @@ const QuoteCalculator: React.FC = () => {
     }
   };
 
-  if (!tenant) {
-    return null;
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
       {/* Header */}
@@ -510,7 +506,7 @@ const QuoteCalculator: React.FC = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {tenant?.firmName || import.meta.env.VITE_FIRM_NAME || 'Elevated Tax & Accounting'} {firmInfo?.toolName || 'Quote Calculator'}
+                {tenant?.firmName || firmInfo?.firmName || import.meta.env.VITE_FIRM_NAME || 'Elevated Tax & Accounting'} {firmInfo?.toolName || 'Quote Calculator'}
               </h1>
               <p className="font-medium" style={{ color: 'var(--tenant-primary-600, #10b981)' }}>
                 {firmInfo?.toolTagline || tenant?.firmTagline || 'Get your personalized tax & accounting quote'}
