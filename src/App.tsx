@@ -3,6 +3,16 @@ import QuoteCalculator from './components/QuoteCalculator';
 import { TenantProvider, useTenant } from './contexts/TenantContext';
 import { Loader2, AlertCircle } from 'lucide-react';
 
+// Detect if we're in local development
+const isLocalDevelopment = () => {
+  const hostname = window.location.hostname;
+  return hostname === 'localhost' ||
+         hostname.includes('bolt.new') ||
+         hostname.includes('webcontainer') ||
+         hostname.includes('127.0.0.1') ||
+         hostname.includes('stackblitz.io');
+};
+
 const AppContent: React.FC = () => {
   const { tenant, isLoading, error } = useTenant();
 
@@ -49,6 +59,21 @@ const AppContent: React.FC = () => {
 };
 
 function App() {
+  const isLocalDev = isLocalDevelopment();
+
+  if (isLocalDev) {
+    // LOCAL DEVELOPMENT: Skip tenant system
+    console.log('🔧 Local dev mode - bypassing tenant system');
+    console.log('Using environment variables directly from .env file');
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <QuoteCalculator />
+      </div>
+    );
+  }
+
+  // PRODUCTION: Use tenant system
+  console.log('📡 Production mode - using tenant system');
   return (
     <TenantProvider>
       <AppContent />

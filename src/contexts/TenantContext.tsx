@@ -16,9 +16,30 @@ const TenantContext = createContext<TenantContextValue | undefined>(undefined);
 
 export const useTenant = (): TenantContextValue => {
   const context = useContext(TenantContext);
+
+  // Allow undefined in local dev
+  const isLocalDev =
+    window.location.hostname === 'localhost' ||
+    window.location.hostname.includes('bolt.new') ||
+    window.location.hostname.includes('webcontainer') ||
+    window.location.hostname.includes('127.0.0.1') ||
+    window.location.hostname.includes('stackblitz.io');
+
+  if (!context && isLocalDev) {
+    console.warn('⚠️ No tenant context - running in local dev mode');
+    return {
+      tenant: null,
+      firmInfo: null,
+      isLoading: false,
+      error: null,
+      refetchTenant: async () => {},
+    };
+  }
+
   if (!context) {
     throw new Error('useTenant must be used within a TenantProvider');
   }
+
   return context;
 };
 
