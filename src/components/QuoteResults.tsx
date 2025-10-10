@@ -556,7 +556,8 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingCon
                 )}
               </div>
 
-              {/* Additional Services Info Box - DYNAMICALLY FETCHED FROM AIRTABLE SERVICES TABLE */}
+              {/* Additional Services Info Box - COPIED FROM BUSINESS TAX CARD STRUCTURE */}
+              {/* DYNAMICALLY FETCHED FROM AIRTABLE SERVICES TABLE */}
               {(() => {
                 // Fetch additional-services configuration from serviceConfig
                 const additionalServicesConfig = serviceConfig.find(
@@ -565,12 +566,14 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingCon
 
                 // Use dynamic data from Airtable if available, otherwise use fallback
                 const boxTitle = additionalServicesConfig?.includedFeaturesCardTitle ||
-                  'About Your Additional Services';
+                  "What's Included in Our Additional Services";
                 const boxItems = additionalServicesConfig?.includedFeaturesCardList || [
                   'One-time fees are charged once upon service completion',
                   'Monthly services are billed on a recurring monthly basis',
                   'Hourly services are billed based on actual time worked',
-                  'All services include professional consultation and support'
+                  'All services can be bundled with your regular package or purchased separately',
+                  'Advisory service clients receive 50% discount on eligible services',
+                  'Complete pricing breakdown will be shown in your quote summary'
                 ];
 
                 // Only show box if we have items to display
@@ -578,15 +581,16 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingCon
                   return null;
                 }
 
+                // COPIED FROM BUSINESS TAX CARD STRUCTURE - Exact same styling
                 return (
-                  <div className="mt-6 bg-white border-2 border-purple-200 rounded-lg p-4">
+                  <div className="mt-6 bg-emerald-50 border border-emerald-200 rounded-lg p-6">
                     <div className="flex items-start space-x-3">
-                      <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <div className="w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                         <CheckCircle className="w-4 h-4 text-white" />
                       </div>
                       <div>
-                        <h4 className="font-semibold text-gray-800 text-sm mb-1">{boxTitle}</h4>
-                        <ul className="space-y-1 text-xs text-gray-600">
+                        <h3 className="font-semibold text-emerald-800 mb-2">{boxTitle}</h3>
+                        <ul className="space-y-1 text-sm text-emerald-700">
                           {boxItems.map((item, index) => (
                             <li key={index}>• {item}</li>
                           ))}
