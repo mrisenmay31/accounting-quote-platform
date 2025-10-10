@@ -1,5 +1,4 @@
 import { FormData, QuoteData, ServiceQuote } from '../types/quote';
-import { generateQuoteId } from './quoteIdGenerator';
 
 // Zapier webhook configuration (fallback to env var for development)
 const ZAPIER_WEBHOOK_URL = import.meta.env.VITE_ZAPIER_WEBHOOK_URL || '';
@@ -104,18 +103,14 @@ const extractIndividualServiceFees = (services: ServiceQuote[], formData: FormDa
   return fees;
 };
 
-export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteData, webhookUrl?: string): Promise<{ success: boolean; recordId?: string; quoteId?: string }> => {
+export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteData, webhookUrl?: string): Promise<boolean> => {
   const url = webhookUrl || ZAPIER_WEBHOOK_URL;
   console.log('Using Zapier webhook URL:', url);
 
   if (!url) {
     console.error('Zapier webhook URL not configured');
-    return { success: true }; // Return success for demo purposes when webhook is not configured
+    return true; // Return true for demo purposes when webhook is not configured
   }
-
-  // Generate Quote ID
-  const quoteId = generateQuoteId();
-  console.log('📋 Generated Quote ID:', quoteId);
 
   // Extract individual service fees
   const individualFees = extractIndividualServiceFees(quote.services, formData, quote);
@@ -131,9 +126,6 @@ export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteD
   console.log('=========================================');
 
   const payload = {
-    // Quote ID (Frontend Generated)
-    quoteId: quoteId,
-
     // Contact Information
     firstName: formData.firstName || '',
     lastName: formData.lastName || '',
@@ -287,50 +279,17 @@ export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteD
 
     console.log('Response status:', response.status);
     console.log('Response ok:', response.ok);
-
+    
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Zapier webhook response error:', errorText);
       throw new Error(`Zapier webhook error: ${response.status} ${response.statusText}`);
     }
 
-    const responseText = await response.text();
-    console.log('=== ZAPIER WEBHOOK RESPONSE ===');
-    console.log('Raw response text:', responseText);
-
-    // Try to parse the response as JSON to extract the Record ID
-    let recordId: string | undefined;
-    try {
-      const responseData = JSON.parse(responseText);
-      console.log('Parsed response object:', responseData);
-      console.log('Response ID field:', responseData.id);
-
-      // Zapier returns the Airtable Record ID in the "id" field
-      if (responseData.id) {
-        recordId = responseData.id;
-
-        // Validate that this is an Airtable Record ID (starts with "rec")
-        if (recordId.startsWith('rec')) {
-          console.log('✅ Valid Airtable Record ID captured:', recordId);
-        } else {
-          console.error('❌ ERROR: Invalid Airtable Record ID format:', recordId);
-          console.error('Expected ID starting with "rec", got:', recordId);
-          console.error('Full response:', responseData);
-          // Clear the recordId if it's not a valid Airtable ID
-          recordId = undefined;
-        }
-      } else {
-        console.warn('⚠️ Warning: No Record ID found in response');
-        console.warn('Response structure:', Object.keys(responseData));
-      }
-    } catch (parseError) {
-      console.log('Response is not JSON, continuing without Record ID');
-      console.log('Parse error:', parseError);
-    }
-    console.log('================================');
-
+    const responseData = await response.text();
+    console.log('Zapier webhook response:', responseData);
     console.log('Successfully sent quote data to Zapier webhook');
-    return { success: true, recordId, quoteId };
+    return true;
   } catch (error) {
     console.error('Error sending quote data to Zapier webhook:', error);
     console.error('Error details:', {
@@ -338,7 +297,7 @@ export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteD
       name: error instanceof Error ? error.name : 'Unknown',
       stack: error instanceof Error ? error.stack : 'No stack trace'
     });
-    return { success: false, quoteId };
+    return false;
   }
 };
 
