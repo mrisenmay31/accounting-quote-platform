@@ -74,7 +74,8 @@ const QuoteCalculator: React.FC = () => {
     
     // Additional Services Details
     additionalServices: {
-      selectedAdditionalServices: []
+      selectedAdditionalServices: [],
+      specializedFilings: []
     },
     bookkeeping: {
       businessName: '',
@@ -347,7 +348,8 @@ const QuoteCalculator: React.FC = () => {
         challenges: ''
       },
       additionalServices: {
-        selectedAdditionalServices: []
+        selectedAdditionalServices: [],
+        specializedFilings: []
       }
     });
 
@@ -381,37 +383,7 @@ const QuoteCalculator: React.FC = () => {
   }, [currentStep]);
 
   const canProceed = () => {
-    if (currentStepType === 'additional-services' && formData.additionalServices) {
-      const selectedServices = formData.additionalServices.selectedAdditionalServices || [];
-
-      for (const serviceId of selectedServices) {
-        const serviceName = serviceId.toLowerCase();
-
-        if (serviceName.includes('accounts receivable') || serviceName.includes('ar')) {
-          if (!formData.additionalServices.accountsReceivableInvoicesPerMonth ||
-              formData.additionalServices.accountsReceivableInvoicesPerMonth < 0 ||
-              !formData.additionalServices.accountsReceivableRecurring) {
-            return false;
-          }
-        }
-
-        if (serviceName.includes('accounts payable') || serviceName.includes('ap')) {
-          if (!formData.additionalServices.accountsPayableBillsPerMonth ||
-              formData.additionalServices.accountsPayableBillsPerMonth < 0 ||
-              !formData.additionalServices.accountsPayableBillRunFrequency) {
-            return false;
-          }
-        }
-
-        if (serviceName.includes('1099')) {
-          if (!formData.additionalServices.form1099Count ||
-              formData.additionalServices.form1099Count < 0) {
-            return false;
-          }
-        }
-      }
-    }
-
+    // For additional services with specializedFilings, only validate selections, no conditional fields needed
     return true;
   };
 

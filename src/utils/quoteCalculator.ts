@@ -1,4 +1,4 @@
-import { FormData, QuoteData, ServiceQuote } from '../types/quote';
+import { FormData, QuoteData, ServiceQuote, HourlyService } from '../types/quote';
 import { PricingConfig, getServicePricing } from './pricingService';
 import { ServiceConfig, getServiceConfig } from './serviceConfigService';
 
@@ -148,6 +148,7 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
   
   // Group pricing rules by service for better organization
   const serviceGroups: { [key: string]: { rules: PricingConfig[], totalMonthlyFees: number, totalOneTimeFees: number } } = {};
+  const hourlyServices: HourlyService[] = [];
   
   // Process each pricing rule
   for (const rule of pricingConfig) {
@@ -166,10 +167,21 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
     // Check if this rule applies based on conditions
     let ruleApplies = false;
 
-    // Special handling for additional services - check if selected
+    // Special handling for additional services - check specializedFilings
     if (rule.serviceId === 'additional-services' && rule.pricingType === 'Add-on') {
-      const selectedServices = formData.additionalServices?.selectedAdditionalServices || [];
-      ruleApplies = selectedServices.includes(rule.pricingRuleId);
+      const specializedFilings = formData.additionalServices?.specializedFilings || [];
+      ruleApplies = specializedFilings.includes(rule.serviceName);
+
+      // If this is an hourly service, add to hourlyServices array instead of totals
+      if (ruleApplies && rule.perUnitPricing && rule.unitPrice && rule.unitName) {
+        hourlyServices.push({
+          name: rule.serviceName,
+          rate: rule.unitPrice,
+          unitName: rule.unitName,
+          billingFrequency: rule.billingFrequency
+        });
+        continue; // Skip normal processing for hourly services
+      }
     }
     // For all other rules, check trigger conditions
     else if (rule.triggerFormField && rule.requiredFormValue && rule.comparisonLogic) {
@@ -495,6 +507,7 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
 
   return {
     services,
+    hourlyServices,
     totalMonthlyFees: Math.round(totalMonthlyFees),
     totalOneTimeFees: Math.round(totalOneTimeFees),
     totalAnnual: Math.round(finalTotalAnnual),
@@ -744,6 +757,7 @@ const calculateQuoteWithDefaults = (formData: FormData, serviceConfig: ServiceCo
 
   return {
     services,
+    hourlyServices: [],
     totalMonthlyFees: Math.round(totalMonthlyFees),
     totalOneTimeFees: Math.round(totalOneTimeFees),
     totalAnnual: Math.round(totalAnnual),

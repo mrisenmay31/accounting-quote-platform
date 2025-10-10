@@ -205,6 +205,12 @@ export const saveQuoteToAirtable = async (
             formData.additionalServices.selectedAdditionalServices.join(', ');
         }
 
+        if (formData.additionalServices.specializedFilings &&
+            formData.additionalServices.specializedFilings.length > 0) {
+          airtableFields['Specialized Filings'] =
+            formData.additionalServices.specializedFilings.join(',');
+        }
+
         if (formData.additionalServices.accountsReceivableInvoicesPerMonth !== undefined) {
           airtableFields['AR - Invoices Per Month'] = formData.additionalServices.accountsReceivableInvoicesPerMonth;
         }

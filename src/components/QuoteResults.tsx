@@ -385,6 +385,61 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, onRecalcul
           </div>
         </div>
 
+        {/* Hourly Services Section */}
+        {quote.hourlyServices && quote.hourlyServices.length > 0 && (
+          <div className="bg-blue-50 p-10 border-t border-blue-200">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4 pb-3 border-b-4 border-blue-500">
+              Hourly Services
+            </h2>
+            <p className="text-sm text-gray-600 mb-6">
+              The following services are billed hourly based on actual time worked. Rates are shown for transparency and budgeting purposes.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {quote.hourlyServices.map((hourlyService, index) => (
+                <div key={index} className="bg-white border-2 border-blue-300 rounded-xl p-6 hover:shadow-lg transition-all duration-300">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-gray-900 mb-1">{hourlyService.name}</h3>
+                      <span className="inline-block text-xs font-medium px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                        {hourlyService.billingFrequency === 'Monthly' ? 'Monthly Billing' : hourlyService.billingFrequency}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-blue-600">
+                        ${hourlyService.rate}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">per {hourlyService.unitName}</div>
+                    </div>
+                  </div>
+                  <div className="pt-3 border-t border-gray-200">
+                    <p className="text-xs text-gray-600 italic">
+                      Billed based on actual time worked • No upfront commitment required
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 bg-white border-2 border-blue-200 rounded-lg p-4">
+              <div className="flex items-start space-x-3">
+                <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <CheckCircle className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-800 text-sm mb-1">How Hourly Billing Works</h4>
+                  <ul className="space-y-1 text-xs text-gray-600">
+                    <li>• Time tracked in 15-minute increments</li>
+                    <li>• Detailed activity reports provided with each invoice</li>
+                    <li>• No minimums or maximum hour requirements</li>
+                    <li>• Pay only for the services you use</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Guarantee Section */}
         {firmInfo?.promiseCalloutText && (
           <div className="bg-green-50 border-2 border-green-500 rounded-xl p-6 mx-10 my-8">

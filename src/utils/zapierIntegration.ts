@@ -325,6 +325,23 @@ export const sendQuoteToZapierWebhook = async (
       ? convertPricingRulesToServiceNames(formData.additionalServices.selectedAdditionalServices).join(',')
       : '',
 
+    // Specialized Filings - Multi-select comma-separated
+    specializedFilings: formData.additionalServices?.specializedFilings?.join(',') || '',
+
+    // Hourly Services Rates (extracted from quote data)
+    hourlyServices: quote.hourlyServices.reduce((acc, service) => {
+      if (service.name.includes('Accounts Receivable') || service.name.includes('AR Management')) {
+        acc.arRate = service.rate;
+      } else if (service.name.includes('Accounts Payable') || service.name.includes('AP Management')) {
+        acc.apRate = service.rate;
+      } else if (service.name.includes('1099')) {
+        acc.ninetyNineRate = service.rate;
+      } else if (service.name.includes('Schedule C')) {
+        acc.scheduleCRate = service.rate;
+      }
+      return acc;
+    }, {} as { arRate?: number; apRate?: number; ninetyNineRate?: number; scheduleCRate?: number }),
+
     // Additional Services - Conditional Fields (only populate if parent service is selected)
     accountsReceivableInvoicesPerMonth: formData.additionalServices?.accountsReceivableInvoicesPerMonth ?? null,
     accountsReceivableRecurring: formData.additionalServices?.accountsReceivableRecurring || null,

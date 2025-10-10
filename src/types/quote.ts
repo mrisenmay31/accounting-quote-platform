@@ -93,6 +93,7 @@ export interface FormData {
   // Additional Services Details
   additionalServices?: {
     selectedAdditionalServices: string[];
+    specializedFilings?: string[]; // Multi-select for specialized services
     // Accounts Receivable conditionals
     accountsReceivableInvoicesPerMonth?: number;
     accountsReceivableRecurring?: string;
@@ -104,6 +105,13 @@ export interface FormData {
     // Tax Planning Consultation
     taxPlanningConsultation?: boolean;
   };
+}
+
+export interface HourlyService {
+  name: string;
+  rate: number;
+  unitName: string;
+  billingFrequency: string;
 }
 
 export interface ServiceQuote {
@@ -119,6 +127,7 @@ export interface ServiceQuote {
 
 export interface QuoteData {
   services: ServiceQuote[];
+  hourlyServices: HourlyService[];
   totalMonthlyFees: number;
   totalOneTimeFees: number;
   totalAnnual: number;
