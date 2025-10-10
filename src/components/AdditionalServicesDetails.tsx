@@ -198,12 +198,12 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
         const boxTitle = additionalServicesConfig?.includedFeaturesCardTitle ||
           'How Additional Services Work';
         const boxItems = additionalServicesConfig?.includedFeaturesCardList || [
-          '• One-Time Fees: Fixed price services added to your quote',
-          '• Monthly Services: Recurring services billed each month',
-          '• Hourly Services: Billed based on actual hours worked',
-          '• All services can be bundled with your regular package or purchased separately',
-          '• Advisory service clients receive 50% discount on eligible services',
-          '• Complete pricing breakdown will be shown in your quote summary'
+          'One-time fees are charged once upon service completion',
+          'Monthly services are billed on a recurring monthly basis',
+          'Hourly services are billed based on actual time worked',
+          'All services can be bundled with your regular package or purchased separately',
+          'Advisory service clients receive 50% discount on eligible services',
+          'Complete pricing breakdown will be shown in your quote summary'
         ];
 
         if (!boxItems || boxItems.length === 0) {

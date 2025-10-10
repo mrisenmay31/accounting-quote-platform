@@ -79,12 +79,14 @@ const defaultServiceConfig: ServiceConfig[] = [
     featured: false,
     benefits: ['Tax planning', 'Specialized filings & elections', 'Custom consulting solutions', 'Project-based bookkeeping'],
     active: true,
-    includedFeaturesCardTitle: 'About Your Additional Services',
+    includedFeaturesCardTitle: 'How Additional Services Work',
     includedFeaturesCardList: [
       'One-time fees are charged once upon service completion',
       'Monthly services are billed on a recurring monthly basis',
       'Hourly services are billed based on actual time worked',
-      'All services include professional consultation and support'
+      'All services can be bundled with your regular package or purchased separately',
+      'Advisory service clients receive 50% discount on eligible services',
+      'Complete pricing breakdown will be shown in your quote summary'
     ]
   }
 ];
