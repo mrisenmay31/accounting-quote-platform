@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import { Phone, Calendar, CheckCircle, Star, ArrowRight, Send, X, Calculator, Info, ChevronDown, ChevronUp, TrendingUp, Zap, ClipboardCheck, GraduationCap, Code, Clock, RefreshCw, AlertCircle, Mail, Globe, MapPin } from 'lucide-react';
-import { FormData, QuoteData, PricingConfig } from '../types/quote';
+import { FormData, QuoteData, PricingConfig, ServiceConfig } from '../types/quote';
 import { useTenant } from '../contexts/TenantContext';
 
 interface QuoteResultsProps {
   formData: FormData;
   quote: QuoteData | null;
   pricingConfig?: PricingConfig[];
+  serviceConfig?: ServiceConfig[];
   onRecalculate?: () => void;
 }
 
-const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingConfig = [], onRecalculate }) => {
+const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingConfig = [], serviceConfig = [], onRecalculate }) => {
   const { tenant, firmInfo } = useTenant();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -555,23 +556,46 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingCon
                 )}
               </div>
 
-              {/* Additional Services Info Box */}
-              <div className="mt-6 bg-white border-2 border-purple-200 rounded-lg p-4">
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Info className="w-4 h-4 text-white" />
+              {/* Additional Services Info Box - DYNAMICALLY FETCHED FROM AIRTABLE SERVICES TABLE */}
+              {(() => {
+                // Fetch additional-services configuration from serviceConfig
+                const additionalServicesConfig = serviceConfig.find(
+                  config => config.serviceId === 'additional-services'
+                );
+
+                // Use dynamic data from Airtable if available, otherwise use fallback
+                const boxTitle = additionalServicesConfig?.includedFeaturesCardTitle ||
+                  'About Your Additional Services';
+                const boxItems = additionalServicesConfig?.includedFeaturesCardList || [
+                  'One-time fees are charged once upon service completion',
+                  'Monthly services are billed on a recurring monthly basis',
+                  'Hourly services are billed based on actual time worked',
+                  'All services include professional consultation and support'
+                ];
+
+                // Only show box if we have items to display
+                if (!boxItems || boxItems.length === 0) {
+                  return null;
+                }
+
+                return (
+                  <div className="mt-6 bg-white border-2 border-purple-200 rounded-lg p-4">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <CheckCircle className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-800 text-sm mb-1">{boxTitle}</h4>
+                        <ul className="space-y-1 text-xs text-gray-600">
+                          {boxItems.map((item, index) => (
+                            <li key={index}>• {item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-800 text-sm mb-1">About Your Additional Services</h4>
-                    <ul className="space-y-1 text-xs text-gray-600">
-                      <li>• One-time fees are charged once upon service completion</li>
-                      <li>• Monthly services are billed on a recurring monthly basis</li>
-                      <li>• Hourly services are billed based on actual time worked</li>
-                      <li>• All services include professional consultation and support</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
           );
         })()}

@@ -172,7 +172,9 @@ export interface ServiceConfig {
   color: string;
   featured: boolean;
   benefits: string[];
+  quoteIncludedFeatures?: string[];
   active: boolean;
+  serviceOrder?: number;
   includedFeaturesCardTitle?: string;
   includedFeaturesCardList?: string[];
 }

@@ -78,7 +78,14 @@ const defaultServiceConfig: ServiceConfig[] = [
     color: 'gray',
     featured: false,
     benefits: ['Tax planning', 'Specialized filings & elections', 'Custom consulting solutions', 'Project-based bookkeeping'],
-    active: true
+    active: true,
+    includedFeaturesCardTitle: 'About Your Additional Services',
+    includedFeaturesCardList: [
+      'One-time fees are charged once upon service completion',
+      'Monthly services are billed on a recurring monthly basis',
+      'Hourly services are billed based on actual time worked',
+      'All services include professional consultation and support'
+    ]
   }
 ];
 

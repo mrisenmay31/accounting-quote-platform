@@ -456,6 +456,7 @@ const QuoteCalculator: React.FC = () => {
             formData={formData}
             quote={quote}
             pricingConfig={pricingConfig}
+            serviceConfig={serviceConfig}
             onRecalculate={resetQuote}
           />
         );
