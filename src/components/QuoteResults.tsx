@@ -168,9 +168,9 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, onRecalcul
                 <div className="absolute top-[-50%] right-[-20%] w-[300px] h-[300px] bg-emerald-500/8 rounded-full blur-3xl"></div>
 
                 <div className="relative z-10 flex items-stretch justify-center gap-6">
-                  {/* Monthly Partnership Section */}
+                  {/* Monthly Fees Section */}
                   <div className="flex-1 text-center">
-                    <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Monthly Partnership</div>
+                    <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Monthly Fees</div>
                     <div className="flex items-baseline justify-center space-x-2">
                       <span className="text-4xl font-bold" style={{ background: 'linear-gradient(to bottom right, var(--tenant-primary-700, #047857), var(--tenant-primary-600, #10b981), var(--tenant-primary-500, #10b981))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>${quote.totalMonthlyFees.toLocaleString()}</span>
                       <span className="text-xs text-gray-600 font-semibold">PER MONTH</span>
