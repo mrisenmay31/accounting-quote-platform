@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
 import { FileText, CheckCircle } from 'lucide-react';
-import { FormData, PricingConfig } from '../types/quote';
+import { FormData, PricingConfig, ServiceConfig } from '../types/quote';
 
 interface AdditionalServicesDetailsProps {
   formData: FormData;
   updateFormData: (updates: Partial<FormData>) => void;
   pricingConfig: PricingConfig[];
-  serviceConfig: any[];
+  serviceConfig: ServiceConfig[];
   isLoading?: boolean;
 }
 
@@ -189,25 +189,45 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
         per requirements
       */}
 
-      {/* Information Box - Explains how services work */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-        <div className="flex items-start space-x-3">
-          <div className="w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-            <CheckCircle className="w-4 h-4 text-white" />
+      {/* Information Box - Dynamically fetched from Airtable Services table */}
+      {(() => {
+        const additionalServicesConfig = serviceConfig.find(
+          config => config.serviceId === 'additional-services'
+        );
+
+        const boxTitle = additionalServicesConfig?.includedFeaturesCardTitle ||
+          'How Additional Services Work';
+        const boxItems = additionalServicesConfig?.includedFeaturesCardList || [
+          '• One-Time Fees: Fixed price services added to your quote',
+          '• Monthly Services: Recurring services billed each month',
+          '• Hourly Services: Billed based on actual hours worked',
+          '• All services can be bundled with your regular package or purchased separately',
+          '• Advisory service clients receive 50% discount on eligible services',
+          '• Complete pricing breakdown will be shown in your quote summary'
+        ];
+
+        if (!boxItems || boxItems.length === 0) {
+          return null;
+        }
+
+        return (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+            <div className="flex items-start space-x-3">
+              <div className="w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                <CheckCircle className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">{boxTitle}</h3>
+                <ul className="space-y-1 text-sm text-gray-700">
+                  {boxItems.map((item, index) => (
+                    <li key={index}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </div>
-          <div>
-            <h3 className="font-semibold text-gray-800 mb-2">How Additional Services Work</h3>
-            <ul className="space-y-1 text-sm text-gray-700">
-              <li>• <strong>One-Time Fees:</strong> Fixed price services added to your quote</li>
-              <li>• <strong>Monthly Services:</strong> Recurring services billed each month</li>
-              <li>• <strong>Hourly Services:</strong> Billed based on actual hours worked</li>
-              <li>• All services can be bundled with your regular package or purchased separately</li>
-              <li>• Advisory service clients receive 50% discount on eligible services</li>
-              <li>• Complete pricing breakdown will be shown in your quote summary</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Debug Information - Shows in development mode only */}
       {process.env.NODE_ENV === 'development' && (
