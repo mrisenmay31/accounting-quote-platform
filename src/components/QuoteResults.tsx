@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { Phone, Calendar, CheckCircle, Star, ArrowRight, Send, X, Calculator, Info, ChevronDown, ChevronUp, TrendingUp, Zap, ClipboardCheck, GraduationCap, Code, Clock, RefreshCw, AlertCircle, Mail, Globe, MapPin } from 'lucide-react';
-import { FormData, QuoteData } from '../types/quote';
+import { FormData, QuoteData, PricingConfig } from '../types/quote';
 import { useTenant } from '../contexts/TenantContext';
 
 interface QuoteResultsProps {
   formData: FormData;
   quote: QuoteData | null;
+  pricingConfig?: PricingConfig[];
   onRecalculate?: () => void;
 }
 
-const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, onRecalculate }) => {
+const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingConfig = [], onRecalculate }) => {
   const { tenant, firmInfo } = useTenant();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -41,6 +42,58 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, onRecalcul
     });
   };
 
+  /**
+   * Helper function to format additional services with pricing
+   * Groups services by billing type (One-Time, Monthly, Hourly)
+   */
+  const getFormattedAdditionalServices = () => {
+    const selectedServices = formData.additionalServices?.specializedFilings || [];
+    if (selectedServices.length === 0) return null;
+
+    // Filter pricing rules for additional services
+    const additionalServiceRules = pricingConfig.filter(rule =>
+      rule.serviceId === 'additional-services' &&
+      rule.active &&
+      selectedServices.includes(rule.serviceName)
+    );
+
+    if (additionalServiceRules.length === 0) return null;
+
+    // Group services by billing type
+    const oneTimeServices: Array<{ name: string; price: number }> = [];
+    const monthlyServices: Array<{ name: string; price: number }> = [];
+    const hourlyServices: Array<{ name: string; rate: number; unitName: string }> = [];
+
+    additionalServiceRules.forEach(rule => {
+      if (rule.perUnitPricing && rule.unitPrice && rule.unitName) {
+        // Hourly service
+        hourlyServices.push({
+          name: rule.serviceName,
+          rate: rule.unitPrice,
+          unitName: rule.unitName
+        });
+      } else if (rule.billingFrequency === 'One-Time Fee') {
+        // One-time fee service
+        oneTimeServices.push({
+          name: rule.serviceName,
+          price: rule.basePrice
+        });
+      } else if (rule.billingFrequency === 'Monthly') {
+        // Monthly service
+        monthlyServices.push({
+          name: rule.serviceName,
+          price: rule.basePrice
+        });
+      }
+    });
+
+    return {
+      oneTimeServices,
+      monthlyServices,
+      hourlyServices,
+      hasServices: oneTimeServices.length > 0 || monthlyServices.length > 0 || hourlyServices.length > 0
+    };
+  };
 
   const handleRecalculateClick = () => {
     setShowRecalculateModal(true);
@@ -384,6 +437,121 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, onRecalcul
             ))}
           </div>
         </div>
+
+        {/* SELECTED ADDITIONAL SERVICES SECTION - Moved from Additional Services step per requirements */}
+        {(() => {
+          const formattedServices = getFormattedAdditionalServices();
+          if (!formattedServices || !formattedServices.hasServices) return null;
+
+          return (
+            <div className="bg-purple-50 p-10 border-t border-purple-200">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4 pb-3 border-b-4 border-purple-500">
+                Selected Additional Services
+              </h2>
+              <p className="text-sm text-gray-600 mb-6">
+                You've selected the following additional services to complement your core package.
+              </p>
+
+              <div className="space-y-6">
+                {/* One-Time Fee Services */}
+                {formattedServices.oneTimeServices.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-bold text-purple-900 mb-3 flex items-center space-x-2">
+                      <CheckCircle className="w-5 h-5" />
+                      <span>One-Time Fees</span>
+                    </h3>
+                    <div className="space-y-2">
+                      {formattedServices.oneTimeServices.map((service, index) => (
+                        <div key={index} className="bg-white border border-purple-200 rounded-lg p-4 flex justify-between items-center hover:shadow-md transition-all duration-200">
+                          <div className="flex items-start space-x-3">
+                            <CheckCircle className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                            <span className="text-gray-900 font-medium">{service.name}</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xl font-bold text-purple-700">
+                              ${service.price.toLocaleString()}
+                            </div>
+                            <div className="text-xs text-gray-500">One-Time Fee</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Monthly Services */}
+                {formattedServices.monthlyServices.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-bold text-purple-900 mb-3 flex items-center space-x-2">
+                      <CheckCircle className="w-5 h-5" />
+                      <span>Monthly Services</span>
+                    </h3>
+                    <div className="space-y-2">
+                      {formattedServices.monthlyServices.map((service, index) => (
+                        <div key={index} className="bg-white border border-purple-200 rounded-lg p-4 flex justify-between items-center hover:shadow-md transition-all duration-200">
+                          <div className="flex items-start space-x-3">
+                            <CheckCircle className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                            <span className="text-gray-900 font-medium">{service.name}</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xl font-bold text-purple-700">
+                              ${service.price.toLocaleString()}
+                            </div>
+                            <div className="text-xs text-gray-500">Monthly</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Hourly Services */}
+                {formattedServices.hourlyServices.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-bold text-purple-900 mb-3 flex items-center space-x-2">
+                      <Clock className="w-5 h-5" />
+                      <span>Hourly Services</span>
+                    </h3>
+                    <div className="space-y-2">
+                      {formattedServices.hourlyServices.map((service, index) => (
+                        <div key={index} className="bg-white border border-purple-200 rounded-lg p-4 flex justify-between items-center hover:shadow-md transition-all duration-200">
+                          <div className="flex items-start space-x-3">
+                            <Clock className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                            <span className="text-gray-900 font-medium">{service.name}</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xl font-bold text-purple-700">
+                              ${service.rate}/{service.unitName}
+                            </div>
+                            <div className="text-xs text-gray-500">Hourly Billing</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Additional Services Info Box */}
+              <div className="mt-6 bg-white border-2 border-purple-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Info className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-800 text-sm mb-1">About Your Additional Services</h4>
+                    <ul className="space-y-1 text-xs text-gray-600">
+                      <li>• One-time fees are charged once upon service completion</li>
+                      <li>• Monthly services are billed on a recurring monthly basis</li>
+                      <li>• Hourly services are billed based on actual time worked</li>
+                      <li>• All services include professional consultation and support</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Hourly Services Section */}
         {quote.hourlyServices && quote.hourlyServices.length > 0 && (

@@ -80,30 +80,6 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
     });
   };
 
-  /**
-   * Get display information for a service based on pricing type
-   * Hourly services show rate per unit, others show base price
-   */
-  const getServiceDisplayInfo = (rule: PricingConfig) => {
-    // Check if this is an hourly/per-unit pricing service
-    if (rule.perUnitPricing && rule.unitPrice && rule.unitName) {
-      console.log(`Service "${rule.serviceName}" is hourly: $${rule.unitPrice}/${rule.unitName}`);
-      return {
-        displayPrice: `$${rule.unitPrice}/${rule.unitName}`,
-        type: 'Hourly Rate',
-        isHourly: true
-      };
-    }
-
-    // Fixed price service (one-time or monthly)
-    console.log(`Service "${rule.serviceName}" is fixed price: $${rule.basePrice}`);
-    return {
-      displayPrice: `$${rule.basePrice}`,
-      type: rule.billingFrequency,
-      isHourly: false
-    };
-  };
-
   if (isLoading) {
     return (
       <div className="space-y-8">
@@ -145,11 +121,15 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
           Additional Services
         </h2>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          Select any additional professional services you need. Hourly services will be billed based on actual time worked.
+          Select any additional professional services you need. Pricing details will be shown in your quote summary.
         </p>
       </div>
 
-      {/* Specialized Filings - Multi-Select Checkboxes */}
+      {/*
+        SPECIALIZED FILINGS - MULTI-SELECT CHECKBOXES
+        PRICING DISPLAYS REMOVED PER REQUIREMENTS
+        Only showing: checkbox, service name, and description
+      */}
       <div className="space-y-6">
         <div className="flex items-center space-x-3">
           <FileText className="w-6 h-6 text-emerald-600" />
@@ -161,7 +141,6 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
             // Check if this service is currently selected
             // IMPORTANT: Uses exact string matching with service.serviceName
             const isSelected = (formData.additionalServices?.specializedFilings || []).includes(service.serviceName);
-            const displayInfo = getServiceDisplayInfo(service);
 
             return (
               <button
@@ -176,42 +155,26 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
                     : 'border-gray-200 hover:border-emerald-300 hover:bg-gray-50'
                 }`}
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    {/* Checkbox Icon and Service Name */}
-                    <div className="flex items-center space-x-2 mb-1">
-                      {isSelected ? (
-                        <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                      ) : (
-                        <div className="w-5 h-5 border-2 border-gray-300 rounded flex-shrink-0" />
-                      )}
-                      <h4 className="text-base font-semibold text-gray-900">{service.serviceName}</h4>
-                    </div>
-
-                    {/* Service Description */}
-                    {service.description && (
-                      <p className="text-sm text-gray-600 ml-7 mb-2">{service.description}</p>
+                <div className="flex items-start space-x-3">
+                  {/* Checkbox Icon */}
+                  <div className="flex-shrink-0 mt-0.5">
+                    {isSelected ? (
+                      <CheckCircle className="w-5 h-5 text-emerald-600" />
+                    ) : (
+                      <div className="w-5 h-5 border-2 border-gray-300 rounded" />
                     )}
+                  </div>
 
-                    {/*
-                      HOURLY RATE DISPLAY
-                      This is where hourly rates are shown for AR Management, AP Management,
-                      1099 Filing, and Schedule C Prep
-                    */}
-                    <div className="flex items-center space-x-3 ml-7">
-                      <span className="text-lg font-bold text-emerald-700">
-                        {displayInfo.displayPrice}
-                      </span>
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                        displayInfo.isHourly
-                          ? 'bg-blue-100 text-blue-700'
-                          : displayInfo.type === 'One-Time Fee'
-                          ? 'bg-purple-100 text-purple-700'
-                          : 'bg-emerald-100 text-emerald-700'
-                      }`}>
-                        {displayInfo.isHourly ? 'Hourly Billing' : displayInfo.type}
-                      </span>
-                    </div>
+                  {/* Service Info - NAME AND DESCRIPTION ONLY */}
+                  <div className="flex-1">
+                    <h4 className="text-base font-semibold text-gray-900 mb-1">
+                      {service.serviceName}
+                    </h4>
+                    {service.description && (
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        {service.description}
+                      </p>
+                    )}
                   </div>
                 </div>
               </button>
@@ -220,45 +183,11 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
         </div>
       </div>
 
-      {/* Selected Services Summary - Shows what user has selected */}
-      {(formData.additionalServices?.specializedFilings?.length || 0) > 0 && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
-          <h3 className="font-semibold text-emerald-800 mb-3 flex items-center space-x-2">
-            <CheckCircle className="w-5 h-5" />
-            <span>Selected Specialized Services:</span>
-          </h3>
-          <div className="space-y-2">
-            {(formData.additionalServices?.specializedFilings || []).map((serviceName) => {
-              // Find the pricing rule for this selected service
-              const service = additionalServiceRules.find(s => s.serviceName === serviceName);
-              if (!service) {
-                console.warn(`Service not found in pricing rules: ${serviceName}`);
-                return null;
-              }
-
-              const displayInfo = getServiceDisplayInfo(service);
-
-              return (
-                <div key={serviceName} className="flex justify-between items-center bg-white rounded-lg px-4 py-2">
-                  <span className="text-emerald-700 font-medium">{serviceName}</span>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-emerald-700 font-bold">{displayInfo.displayPrice}</span>
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                      displayInfo.isHourly
-                        ? 'bg-blue-100 text-blue-700'
-                        : displayInfo.type === 'One-Time Fee'
-                        ? 'bg-purple-100 text-purple-700'
-                        : 'bg-emerald-100 text-emerald-700'
-                    }`}>
-                      {displayInfo.isHourly ? 'Hourly' : displayInfo.type}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/*
+        REMOVED: 'Selected Specialized Services' Summary Box
+        This section has been moved to the Quote Summary page
+        per requirements
+      */}
 
       {/* Information Box - Explains how services work */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
@@ -271,16 +200,16 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
             <ul className="space-y-1 text-sm text-gray-700">
               <li>• <strong>One-Time Fees:</strong> Fixed price services added to your quote</li>
               <li>• <strong>Monthly Services:</strong> Recurring services billed each month</li>
-              <li>• <strong>Hourly Services:</strong> Billed based on actual hours worked - rates shown for transparency</li>
-              <li>• <strong>No conditional fields needed:</strong> Simply select services to see hourly rates</li>
+              <li>• <strong>Hourly Services:</strong> Billed based on actual hours worked</li>
               <li>• All services can be bundled with your regular package or purchased separately</li>
               <li>• Advisory service clients receive 50% discount on eligible services</li>
+              <li>• Complete pricing breakdown will be shown in your quote summary</li>
             </ul>
           </div>
         </div>
       </div>
 
-      {/* Debug Information - Remove in production */}
+      {/* Debug Information - Shows in development mode only */}
       {process.env.NODE_ENV === 'development' && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-xs">
           <h4 className="font-bold text-yellow-800 mb-2">Debug Information:</h4>
