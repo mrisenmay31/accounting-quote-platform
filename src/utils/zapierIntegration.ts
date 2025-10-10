@@ -3,6 +3,46 @@ import { FormData, QuoteData, ServiceQuote } from '../types/quote';
 // Zapier webhook configuration (fallback to env var for development)
 const ZAPIER_WEBHOOK_URL = import.meta.env.VITE_ZAPIER_WEBHOOK_URL || '';
 
+// Helper function to map pricing rule IDs to Airtable Multiple Select option names
+const mapPricingRuleToAirtableOption = (pricingRuleId: string): string | null => {
+  const mappings: Record<string, string> = {
+    'additional-services-accounts-receivable': 'Accounts Receivable Management',
+    'additional-services-ar': 'Accounts Receivable Management',
+    'accounts-receivable': 'Accounts Receivable Management',
+    'additional-services-accounts-payable': 'Accounts Payable Management',
+    'additional-services-ap': 'Accounts Payable Management',
+    'accounts-payable': 'Accounts Payable Management',
+    'additional-services-1099': '1099 Filing',
+    '1099-processing': '1099 Filing',
+    '1099-filing': '1099 Filing',
+    'additional-services-sales-tax': 'Sales Tax Filing',
+    'sales-tax-filing': 'Sales Tax Filing',
+    'additional-services-scorp-election': 'S-Corp Election (Form 2553)',
+    'scorp-election': 'S-Corp Election (Form 2553)',
+    'additional-services-schedule-c': 'Schedule C Financial Statement Prep',
+    'schedule-c-financial-statement': 'Schedule C Financial Statement Prep',
+    'additional-services-tax-planning': 'Tax Planning Consultation',
+    'tax-planning-consultation': 'Tax Planning Consultation',
+    'tax-planning': 'Tax Planning Consultation'
+  };
+
+  return mappings[pricingRuleId.toLowerCase()] || null;
+};
+
+// Helper function to convert pricing rule IDs to Airtable-compatible service names
+const convertPricingRulesToServiceNames = (pricingRuleIds: string[]): string[] => {
+  const serviceNames: string[] = [];
+
+  for (const ruleId of pricingRuleIds) {
+    const serviceName = mapPricingRuleToAirtableOption(ruleId);
+    if (serviceName && !serviceNames.includes(serviceName)) {
+      serviceNames.push(serviceName);
+    }
+  }
+
+  return serviceNames;
+};
+
 // Helper function to extract individual service fees from quote data
 const extractIndividualServiceFees = (services: ServiceQuote[], formData: FormData, quote: QuoteData) => {
   // Initialize all fees to 0
@@ -103,7 +143,22 @@ const extractIndividualServiceFees = (services: ServiceQuote[], formData: FormDa
   return fees;
 };
 
-export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteData, webhookUrl?: string): Promise<boolean> => {
+// Helper function to generate unique quote ID
+const generateQuoteId = (): string => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `QUOTE-${year}${month}${day}-${random}`;
+};
+
+export const sendQuoteToZapierWebhook = async (
+  formData: FormData,
+  quote: QuoteData,
+  tenantId?: string,
+  webhookUrl?: string
+): Promise<boolean> => {
   const url = webhookUrl || ZAPIER_WEBHOOK_URL;
   console.log('Using Zapier webhook URL:', url);
 
@@ -111,6 +166,9 @@ export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteD
     console.error('Zapier webhook URL not configured');
     return true; // Return true for demo purposes when webhook is not configured
   }
+
+  // Generate unique quote ID
+  const quoteId = generateQuoteId();
 
   // Extract individual service fees
   const individualFees = extractIndividualServiceFees(quote.services, formData, quote);
@@ -126,6 +184,10 @@ export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteD
   console.log('=========================================');
 
   const payload = {
+    // Quote Metadata
+    quoteId: quoteId,
+    tenantId: tenantId || '',
+
     // Contact Information
     firstName: formData.firstName || '',
     lastName: formData.lastName || '',
@@ -258,8 +320,18 @@ export const sendQuoteToZapierWebhook = async (formData: FormData, quote: QuoteD
     bookkeepingStartTimeline: formData.bookkeeping?.startTimeline || '',
     bookkeepingChallenges: formData.bookkeeping?.challenges || '',
     
-    // Additional Services - Always send all fields
-    additionalServicesSelected: formData.additionalServices?.selectedAdditionalServices?.join(', ') || '',
+    // Additional Services - Convert pricing rule IDs to Airtable option names
+    additionalServicesSelected: formData.additionalServices?.selectedAdditionalServices
+      ? convertPricingRulesToServiceNames(formData.additionalServices.selectedAdditionalServices).join(',')
+      : '',
+
+    // Additional Services - Conditional Fields (only populate if parent service is selected)
+    accountsReceivableInvoicesPerMonth: formData.additionalServices?.accountsReceivableInvoicesPerMonth ?? null,
+    accountsReceivableRecurring: formData.additionalServices?.accountsReceivableRecurring || null,
+    accountsPayableBillsPerMonth: formData.additionalServices?.accountsPayableBillsPerMonth ?? null,
+    accountsPayableBillRunFrequency: formData.additionalServices?.accountsPayableBillRunFrequency || null,
+    form1099Count: formData.additionalServices?.form1099Count ?? null,
+    taxPlanningConsultation: formData.additionalServices?.taxPlanningConsultation ?? false,
     
     // Metadata
     leadSource: 'Quote Calculator',

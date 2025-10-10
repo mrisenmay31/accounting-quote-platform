@@ -237,7 +237,7 @@ const QuoteCalculator: React.FC = () => {
       });
 
       // Send quote data to tenant's Zapier webhook
-      await sendQuoteToZapierWebhook(formData, quote, tenant.zapierWebhookUrl);
+      await sendQuoteToZapierWebhook(formData, quote, tenant.id, tenant.zapierWebhookUrl);
 
       // Advance to quote results page regardless of webhook success/failure
       nextStep();
@@ -381,6 +381,37 @@ const QuoteCalculator: React.FC = () => {
   }, [currentStep]);
 
   const canProceed = () => {
+    if (currentStepType === 'additional-services' && formData.additionalServices) {
+      const selectedServices = formData.additionalServices.selectedAdditionalServices || [];
+
+      for (const serviceId of selectedServices) {
+        const serviceName = serviceId.toLowerCase();
+
+        if (serviceName.includes('accounts receivable') || serviceName.includes('ar')) {
+          if (!formData.additionalServices.accountsReceivableInvoicesPerMonth ||
+              formData.additionalServices.accountsReceivableInvoicesPerMonth < 0 ||
+              !formData.additionalServices.accountsReceivableRecurring) {
+            return false;
+          }
+        }
+
+        if (serviceName.includes('accounts payable') || serviceName.includes('ap')) {
+          if (!formData.additionalServices.accountsPayableBillsPerMonth ||
+              formData.additionalServices.accountsPayableBillsPerMonth < 0 ||
+              !formData.additionalServices.accountsPayableBillRunFrequency) {
+            return false;
+          }
+        }
+
+        if (serviceName.includes('1099')) {
+          if (!formData.additionalServices.form1099Count ||
+              formData.additionalServices.form1099Count < 0) {
+            return false;
+          }
+        }
+      }
+    }
+
     return true;
   };
 
