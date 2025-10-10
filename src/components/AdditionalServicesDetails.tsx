@@ -228,18 +228,6 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
           </div>
         );
       })()}
-
-      {/* Debug Information - Shows in development mode only */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-xs">
-          <h4 className="font-bold text-yellow-800 mb-2">Debug Information:</h4>
-          <div className="space-y-1 text-yellow-700">
-            <div>Total Services Available: {additionalServiceRules.length}</div>
-            <div>Currently Selected: {formData.additionalServices?.specializedFilings?.length || 0}</div>
-            <div>Selected Services: {(formData.additionalServices?.specializedFilings || []).join(', ') || 'None'}</div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
