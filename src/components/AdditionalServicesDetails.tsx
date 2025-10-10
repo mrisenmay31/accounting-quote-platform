@@ -211,16 +211,16 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
         }
 
         return (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
             <div className="flex items-start space-x-3">
               <div className="w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                 <CheckCircle className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-800 mb-2">{boxTitle}</h3>
-                <ul className="space-y-1 text-sm text-gray-700">
+                <h3 className="font-semibold text-emerald-800 mb-2">{boxTitle}</h3>
+                <ul className="space-y-1 text-sm text-emerald-700">
                   {boxItems.map((item, index) => (
-                    <li key={index}>{item}</li>
+                    <li key={index}>• {item}</li>
                   ))}
                 </ul>
               </div>
