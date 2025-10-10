@@ -247,6 +247,29 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingCon
                     </>
                   )}
                 </div>
+
+                {/* Note about Additional Services and Hourly Rates */}
+                {(() => {
+                  const formattedServices = getFormattedAdditionalServices();
+                  const hasHourlyServices = formattedServices && formattedServices.hourlyServices.length > 0;
+                  const hasOtherServices = formattedServices && (formattedServices.oneTimeServices.length > 0 || formattedServices.monthlyServices.length > 0);
+
+                  if (hasHourlyServices || hasOtherServices) {
+                    return (
+                      <div className="mt-4 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                        <p className="text-xs text-emerald-800 text-center">
+                          {hasOtherServices && (
+                            <span className="font-semibold">Additional Services included in totals above. </span>
+                          )}
+                          {hasHourlyServices && (
+                            <span>Hourly services billed separately based on actual time worked.</span>
+                          )}
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {/* Trust Section */}

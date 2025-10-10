@@ -362,12 +362,20 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
   // Convert service groups to ServiceQuote objects in the correct order
   // Use serviceConfig order as the base, then apply conditional reordering
   const services: ServiceQuote[] = [];
-  
+
   // Process services in serviceConfig order (already sorted by serviceOrder)
   for (const serviceConfigItem of serviceConfig) {
     const serviceId = serviceConfigItem.serviceId;
     const group = serviceGroups[serviceId];
-    
+
+    // SKIP ADDITIONAL SERVICES - they are displayed in a separate section
+    // Additional services are not shown as an aggregated card in Service Breakdown
+    // Instead, they appear individually in the "Selected Additional Services" section
+    if (serviceId === 'additional-services') {
+      console.log('Skipping additional-services from service cards - shown in dedicated section');
+      continue;
+    }
+
     if (!group || group.rules.length === 0) continue;
     
     // Get the service configuration from Airtable
