@@ -1,5 +1,5 @@
-import React from 'react';
-import { FileText, Clock, Users, Calculator, CheckCircle, DollarSign } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { FileText, CheckCircle } from 'lucide-react';
 import { FormData, PricingConfig } from '../types/quote';
 
 interface AdditionalServicesDetailsProps {
@@ -17,19 +17,60 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
   serviceConfig,
   isLoading = false
 }) => {
+  // Filter pricing config for additional services with active status
   const additionalServiceRules = pricingConfig.filter(rule =>
     rule.serviceId === 'additional-services' &&
     rule.active
   );
 
+  // DEBUG: Log pricing rules on mount and when they change
+  useEffect(() => {
+    console.log('=== ADDITIONAL SERVICES DEBUG ===');
+    console.log('Total Pricing Rules:', pricingConfig.length);
+    console.log('Additional Service Rules:', additionalServiceRules.length);
+    console.log('Additional Service Rules Detail:', additionalServiceRules.map(rule => ({
+      pricingRuleId: rule.pricingRuleId,
+      serviceName: rule.serviceName,
+      pricingType: rule.pricingType,
+      basePrice: rule.basePrice,
+      perUnitPricing: rule.perUnitPricing,
+      unitPrice: rule.unitPrice,
+      unitName: rule.unitName,
+      billingFrequency: rule.billingFrequency
+    })));
+    console.log('=================================');
+  }, [pricingConfig, additionalServiceRules]);
+
+  // DEBUG: Log form state changes
+  useEffect(() => {
+    console.log('=== FORM STATE DEBUG ===');
+    console.log('Current specializedFilings:', formData.additionalServices?.specializedFilings);
+    console.log('Current selectedAdditionalServices:', formData.additionalServices?.selectedAdditionalServices);
+    console.log('========================');
+  }, [formData.additionalServices]);
+
+  /**
+   * Toggle specialized filing selection
+   * Updates the specializedFilings array in formData.additionalServices
+   */
   const toggleSpecializedFiling = (serviceName: string) => {
     const current = formData.additionalServices?.specializedFilings || [];
     const isSelected = current.includes(serviceName);
 
+    console.log('=== TOGGLE SPECIALIZED FILING ===');
+    console.log('Service Name:', serviceName);
+    console.log('Current Selection:', current);
+    console.log('Is Selected:', isSelected);
+
+    // Add or remove from array based on current selection
     const updated = isSelected
       ? current.filter(s => s !== serviceName)
       : [...current, serviceName];
 
+    console.log('Updated Selection:', updated);
+    console.log('=================================');
+
+    // Update form data with new selection
     updateFormData({
       additionalServices: {
         ...formData.additionalServices,
@@ -39,8 +80,14 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
     });
   };
 
+  /**
+   * Get display information for a service based on pricing type
+   * Hourly services show rate per unit, others show base price
+   */
   const getServiceDisplayInfo = (rule: PricingConfig) => {
+    // Check if this is an hourly/per-unit pricing service
     if (rule.perUnitPricing && rule.unitPrice && rule.unitName) {
+      console.log(`Service "${rule.serviceName}" is hourly: $${rule.unitPrice}/${rule.unitName}`);
       return {
         displayPrice: `$${rule.unitPrice}/${rule.unitName}`,
         type: 'Hourly Rate',
@@ -48,6 +95,8 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
       };
     }
 
+    // Fixed price service (one-time or monthly)
+    console.log(`Service "${rule.serviceName}" is fixed price: $${rule.basePrice}`);
     return {
       displayPrice: `$${rule.basePrice}`,
       type: rule.billingFrequency,
@@ -73,6 +122,22 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
     );
   }
 
+  // Show message if no services are available
+  if (additionalServiceRules.length === 0) {
+    return (
+      <div className="space-y-8">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">
+            Additional Services
+          </h2>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            No additional services are currently available.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div className="text-center">
@@ -84,7 +149,7 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
         </p>
       </div>
 
-      {/* Specialized Filings - Multi-Select */}
+      {/* Specialized Filings - Multi-Select Checkboxes */}
       <div className="space-y-6">
         <div className="flex items-center space-x-3">
           <FileText className="w-6 h-6 text-emerald-600" />
@@ -93,13 +158,18 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {additionalServiceRules.map((service) => {
+            // Check if this service is currently selected
+            // IMPORTANT: Uses exact string matching with service.serviceName
             const isSelected = (formData.additionalServices?.specializedFilings || []).includes(service.serviceName);
             const displayInfo = getServiceDisplayInfo(service);
 
             return (
               <button
                 key={service.pricingRuleId}
-                onClick={() => toggleSpecializedFiling(service.serviceName)}
+                onClick={() => {
+                  console.log('Checkbox clicked for:', service.serviceName);
+                  toggleSpecializedFiling(service.serviceName);
+                }}
                 className={`p-5 text-left border-2 rounded-xl transition-all duration-200 ${
                   isSelected
                     ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200'
@@ -108,6 +178,7 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
+                    {/* Checkbox Icon and Service Name */}
                     <div className="flex items-center space-x-2 mb-1">
                       {isSelected ? (
                         <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
@@ -117,10 +188,16 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
                       <h4 className="text-base font-semibold text-gray-900">{service.serviceName}</h4>
                     </div>
 
+                    {/* Service Description */}
                     {service.description && (
                       <p className="text-sm text-gray-600 ml-7 mb-2">{service.description}</p>
                     )}
 
+                    {/*
+                      HOURLY RATE DISPLAY
+                      This is where hourly rates are shown for AR Management, AP Management,
+                      1099 Filing, and Schedule C Prep
+                    */}
                     <div className="flex items-center space-x-3 ml-7">
                       <span className="text-lg font-bold text-emerald-700">
                         {displayInfo.displayPrice}
@@ -143,7 +220,7 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
         </div>
       </div>
 
-      {/* Selected Services Summary */}
+      {/* Selected Services Summary - Shows what user has selected */}
       {(formData.additionalServices?.specializedFilings?.length || 0) > 0 && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
           <h3 className="font-semibold text-emerald-800 mb-3 flex items-center space-x-2">
@@ -152,8 +229,12 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
           </h3>
           <div className="space-y-2">
             {(formData.additionalServices?.specializedFilings || []).map((serviceName) => {
+              // Find the pricing rule for this selected service
               const service = additionalServiceRules.find(s => s.serviceName === serviceName);
-              if (!service) return null;
+              if (!service) {
+                console.warn(`Service not found in pricing rules: ${serviceName}`);
+                return null;
+              }
 
               const displayInfo = getServiceDisplayInfo(service);
 
@@ -179,7 +260,7 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
         </div>
       )}
 
-      {/* Information Box */}
+      {/* Information Box - Explains how services work */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
         <div className="flex items-start space-x-3">
           <div className="w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -191,12 +272,25 @@ const AdditionalServicesDetails: React.FC<AdditionalServicesDetailsProps> = ({
               <li>• <strong>One-Time Fees:</strong> Fixed price services added to your quote</li>
               <li>• <strong>Monthly Services:</strong> Recurring services billed each month</li>
               <li>• <strong>Hourly Services:</strong> Billed based on actual hours worked - rates shown for transparency</li>
+              <li>• <strong>No conditional fields needed:</strong> Simply select services to see hourly rates</li>
               <li>• All services can be bundled with your regular package or purchased separately</li>
               <li>• Advisory service clients receive 50% discount on eligible services</li>
             </ul>
           </div>
         </div>
       </div>
+
+      {/* Debug Information - Remove in production */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-xs">
+          <h4 className="font-bold text-yellow-800 mb-2">Debug Information:</h4>
+          <div className="space-y-1 text-yellow-700">
+            <div>Total Services Available: {additionalServiceRules.length}</div>
+            <div>Currently Selected: {formData.additionalServices?.specializedFilings?.length || 0}</div>
+            <div>Selected Services: {(formData.additionalServices?.specializedFilings || []).join(', ') || 'None'}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
