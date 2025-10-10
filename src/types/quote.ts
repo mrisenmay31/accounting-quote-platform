@@ -93,6 +93,16 @@ export interface FormData {
   // Additional Services Details
   additionalServices?: {
     selectedAdditionalServices: string[];
+    // Accounts Receivable conditionals
+    accountsReceivableInvoicesPerMonth?: number;
+    accountsReceivableRecurring?: string;
+    // Accounts Payable conditionals
+    accountsPayableBillsPerMonth?: number;
+    accountsPayableBillRunFrequency?: string;
+    // 1099 Processing conditionals
+    form1099Count?: number;
+    // Tax Planning Consultation
+    taxPlanningConsultation?: boolean;
   };
 }
 

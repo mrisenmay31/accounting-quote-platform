@@ -204,6 +204,30 @@ export const saveQuoteToAirtable = async (
           airtableFields['Additional Services - Selected'] =
             formData.additionalServices.selectedAdditionalServices.join(', ');
         }
+
+        if (formData.additionalServices.accountsReceivableInvoicesPerMonth !== undefined) {
+          airtableFields['AR - Invoices Per Month'] = formData.additionalServices.accountsReceivableInvoicesPerMonth;
+        }
+
+        if (formData.additionalServices.accountsReceivableRecurring) {
+          airtableFields['AR - Recurring Invoices'] = formData.additionalServices.accountsReceivableRecurring;
+        }
+
+        if (formData.additionalServices.accountsPayableBillsPerMonth !== undefined) {
+          airtableFields['AP - Bills Per Month'] = formData.additionalServices.accountsPayableBillsPerMonth;
+        }
+
+        if (formData.additionalServices.accountsPayableBillRunFrequency) {
+          airtableFields['AP - Bill Run Frequency'] = formData.additionalServices.accountsPayableBillRunFrequency;
+        }
+
+        if (formData.additionalServices.form1099Count !== undefined) {
+          airtableFields['1099 Forms Count'] = formData.additionalServices.form1099Count;
+        }
+
+        if (formData.additionalServices.taxPlanningConsultation !== undefined) {
+          airtableFields['Tax Planning Consultation'] = formData.additionalServices.taxPlanningConsultation;
+        }
       }
 
       const individualTaxFees = quoteData.services
