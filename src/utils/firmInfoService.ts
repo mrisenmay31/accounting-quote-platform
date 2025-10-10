@@ -46,6 +46,12 @@ export interface FirmInfo {
 
   // Consultation Link
   consultationLink?: string;
+
+  // Contact Information
+  contactEmail?: string;
+  contactPhone?: string;
+  website?: string;
+  officeAddress?: string;
 }
 
 interface FirmInfoCache {
@@ -166,6 +172,12 @@ export const getFirmInfo = async (
 
       // Consultation Link
       consultationLink: fields['Consultation Link'] || '',
+
+      // Contact Information
+      contactEmail: fields['Contact Email'] || '',
+      contactPhone: fields['Contact Phone'] || '',
+      website: fields['Website'] || '',
+      officeAddress: fields['Office Address'] || '',
     };
 
     console.log('[FirmInfoService] Successfully fetched', {

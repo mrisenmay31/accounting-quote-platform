@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Phone, Calendar, CheckCircle, Star, ArrowRight, Send, X, Calculator, Info, ChevronDown, ChevronUp, TrendingUp, Zap, ClipboardCheck, GraduationCap, Code, Clock, RefreshCw, AlertCircle } from 'lucide-react';
+import { Phone, Calendar, CheckCircle, Star, ArrowRight, Send, X, Calculator, Info, ChevronDown, ChevronUp, TrendingUp, Zap, ClipboardCheck, GraduationCap, Code, Clock, RefreshCw, AlertCircle, Mail, Globe, MapPin } from 'lucide-react';
 import { FormData, QuoteData } from '../types/quote';
 import { useTenant } from '../contexts/TenantContext';
 
@@ -14,6 +14,7 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, onRecalcul
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showRecalculateModal, setShowRecalculateModal] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
 
   const handleSubmitToAirtable = async () => {
     setIsSubmitting(true);
@@ -54,6 +55,20 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, onRecalcul
 
   const handleCancelRecalculate = () => {
     setShowRecalculateModal(false);
+  };
+
+  const handleScheduleConsultation = () => {
+    if (firmInfo?.consultationLink) {
+      window.open(firmInfo.consultationLink, '_blank', 'noopener,noreferrer');
+    } else {
+      setShowContactModal(true);
+    }
+  };
+
+  const generateQuoteId = () => {
+    const timestamp = Date.now().toString(36);
+    const randomStr = Math.random().toString(36).substring(2, 7);
+    return `Q-${timestamp}-${randomStr}`.toUpperCase();
   };
 
   if (!quote) {
@@ -484,27 +499,23 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, onRecalcul
                 </>
               )}
             </button>
-            {firmInfo?.consultationLink && (
-              <a
-                href={firmInfo.consultationLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center space-x-2 bg-white border-2 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-all duration-200"
-                style={{
-                  borderColor: '#e5e7eb',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)';
-                  e.currentTarget.style.backgroundColor = '#f9fafb';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#e5e7eb';
-                  e.currentTarget.style.backgroundColor = 'white';
-                }}>
-                <Calendar className="w-4 h-4" />
-                <span>Schedule a Consultation</span>
-              </a>
-            )}
+            <button
+              onClick={handleScheduleConsultation}
+              className="inline-flex items-center justify-center space-x-2 bg-white border-2 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-all duration-200"
+              style={{
+                borderColor: '#e5e7eb',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)';
+                e.currentTarget.style.backgroundColor = '#f9fafb';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#e5e7eb';
+                e.currentTarget.style.backgroundColor = 'white';
+              }}>
+              <Calendar className="w-4 h-4" />
+              <span>Schedule a Consultation</span>
+            </button>
           </div>
         </div>
       </div>
@@ -554,6 +565,122 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, onRecalcul
                 }}
               >
                 Yes, Start Over
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Contact Information Modal */}
+      {showContactModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-gray-200 relative">
+              <button
+                onClick={() => setShowContactModal(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="flex items-center justify-center mb-4">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--tenant-primary-100, #dcfce7)' }}>
+                  <CheckCircle className="w-8 h-8" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
+                </div>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 text-center">Thank You for Your Interest!</h3>
+              <p className="text-gray-600 text-center mt-2">
+                We'll reach out within 1 business day to schedule your consultation.
+              </p>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              {(firmInfo?.contactEmail || firmInfo?.contactPhone || firmInfo?.website || firmInfo?.officeAddress) ? (
+                <div className="bg-gray-50 rounded-xl p-6 border-2" style={{ borderColor: 'var(--tenant-primary-200, #d1fae5)' }}>
+                  <h4 className="font-bold text-gray-900 mb-4 text-center">Contact Information</h4>
+                  <div className="space-y-3">
+                    {firmInfo.contactEmail && (
+                      <a
+                        href={`mailto:${firmInfo.contactEmail}`}
+                        className="flex items-center gap-3 text-gray-700 hover:text-gray-900 transition-colors group"
+                      >
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--tenant-primary-100, #dcfce7)' }}>
+                          <Mail className="w-5 h-5" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
+                        </div>
+                        <span className="group-hover:underline break-all">{firmInfo.contactEmail}</span>
+                      </a>
+                    )}
+                    {firmInfo.contactPhone && (
+                      <a
+                        href={`tel:${firmInfo.contactPhone}`}
+                        className="flex items-center gap-3 text-gray-700 hover:text-gray-900 transition-colors group"
+                      >
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--tenant-primary-100, #dcfce7)' }}>
+                          <Phone className="w-5 h-5" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
+                        </div>
+                        <span className="group-hover:underline">{firmInfo.contactPhone}</span>
+                      </a>
+                    )}
+                    {firmInfo.website && (
+                      <a
+                        href={firmInfo.website.startsWith('http') ? firmInfo.website : `https://${firmInfo.website}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 text-gray-700 hover:text-gray-900 transition-colors group"
+                      >
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--tenant-primary-100, #dcfce7)' }}>
+                          <Globe className="w-5 h-5" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
+                        </div>
+                        <span className="group-hover:underline break-all">{firmInfo.website}</span>
+                      </a>
+                    )}
+                    {firmInfo.officeAddress && (
+                      <div className="flex items-start gap-3 text-gray-700">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--tenant-primary-100, #dcfce7)' }}>
+                          <MapPin className="w-5 h-5" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
+                        </div>
+                        <span className="whitespace-pre-line">{firmInfo.officeAddress}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gray-50 rounded-xl p-6 border-2 border-gray-200">
+                  <p className="text-gray-700 text-center leading-relaxed">
+                    We'll contact you soon at the email you provided in the quote form.
+                  </p>
+                </div>
+              )}
+
+              {quote && (
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-gray-600">
+                    Your Quote Reference: <span className="font-bold text-gray-900">{generateQuoteId()}</span>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 bg-gray-50 rounded-b-2xl flex justify-center">
+              <button
+                onClick={() => setShowContactModal(false)}
+                className="px-8 py-3 text-white font-semibold rounded-lg transition-all duration-200 hover:shadow-lg"
+                style={{
+                  background: 'linear-gradient(to right, var(--tenant-primary-600, #10b981), var(--tenant-primary-700, #059669))',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(to right, var(--tenant-primary-700, #059669), var(--tenant-primary-800, #065f46))';
+                  e.currentTarget.style.transform = 'scale(1.02)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(to right, var(--tenant-primary-600, #10b981), var(--tenant-primary-700, #059669))';
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                Close
               </button>
             </div>
           </div>
