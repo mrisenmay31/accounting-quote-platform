@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, Mail, Phone, Calendar, CheckCircle, Star, ArrowRight, Send, X, Calculator, Info, ChevronDown, ChevronUp, TrendingUp, Zap, ClipboardCheck, GraduationCap, Code, Clock, RefreshCw, AlertCircle } from 'lucide-react';
+import { Phone, Calendar, CheckCircle, Star, ArrowRight, Send, X, Calculator, Info, ChevronDown, ChevronUp, TrendingUp, Zap, ClipboardCheck, GraduationCap, Code, Clock, RefreshCw, AlertCircle } from 'lucide-react';
 import { FormData, QuoteData } from '../types/quote';
 import { useTenant } from '../contexts/TenantContext';
 
@@ -13,7 +13,6 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, onRecalcul
   const { tenant, firmInfo } = useTenant();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [showComparison, setShowComparison] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [showRecalculateModal, setShowRecalculateModal] = useState(false);
 
@@ -40,19 +39,6 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, onRecalcul
       month: 'long',
       day: 'numeric'
     });
-  };
-
-  const downloadPDF = () => {
-    alert('PDF download coming soon! This would generate a professional PDF of your quote.');
-  };
-
-  const emailQuote = () => {
-    const email = prompt('Enter your email address to receive this quote:');
-    if (email && email.includes('@')) {
-      alert(`Quote will be emailed to: ${email}\n\nThis would trigger your backend to send a formatted email with the quote details.`);
-    } else if (email) {
-      alert('Please enter a valid email address.');
-    }
   };
 
   const toggleFaq = (index: number) => {
@@ -494,46 +480,10 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, onRecalcul
 
         {/* Actions Bar */}
         <div className="bg-gray-50 border-t border-gray-200 p-6">
-          <div className="flex flex-wrap justify-center gap-3">
-            <button
-              onClick={downloadPDF}
-              className="inline-flex items-center space-x-2 bg-white border-2 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200"
-              style={{
-                borderColor: '#e5e7eb',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)';
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#e5e7eb';
-                e.currentTarget.style.backgroundColor = 'white';
-              }}
-            >
-              <Download className="w-4 h-4" />
-              <span>Download PDF Quote</span>
-            </button>
-            <button
-              onClick={emailQuote}
-              className="inline-flex items-center space-x-2 bg-white border-2 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200"
-              style={{
-                borderColor: '#e5e7eb',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)';
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#e5e7eb';
-                e.currentTarget.style.backgroundColor = 'white';
-              }}
-            >
-              <Mail className="w-4 h-4" />
-              <span>Email This Quote</span>
-            </button>
+          <div className="flex justify-center">
             <button
               onClick={handleRecalculateClick}
-              className="inline-flex items-center space-x-2 bg-white border-2 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200"
+              className="inline-flex items-center space-x-2 bg-white border-2 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-all duration-200"
               style={{
                 borderColor: '#e5e7eb',
               }}
