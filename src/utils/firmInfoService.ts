@@ -43,6 +43,9 @@ export interface FirmInfo {
   annualRevenueOptions?: string[];
   monthlyTransactionsFieldType?: 'text' | 'number' | 'dropdown';
   monthlyTransactionsOptions?: string[];
+
+  // Consultation Link
+  consultationLink?: string;
 }
 
 interface FirmInfoCache {
@@ -160,6 +163,9 @@ export const getFirmInfo = async (
           return [];
         }
       })(),
+
+      // Consultation Link
+      consultationLink: fields['Consultation Link'] || '',
     };
 
     console.log('[FirmInfoService] Successfully fetched', {

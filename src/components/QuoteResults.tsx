@@ -13,7 +13,6 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, onRecalcul
   const { tenant, firmInfo } = useTenant();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [showRecalculateModal, setShowRecalculateModal] = useState(false);
 
   const handleSubmitToAirtable = async () => {
@@ -41,9 +40,6 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, onRecalcul
     });
   };
 
-  const toggleFaq = (index: number) => {
-    setOpenFaq(openFaq === index ? null : index);
-  };
 
   const handleRecalculateClick = () => {
     setShowRecalculateModal(true);
@@ -95,33 +91,6 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, onRecalcul
     );
   }
 
-  const hasAdvisoryService = formData.services.includes('advisory');
-  const faqItems = [
-    {
-      question: "Can I start without Advisory?",
-      answer: "Yes—choose a-la-carte pricing. You can upgrade any time and we'll credit your setup fees toward the Advisory package."
-    },
-    {
-      question: "My books are behind—can you help?",
-      answer: "Absolutely. We'll add a one-time cleanup fee (billed hourly) and start with a quick diagnostic to get you current."
-    },
-    {
-      question: "Do you support multi-state returns?",
-      answer: "Yes. We file all required state returns and handle multi-state apportionment. Each additional state is clearly priced in your quote."
-    },
-    {
-      question: "How do payments work?",
-      answer: "Secure Stripe checkout. Monthly services are subscription-based; one-time items (like tax prep) are billed once when services are delivered."
-    },
-    {
-      question: "What if I need to cancel?",
-      answer: "Month-to-month billing after the first 90 days. No long-term contracts or lock-in. We earn your business every month."
-    },
-    {
-      question: "What's included in the Advisory Package?",
-      answer: "Everything you need for year-round tax strategy: business & individual returns, quarterly consultations, monthly access to your CPA team, and proactive tax planning to maximize savings."
-    }
-  ];
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -434,46 +403,13 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, onRecalcul
           </div>
         )}
 
-        {/* FAQ Section */}
-        <div className="p-10">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8 pb-3 border-b-4" style={{ borderColor: 'var(--tenant-primary-500, #10b981)' }}>
-            Frequently Asked Questions
-          </h2>
-          <div className="space-y-3">
-            {faqItems.map((faq, index) => (
-              <div key={index} className="border border-gray-200 rounded-xl p-4 bg-white transition-all duration-300"
-                   style={{
-                     borderColor: '#e5e7eb',
-                   }}
-                   onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)'}
-                   onMouseLeave={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}>
-                <button
-                  onClick={() => toggleFaq(index)}
-                  className="w-full flex justify-between items-center text-left font-bold text-gray-900"
-                >
-                  <span>{faq.question}</span>
-                  {openFaq === index ? (
-                    <ChevronUp className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
-                  )}
-                </button>
-                {openFaq === index && (
-                  <div className="mt-3 text-sm text-gray-600 leading-relaxed animate-in slide-in-from-top duration-200">
-                    {faq.answer}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
 
         {/* Quote Footer */}
         <div className="bg-gray-50 border-t border-gray-200 p-6 text-sm text-gray-600 leading-relaxed">
           <p>
             <span className="font-semibold text-gray-900">Quote Details:</span> This quote is valid until{' '}
             <span className="font-semibold text-gray-900">{calculateLockDate()}</span> ({firmInfo?.quoteLockDays || 14} days).
-            Capacity this month: <span className="font-semibold text-gray-900">3 spots remaining</span>. All services subject to standard engagement terms and conditions.
+            All services subject to standard engagement terms and conditions.
             Final pricing may be adjusted based on actual complexity discovered during initial consultation.
           </p>
         </div>
@@ -548,21 +484,27 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, onRecalcul
                 </>
               )}
             </button>
-            <button className="inline-flex items-center justify-center space-x-2 bg-white border-2 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-all duration-200"
-                    style={{
-                      borderColor: '#e5e7eb',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)';
-                      e.currentTarget.style.backgroundColor = '#f9fafb';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = '#e5e7eb';
-                      e.currentTarget.style.backgroundColor = 'white';
-                    }}>
-              <Calendar className="w-4 h-4" />
-              <span>Book 10-min Q&A</span>
-            </button>
+            {firmInfo?.consultationLink && (
+              <a
+                href={firmInfo.consultationLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center space-x-2 bg-white border-2 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-all duration-200"
+                style={{
+                  borderColor: '#e5e7eb',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)';
+                  e.currentTarget.style.backgroundColor = '#f9fafb';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#e5e7eb';
+                  e.currentTarget.style.backgroundColor = 'white';
+                }}>
+                <Calendar className="w-4 h-4" />
+                <span>Schedule a Consultation</span>
+              </a>
+            )}
           </div>
         </div>
       </div>
