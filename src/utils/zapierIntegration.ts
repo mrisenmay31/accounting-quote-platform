@@ -156,7 +156,8 @@ const extractAdditionalServicePricing = (
 
     // Map to specific fee fields based on service name
     // UPDATED: Service names now match exact names from Airtable CSV (Pricing Variables-Grid view 27)
-    const serviceName = rule.serviceName;
+    // Trim whitespace to handle trailing/leading spaces in Airtable data
+    const serviceName = rule.serviceName.trim();
 
     if (serviceName === 'Accounts Receivable Management') {
       additionalServiceFees.arManagementFee = price;
