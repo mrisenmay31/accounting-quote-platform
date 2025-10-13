@@ -68,27 +68,10 @@ const extractIndividualServiceFees = (services: ServiceQuote[], formData: FormDa
     bookkeepingAnnualFee: 0,
     bookkeepingCleanupFee: 0,
 
-    // Additional Services - Aggregate Totals
+    // Additional Services
     additionalServicesMonthlyFee: 0,
     additionalServicesOneTimeFee: 0,
-    additionalServicesAnnualFee: 0,
-
-    // Additional Services - Individual Service Rates and Fees
-    // These are extracted from quote.hourlyServices and formData.additionalServices
-    accountsReceivableRate: undefined as number | undefined,
-    accountsReceivableFrequency: undefined as string | undefined,
-    accountsPayableRate: undefined as number | undefined,
-    accountsPayableFrequency: undefined as string | undefined,
-    ninetyNineFilingRate: undefined as number | undefined,
-    ninetyNineFilingFrequency: undefined as string | undefined,
-    scheduleCRate: undefined as number | undefined,
-    scheduleCFrequency: undefined as string | undefined,
-    salesTaxFee: undefined as number | undefined,
-    salesTaxFrequency: undefined as string | undefined,
-    taxPlanningFee: undefined as number | undefined,
-    taxPlanningFrequency: undefined as string | undefined,
-    form2553Fee: undefined as number | undefined,
-    form2553Frequency: undefined as string | undefined
+    additionalServicesAnnualFee: 0
   };
 
   // Extract fees from each service in the quote
@@ -123,89 +106,13 @@ const extractIndividualServiceFees = (services: ServiceQuote[], formData: FormDa
       fees.bookkeepingAnnualFee = service.annualPrice || 0;
     }
 
-    // Additional Services - Aggregate totals
-    // Note: Additional services are not aggregated into a single card in the quote
-    // Instead, they appear individually in hourlyServices array
+    // Additional Services
     if (serviceName.includes('additional service')) {
       fees.additionalServicesMonthlyFee = service.monthlyFee || 0;
       fees.additionalServicesOneTimeFee = service.oneTimeFee || 0;
       fees.additionalServicesAnnualFee = service.annualPrice || 0;
     }
   });
-
-  // ADDITIONAL SERVICES PRICING EXTRACTION
-  // Extract individual pricing for each selected Additional Service from hourlyServices array
-  // This matches the pattern used for core services (Individual Tax, Business Tax, etc.)
-  console.log('=== EXTRACTING ADDITIONAL SERVICES PRICING ===');
-  console.log('Hourly Services Array Length:', quote.hourlyServices.length);
-  console.log('Hourly Services:', JSON.stringify(quote.hourlyServices, null, 2));
-  console.log('Selected Additional Services:', formData.additionalServices?.specializedFilings);
-
-  // Map service names to their corresponding fee field names
-  // CRITICAL: These names must match EXACTLY with what's in quote.hourlyServices
-  const serviceNameMapping: { [key: string]: { rateField: string; frequencyField: string } } = {
-    'Accounts Receivable Management': {
-      rateField: 'accountsReceivableRate',
-      frequencyField: 'accountsReceivableFrequency'
-    },
-    'Accounts Payable Management': {
-      rateField: 'accountsPayableRate',
-      frequencyField: 'accountsPayableFrequency'
-    },
-    '1099 Filing': {
-      rateField: 'ninetyNineFilingRate',
-      frequencyField: 'ninetyNineFilingFrequency'
-    },
-    'Schedule C Financial Statement Prep': {
-      rateField: 'scheduleCRate',
-      frequencyField: 'scheduleCFrequency'
-    },
-    'Sales Tax Filing': {
-      rateField: 'salesTaxFee',
-      frequencyField: 'salesTaxFrequency'
-    },
-    'Tax Planning Consultation': {
-      rateField: 'taxPlanningFee',
-      frequencyField: 'taxPlanningFrequency'
-    },
-    'S-Corp Election (Form 2553)': {
-      rateField: 'form2553Fee',
-      frequencyField: 'form2553Frequency'
-    }
-  };
-
-  // Track which services were successfully extracted
-  const extractedServices: string[] = [];
-  const failedServices: string[] = [];
-
-  // Extract rates from hourlyServices array (populated by quoteCalculator.ts)
-  quote.hourlyServices.forEach(hourlyService => {
-    console.log(`\n--- Processing hourly service: "${hourlyService.name}" ---`);
-
-    const mapping = serviceNameMapping[hourlyService.name];
-
-    if (mapping) {
-      // Store the rate and frequency for this service
-      (fees as any)[mapping.rateField] = hourlyService.rate;
-      (fees as any)[mapping.frequencyField] = hourlyService.billingFrequency;
-
-      extractedServices.push(hourlyService.name);
-
-      console.log(`✓ Successfully extracted: ${hourlyService.name}`);
-      console.log(`  Rate Field: ${mapping.rateField} = ${hourlyService.rate}`);
-      console.log(`  Frequency Field: ${mapping.frequencyField} = ${hourlyService.billingFrequency}`);
-    } else {
-      failedServices.push(hourlyService.name);
-      console.warn(`✗ No mapping found for service: "${hourlyService.name}"`);
-      console.warn(`  Available mappings:`, Object.keys(serviceNameMapping));
-    }
-  });
-
-  console.log('\n=== EXTRACTION SUMMARY ===');
-  console.log(`Total services in hourlyServices: ${quote.hourlyServices.length}`);
-  console.log(`Successfully extracted: ${extractedServices.length}`, extractedServices);
-  console.log(`Failed to extract: ${failedServices.length}`, failedServices);
-  console.log('=== ADDITIONAL SERVICES EXTRACTION COMPLETE ===');
 
   // Calculate bookkeeping cleanup fee from form data and pricing rules
   // This should match what was calculated in the quote
@@ -274,37 +181,6 @@ export const sendQuoteToZapierWebhook = async (
   console.log('Monthly Bookkeeping Fee:', individualFees.monthlyBookkeepingFee);
   console.log('Bookkeeping Cleanup Fee:', individualFees.bookkeepingCleanupFee);
   console.log('Additional Services Monthly Fee:', individualFees.additionalServicesMonthlyFee);
-
-  // Log Additional Services individual rates
-  console.log('\n--- Additional Services Individual Rates ---');
-  console.log('Accounts Receivable:', {
-    rate: individualFees.accountsReceivableRate,
-    frequency: individualFees.accountsReceivableFrequency
-  });
-  console.log('Accounts Payable:', {
-    rate: individualFees.accountsPayableRate,
-    frequency: individualFees.accountsPayableFrequency
-  });
-  console.log('1099 Filing:', {
-    rate: individualFees.ninetyNineFilingRate,
-    frequency: individualFees.ninetyNineFilingFrequency
-  });
-  console.log('Schedule C:', {
-    rate: individualFees.scheduleCRate,
-    frequency: individualFees.scheduleCFrequency
-  });
-  console.log('Sales Tax Filing:', {
-    rate: individualFees.salesTaxFee,
-    frequency: individualFees.salesTaxFrequency
-  });
-  console.log('Tax Planning:', {
-    rate: individualFees.taxPlanningFee,
-    frequency: individualFees.taxPlanningFrequency
-  });
-  console.log('S-Corp Election (Form 2553):', {
-    rate: individualFees.form2553Fee,
-    frequency: individualFees.form2553Frequency
-  });
   console.log('=========================================');
 
   const payload = {
@@ -353,27 +229,10 @@ export const sendQuoteToZapierWebhook = async (
     bookkeepingAnnualFee: individualFees.bookkeepingAnnualFee,
     bookkeepingCleanupFee: individualFees.bookkeepingCleanupFee,
 
-    // Individual Service Fees - Additional Services (Aggregate Totals)
+    // Individual Service Fees - Additional Services
     additionalServicesMonthlyFee: individualFees.additionalServicesMonthlyFee,
     additionalServicesOneTimeFee: individualFees.additionalServicesOneTimeFee,
     additionalServicesAnnualFee: individualFees.additionalServicesAnnualFee,
-
-    // Additional Services - Individual Service Rates and Fees
-    // Only included if the service is selected (follows same pattern as core services)
-    accountsReceivableRate: individualFees.accountsReceivableRate,
-    accountsReceivableFrequency: individualFees.accountsReceivableFrequency,
-    accountsPayableRate: individualFees.accountsPayableRate,
-    accountsPayableFrequency: individualFees.accountsPayableFrequency,
-    ninetyNineFilingRate: individualFees.ninetyNineFilingRate,
-    ninetyNineFilingFrequency: individualFees.ninetyNineFilingFrequency,
-    scheduleCRate: individualFees.scheduleCRate,
-    scheduleCFrequency: individualFees.scheduleCFrequency,
-    salesTaxFee: individualFees.salesTaxFee,
-    salesTaxFrequency: individualFees.salesTaxFrequency,
-    taxPlanningFee: individualFees.taxPlanningFee,
-    taxPlanningFrequency: individualFees.taxPlanningFrequency,
-    form2553Fee: individualFees.form2553Fee,
-    form2553Frequency: individualFees.form2553Frequency,
     
     // Service Details
     serviceBreakdown: quote.services.map(service => ({
@@ -498,28 +357,9 @@ export const sendQuoteToZapierWebhook = async (
     timestamp: Date.now()
   };
 
-  // Verify Additional Services fields in payload before sending
-  console.log('\n=== PAYLOAD VERIFICATION: ADDITIONAL SERVICES ===');
-  console.log('Additional Services in Payload:');
-  console.log('  accountsReceivableRate:', payload.accountsReceivableRate);
-  console.log('  accountsReceivableFrequency:', payload.accountsReceivableFrequency);
-  console.log('  accountsPayableRate:', payload.accountsPayableRate);
-  console.log('  accountsPayableFrequency:', payload.accountsPayableFrequency);
-  console.log('  ninetyNineFilingRate:', payload.ninetyNineFilingRate);
-  console.log('  ninetyNineFilingFrequency:', payload.ninetyNineFilingFrequency);
-  console.log('  scheduleCRate:', payload.scheduleCRate);
-  console.log('  scheduleCFrequency:', payload.scheduleCFrequency);
-  console.log('  salesTaxFee:', payload.salesTaxFee);
-  console.log('  salesTaxFrequency:', payload.salesTaxFrequency);
-  console.log('  taxPlanningFee:', payload.taxPlanningFee);
-  console.log('  taxPlanningFrequency:', payload.taxPlanningFrequency);
-  console.log('  form2553Fee:', payload.form2553Fee);
-  console.log('  form2553Frequency:', payload.form2553Frequency);
-  console.log('==================================================\n');
-
   try {
     console.log('Sending request to Zapier webhook:', url);
-    console.log('Payload:', JSON.stringify(payload, null, 2));
+    console.log('Payload:', payload);
 
     const response = await fetch(url, {
       method: 'POST',

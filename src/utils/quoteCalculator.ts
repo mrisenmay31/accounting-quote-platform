@@ -167,61 +167,20 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
     // Check if this rule applies based on conditions
     let ruleApplies = false;
 
-    // ADDITIONAL SERVICES PRICING LOGIC
-    // Special handling for additional services - check specializedFilings array
-    // This mirrors the pattern used for core services (Individual Tax, Business Tax, etc.)
+    // Special handling for additional services - check specializedFilings
     if (rule.serviceId === 'additional-services' && rule.pricingType === 'Add-on') {
       const specializedFilings = formData.additionalServices?.specializedFilings || [];
       ruleApplies = specializedFilings.includes(rule.serviceName);
 
-      console.log('=== ADDITIONAL SERVICE RULE CHECK ===');
-      console.log('Rule:', rule.pricingRuleId);
-      console.log('Service Name:', rule.serviceName);
-      console.log('Selected Filings:', specializedFilings);
-      console.log('Rule Applies:', ruleApplies);
-
-      // If this service is selected, add it to hourlyServices array with pricing data
-      // This includes both per-unit (hourly) services and fixed-fee services
-      // The billingFrequency field determines how it's billed (Hourly, One-Time Fee, Monthly)
-      if (ruleApplies) {
-        // Determine the rate based on pricing structure
-        let serviceRate = 0;
-
-        if (rule.perUnitPricing && rule.unitPrice) {
-          // Hourly or per-unit service (e.g., AR, AP, 1099 Filing, Schedule C)
-          serviceRate = rule.unitPrice;
-        } else {
-          // Fixed-fee service (e.g., Tax Planning, S-Corp Election)
-          serviceRate = rule.basePrice;
-        }
-
-        // Apply advisory discount if eligible
-        if (hasAdvisoryService && rule.advisoryDiscountEligible && rule.advisoryDiscountPercentage > 0) {
-          serviceRate = serviceRate * (1 - rule.advisoryDiscountPercentage);
-          console.log('Advisory discount applied:', rule.advisoryDiscountPercentage);
-          console.log('Discounted rate:', serviceRate);
-        }
-
-        // Add to hourlyServices array (used by Zapier integration to extract individual service rates)
+      // If this is an hourly service, add to hourlyServices array instead of totals
+      if (ruleApplies && rule.perUnitPricing && rule.unitPrice && rule.unitName) {
         hourlyServices.push({
           name: rule.serviceName,
-          rate: Math.round(serviceRate * 100) / 100, // Round to 2 decimal places
-          unitName: rule.unitName || 'service',
+          rate: rule.unitPrice,
+          unitName: rule.unitName,
           billingFrequency: rule.billingFrequency
         });
-
-        console.log('✓ Added to hourlyServices array:', {
-          name: rule.serviceName,
-          rate: Math.round(serviceRate * 100) / 100,
-          unitName: rule.unitName || 'service',
-          billingFrequency: rule.billingFrequency
-        });
-        console.log('Current hourlyServices array length:', hourlyServices.length);
-        console.log('====================================');
-
-        // Skip normal processing - additional services are shown separately
-        // and their pricing is extracted from hourlyServices array
-        continue;
+        continue; // Skip normal processing for hourly services
       }
     }
     // For all other rules, check trigger conditions
@@ -553,18 +512,6 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
   const potentialSavings = Math.round((totalMonthlyFees * 12 + totalOneTimeFees) * 0.3); // Estimate 30% savings from tax optimization
 
   const finalTotalAnnual = totalMonthlyFees * 12 + totalOneTimeFees;
-
-  // Final summary of hourlyServices for Zapier integration
-  console.log('\n=== FINAL QUOTE SUMMARY ===');
-  console.log('Total Services:', services.length);
-  console.log('Total Hourly Services:', hourlyServices.length);
-  console.log('Hourly Services Details:');
-  hourlyServices.forEach((hs, index) => {
-    console.log(`  ${index + 1}. ${hs.name}:`);
-    console.log(`     Rate: $${hs.rate}/${hs.unitName}`);
-    console.log(`     Billing: ${hs.billingFrequency}`);
-  });
-  console.log('===========================\n');
 
   return {
     services,
