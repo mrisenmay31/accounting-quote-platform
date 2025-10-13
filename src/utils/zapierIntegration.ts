@@ -137,10 +137,12 @@ const extractIndividualServiceFees = (services: ServiceQuote[], formData: FormDa
   // Extract individual pricing for each selected Additional Service from hourlyServices array
   // This matches the pattern used for core services (Individual Tax, Business Tax, etc.)
   console.log('=== EXTRACTING ADDITIONAL SERVICES PRICING ===');
-  console.log('Hourly Services:', quote.hourlyServices);
+  console.log('Hourly Services Array Length:', quote.hourlyServices.length);
+  console.log('Hourly Services:', JSON.stringify(quote.hourlyServices, null, 2));
   console.log('Selected Additional Services:', formData.additionalServices?.specializedFilings);
 
   // Map service names to their corresponding fee field names
+  // CRITICAL: These names must match EXACTLY with what's in quote.hourlyServices
   const serviceNameMapping: { [key: string]: { rateField: string; frequencyField: string } } = {
     'Accounts Receivable Management': {
       rateField: 'accountsReceivableRate',
@@ -172,8 +174,14 @@ const extractIndividualServiceFees = (services: ServiceQuote[], formData: FormDa
     }
   };
 
+  // Track which services were successfully extracted
+  const extractedServices: string[] = [];
+  const failedServices: string[] = [];
+
   // Extract rates from hourlyServices array (populated by quoteCalculator.ts)
   quote.hourlyServices.forEach(hourlyService => {
+    console.log(`\n--- Processing hourly service: "${hourlyService.name}" ---`);
+
     const mapping = serviceNameMapping[hourlyService.name];
 
     if (mapping) {
@@ -181,12 +189,22 @@ const extractIndividualServiceFees = (services: ServiceQuote[], formData: FormDa
       (fees as any)[mapping.rateField] = hourlyService.rate;
       (fees as any)[mapping.frequencyField] = hourlyService.billingFrequency;
 
-      console.log(`Extracted: ${hourlyService.name}`);
-      console.log(`  Rate: ${hourlyService.rate}`);
-      console.log(`  Frequency: ${hourlyService.billingFrequency}`);
+      extractedServices.push(hourlyService.name);
+
+      console.log(`✓ Successfully extracted: ${hourlyService.name}`);
+      console.log(`  Rate Field: ${mapping.rateField} = ${hourlyService.rate}`);
+      console.log(`  Frequency Field: ${mapping.frequencyField} = ${hourlyService.billingFrequency}`);
+    } else {
+      failedServices.push(hourlyService.name);
+      console.warn(`✗ No mapping found for service: "${hourlyService.name}"`);
+      console.warn(`  Available mappings:`, Object.keys(serviceNameMapping));
     }
   });
 
+  console.log('\n=== EXTRACTION SUMMARY ===');
+  console.log(`Total services in hourlyServices: ${quote.hourlyServices.length}`);
+  console.log(`Successfully extracted: ${extractedServices.length}`, extractedServices);
+  console.log(`Failed to extract: ${failedServices.length}`, failedServices);
   console.log('=== ADDITIONAL SERVICES EXTRACTION COMPLETE ===');
 
   // Calculate bookkeeping cleanup fee from form data and pricing rules
@@ -256,6 +274,37 @@ export const sendQuoteToZapierWebhook = async (
   console.log('Monthly Bookkeeping Fee:', individualFees.monthlyBookkeepingFee);
   console.log('Bookkeeping Cleanup Fee:', individualFees.bookkeepingCleanupFee);
   console.log('Additional Services Monthly Fee:', individualFees.additionalServicesMonthlyFee);
+
+  // Log Additional Services individual rates
+  console.log('\n--- Additional Services Individual Rates ---');
+  console.log('Accounts Receivable:', {
+    rate: individualFees.accountsReceivableRate,
+    frequency: individualFees.accountsReceivableFrequency
+  });
+  console.log('Accounts Payable:', {
+    rate: individualFees.accountsPayableRate,
+    frequency: individualFees.accountsPayableFrequency
+  });
+  console.log('1099 Filing:', {
+    rate: individualFees.ninetyNineFilingRate,
+    frequency: individualFees.ninetyNineFilingFrequency
+  });
+  console.log('Schedule C:', {
+    rate: individualFees.scheduleCRate,
+    frequency: individualFees.scheduleCFrequency
+  });
+  console.log('Sales Tax Filing:', {
+    rate: individualFees.salesTaxFee,
+    frequency: individualFees.salesTaxFrequency
+  });
+  console.log('Tax Planning:', {
+    rate: individualFees.taxPlanningFee,
+    frequency: individualFees.taxPlanningFrequency
+  });
+  console.log('S-Corp Election (Form 2553):', {
+    rate: individualFees.form2553Fee,
+    frequency: individualFees.form2553Frequency
+  });
   console.log('=========================================');
 
   const payload = {
@@ -449,9 +498,28 @@ export const sendQuoteToZapierWebhook = async (
     timestamp: Date.now()
   };
 
+  // Verify Additional Services fields in payload before sending
+  console.log('\n=== PAYLOAD VERIFICATION: ADDITIONAL SERVICES ===');
+  console.log('Additional Services in Payload:');
+  console.log('  accountsReceivableRate:', payload.accountsReceivableRate);
+  console.log('  accountsReceivableFrequency:', payload.accountsReceivableFrequency);
+  console.log('  accountsPayableRate:', payload.accountsPayableRate);
+  console.log('  accountsPayableFrequency:', payload.accountsPayableFrequency);
+  console.log('  ninetyNineFilingRate:', payload.ninetyNineFilingRate);
+  console.log('  ninetyNineFilingFrequency:', payload.ninetyNineFilingFrequency);
+  console.log('  scheduleCRate:', payload.scheduleCRate);
+  console.log('  scheduleCFrequency:', payload.scheduleCFrequency);
+  console.log('  salesTaxFee:', payload.salesTaxFee);
+  console.log('  salesTaxFrequency:', payload.salesTaxFrequency);
+  console.log('  taxPlanningFee:', payload.taxPlanningFee);
+  console.log('  taxPlanningFrequency:', payload.taxPlanningFrequency);
+  console.log('  form2553Fee:', payload.form2553Fee);
+  console.log('  form2553Frequency:', payload.form2553Frequency);
+  console.log('==================================================\n');
+
   try {
     console.log('Sending request to Zapier webhook:', url);
-    console.log('Payload:', payload);
+    console.log('Payload:', JSON.stringify(payload, null, 2));
 
     const response = await fetch(url, {
       method: 'POST',

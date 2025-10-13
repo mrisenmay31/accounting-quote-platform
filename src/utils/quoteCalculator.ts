@@ -210,12 +210,13 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
           billingFrequency: rule.billingFrequency
         });
 
-        console.log('Added to hourlyServices:', {
+        console.log('✓ Added to hourlyServices array:', {
           name: rule.serviceName,
-          rate: serviceRate,
+          rate: Math.round(serviceRate * 100) / 100,
           unitName: rule.unitName || 'service',
           billingFrequency: rule.billingFrequency
         });
+        console.log('Current hourlyServices array length:', hourlyServices.length);
         console.log('====================================');
 
         // Skip normal processing - additional services are shown separately
@@ -552,6 +553,18 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
   const potentialSavings = Math.round((totalMonthlyFees * 12 + totalOneTimeFees) * 0.3); // Estimate 30% savings from tax optimization
 
   const finalTotalAnnual = totalMonthlyFees * 12 + totalOneTimeFees;
+
+  // Final summary of hourlyServices for Zapier integration
+  console.log('\n=== FINAL QUOTE SUMMARY ===');
+  console.log('Total Services:', services.length);
+  console.log('Total Hourly Services:', hourlyServices.length);
+  console.log('Hourly Services Details:');
+  hourlyServices.forEach((hs, index) => {
+    console.log(`  ${index + 1}. ${hs.name}:`);
+    console.log(`     Rate: $${hs.rate}/${hs.unitName}`);
+    console.log(`     Billing: ${hs.billingFrequency}`);
+  });
+  console.log('===========================\n');
 
   return {
     services,
