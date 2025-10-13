@@ -238,7 +238,7 @@ const QuoteCalculator: React.FC = () => {
       });
 
       // Send quote data to tenant's Zapier webhook
-      await sendQuoteToZapierWebhook(formData, quote, tenant.id, tenant.zapierWebhookUrl);
+      await sendQuoteToZapierWebhook(formData, quote, pricingConfig, tenant.id, tenant.zapierWebhookUrl);
 
       // Advance to quote results page regardless of webhook success/failure
       nextStep();

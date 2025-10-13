@@ -1,4 +1,4 @@
-import { FormData, QuoteData, ServiceQuote } from '../types/quote';
+import { FormData, QuoteData, ServiceQuote, PricingConfig } from '../types/quote';
 
 // Zapier webhook configuration (fallback to env var for development)
 const ZAPIER_WEBHOOK_URL = import.meta.env.VITE_ZAPIER_WEBHOOK_URL || '';
@@ -43,6 +43,129 @@ const convertPricingRulesToServiceNames = (pricingRuleIds: string[]): string[] =
   return serviceNames;
 };
 
+// Helper function to extract individual Additional Service pricing from pricingConfig
+const extractAdditionalServicePricing = (
+  formData: FormData,
+  pricingConfig: PricingConfig[],
+  hasAdvisory: boolean
+): {
+  arManagementFee: number;
+  arManagementBillingType: string;
+  apManagementFee: number;
+  apManagementBillingType: string;
+  form1099FilingFee: number;
+  form1099FilingBillingType: string;
+  salesTaxFilingFee: number;
+  salesTaxFilingBillingType: string;
+  sCorpElectionFee: number;
+  sCorpElectionBillingType: string;
+  scheduleCFinancialStatementFee: number;
+  scheduleCFinancialStatementBillingType: string;
+  taxPlanningConsultationFee: number;
+  taxPlanningConsultationBillingType: string;
+} => {
+  const selectedServices = formData.additionalServices?.specializedFilings || [];
+
+  // Initialize all fees and billing types
+  const additionalServiceFees = {
+    arManagementFee: 0,
+    arManagementBillingType: '',
+    apManagementFee: 0,
+    apManagementBillingType: '',
+    form1099FilingFee: 0,
+    form1099FilingBillingType: '',
+    salesTaxFilingFee: 0,
+    salesTaxFilingBillingType: '',
+    sCorpElectionFee: 0,
+    sCorpElectionBillingType: '',
+    scheduleCFinancialStatementFee: 0,
+    scheduleCFinancialStatementBillingType: '',
+    taxPlanningConsultationFee: 0,
+    taxPlanningConsultationBillingType: ''
+  };
+
+  console.log('=== ADDITIONAL SERVICE PRICING EXTRACTION ===');
+  console.log('Selected Services:', selectedServices);
+  console.log('Has Advisory:', hasAdvisory);
+
+  // Filter pricing rules for additional services
+  const additionalServiceRules = pricingConfig.filter(rule =>
+    rule.serviceId === 'additional-services' &&
+    rule.active &&
+    selectedServices.includes(rule.serviceName)
+  );
+
+  console.log('Matching Pricing Rules:', additionalServiceRules.length);
+
+  // Extract pricing for each selected Additional Service
+  additionalServiceRules.forEach(rule => {
+    let price = 0;
+    let billingType = '';
+
+    // Determine price based on pricing structure
+    if (rule.perUnitPricing && rule.unitPrice) {
+      // Hourly service - use unit price (hourly rate)
+      price = rule.unitPrice;
+      billingType = `Hourly (per ${rule.unitName || 'hour'})`;
+    } else if (rule.billingFrequency === 'One-Time Fee') {
+      // One-time fee service
+      price = rule.basePrice;
+      billingType = 'One-Time Fee';
+    } else if (rule.billingFrequency === 'Monthly') {
+      // Monthly service
+      price = rule.basePrice;
+      billingType = 'Monthly';
+    } else if (rule.billingFrequency === 'Annual') {
+      // Annual service
+      price = rule.basePrice;
+      billingType = 'Annual';
+    }
+
+    // Apply advisory discount if applicable
+    if (hasAdvisory && rule.advisoryDiscountEligible && rule.advisoryDiscountPercentage > 0) {
+      price = price * (1 - rule.advisoryDiscountPercentage);
+      console.log(`Advisory discount applied to ${rule.serviceName}: ${rule.advisoryDiscountPercentage * 100}%`);
+    }
+
+    // Map to specific fee fields based on service name
+    const serviceName = rule.serviceName;
+
+    if (serviceName === 'Accounts Receivable Management') {
+      additionalServiceFees.arManagementFee = price;
+      additionalServiceFees.arManagementBillingType = billingType;
+      console.log(`AR Management: $${price} - ${billingType}`);
+    } else if (serviceName === 'Accounts Payable Management') {
+      additionalServiceFees.apManagementFee = price;
+      additionalServiceFees.apManagementBillingType = billingType;
+      console.log(`AP Management: $${price} - ${billingType}`);
+    } else if (serviceName === '1099 Filing') {
+      additionalServiceFees.form1099FilingFee = price;
+      additionalServiceFees.form1099FilingBillingType = billingType;
+      console.log(`1099 Filing: $${price} - ${billingType}`);
+    } else if (serviceName === 'Sales Tax Filing') {
+      additionalServiceFees.salesTaxFilingFee = price;
+      additionalServiceFees.salesTaxFilingBillingType = billingType;
+      console.log(`Sales Tax Filing: $${price} - ${billingType}`);
+    } else if (serviceName === 'S-Corp Election (Form 2553)') {
+      additionalServiceFees.sCorpElectionFee = price;
+      additionalServiceFees.sCorpElectionBillingType = billingType;
+      console.log(`S-Corp Election: $${price} - ${billingType}`);
+    } else if (serviceName === 'Schedule C Financial Statement Prep') {
+      additionalServiceFees.scheduleCFinancialStatementFee = price;
+      additionalServiceFees.scheduleCFinancialStatementBillingType = billingType;
+      console.log(`Schedule C Financial Statement: $${price} - ${billingType}`);
+    } else if (serviceName === 'Tax Planning Consultation') {
+      additionalServiceFees.taxPlanningConsultationFee = price;
+      additionalServiceFees.taxPlanningConsultationBillingType = billingType;
+      console.log(`Tax Planning Consultation: $${price} - ${billingType}`);
+    }
+  });
+
+  console.log('==============================================');
+
+  return additionalServiceFees;
+};
+
 // Helper function to extract individual service fees from quote data
 const extractIndividualServiceFees = (services: ServiceQuote[], formData: FormData, quote: QuoteData) => {
   // Initialize all fees to 0
@@ -68,7 +191,7 @@ const extractIndividualServiceFees = (services: ServiceQuote[], formData: FormDa
     bookkeepingAnnualFee: 0,
     bookkeepingCleanupFee: 0,
 
-    // Additional Services
+    // Additional Services (aggregated totals)
     additionalServicesMonthlyFee: 0,
     additionalServicesOneTimeFee: 0,
     additionalServicesAnnualFee: 0
@@ -156,6 +279,7 @@ const generateQuoteId = (): string => {
 export const sendQuoteToZapierWebhook = async (
   formData: FormData,
   quote: QuoteData,
+  pricingConfig: PricingConfig[] = [],
   tenantId?: string,
   webhookUrl?: string
 ): Promise<boolean> => {
@@ -170,8 +294,14 @@ export const sendQuoteToZapierWebhook = async (
   // Generate unique quote ID
   const quoteId = generateQuoteId();
 
+  // Check if advisory service is selected
+  const hasAdvisory = formData.services.includes('advisory');
+
   // Extract individual service fees
   const individualFees = extractIndividualServiceFees(quote.services, formData, quote);
+
+  // Extract individual Additional Service pricing
+  const additionalServicePricing = extractAdditionalServicePricing(formData, pricingConfig, hasAdvisory);
 
   // Log extracted individual fees for debugging
   console.log('=== EXTRACTED INDIVIDUAL SERVICE FEES ===');
@@ -180,8 +310,19 @@ export const sendQuoteToZapierWebhook = async (
   console.log('Business Tax Fee:', individualFees.businessTaxFee);
   console.log('Monthly Bookkeeping Fee:', individualFees.monthlyBookkeepingFee);
   console.log('Bookkeeping Cleanup Fee:', individualFees.bookkeepingCleanupFee);
-  console.log('Additional Services Monthly Fee:', individualFees.additionalServicesMonthlyFee);
+  console.log('Additional Services Monthly Fee (Aggregated):', individualFees.additionalServicesMonthlyFee);
+  console.log('Additional Services One-Time Fee (Aggregated):', individualFees.additionalServicesOneTimeFee);
   console.log('=========================================');
+
+  console.log('=== EXTRACTED INDIVIDUAL ADDITIONAL SERVICE PRICING ===');
+  console.log('AR Management Fee:', additionalServicePricing.arManagementFee, additionalServicePricing.arManagementBillingType);
+  console.log('AP Management Fee:', additionalServicePricing.apManagementFee, additionalServicePricing.apManagementBillingType);
+  console.log('1099 Filing Fee:', additionalServicePricing.form1099FilingFee, additionalServicePricing.form1099FilingBillingType);
+  console.log('Sales Tax Filing Fee:', additionalServicePricing.salesTaxFilingFee, additionalServicePricing.salesTaxFilingBillingType);
+  console.log('S-Corp Election Fee:', additionalServicePricing.sCorpElectionFee, additionalServicePricing.sCorpElectionBillingType);
+  console.log('Schedule C Financial Statement Fee:', additionalServicePricing.scheduleCFinancialStatementFee, additionalServicePricing.scheduleCFinancialStatementBillingType);
+  console.log('Tax Planning Consultation Fee:', additionalServicePricing.taxPlanningConsultationFee, additionalServicePricing.taxPlanningConsultationBillingType);
+  console.log('========================================================');
 
   const payload = {
     // Quote Metadata
@@ -229,11 +370,39 @@ export const sendQuoteToZapierWebhook = async (
     bookkeepingAnnualFee: individualFees.bookkeepingAnnualFee,
     bookkeepingCleanupFee: individualFees.bookkeepingCleanupFee,
 
-    // Individual Service Fees - Additional Services
+    // Individual Service Fees - Additional Services (Aggregated Totals)
     additionalServicesMonthlyFee: individualFees.additionalServicesMonthlyFee,
     additionalServicesOneTimeFee: individualFees.additionalServicesOneTimeFee,
     additionalServicesAnnualFee: individualFees.additionalServicesAnnualFee,
-    
+
+    // Individual Additional Service Pricing - AR Management
+    arManagementFee: additionalServicePricing.arManagementFee,
+    arManagementBillingType: additionalServicePricing.arManagementBillingType,
+
+    // Individual Additional Service Pricing - AP Management
+    apManagementFee: additionalServicePricing.apManagementFee,
+    apManagementBillingType: additionalServicePricing.apManagementBillingType,
+
+    // Individual Additional Service Pricing - 1099 Filing
+    form1099FilingFee: additionalServicePricing.form1099FilingFee,
+    form1099FilingBillingType: additionalServicePricing.form1099FilingBillingType,
+
+    // Individual Additional Service Pricing - Sales Tax Filing
+    salesTaxFilingFee: additionalServicePricing.salesTaxFilingFee,
+    salesTaxFilingBillingType: additionalServicePricing.salesTaxFilingBillingType,
+
+    // Individual Additional Service Pricing - S-Corp Election
+    sCorpElectionFee: additionalServicePricing.sCorpElectionFee,
+    sCorpElectionBillingType: additionalServicePricing.sCorpElectionBillingType,
+
+    // Individual Additional Service Pricing - Schedule C Financial Statement
+    scheduleCFinancialStatementFee: additionalServicePricing.scheduleCFinancialStatementFee,
+    scheduleCFinancialStatementBillingType: additionalServicePricing.scheduleCFinancialStatementBillingType,
+
+    // Individual Additional Service Pricing - Tax Planning Consultation
+    taxPlanningConsultationFee: additionalServicePricing.taxPlanningConsultationFee,
+    taxPlanningConsultationBillingType: additionalServicePricing.taxPlanningConsultationBillingType,
+
     // Service Details
     serviceBreakdown: quote.services.map(service => ({
       name: service.name,
