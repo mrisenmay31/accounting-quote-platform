@@ -104,6 +104,23 @@ export interface FormData {
     form1099Count?: number;
     // Tax Planning Consultation
     taxPlanningConsultation?: boolean;
+
+    // Additional Services - Individual Service Rates and Fees
+    // These fields are populated from Airtable Pricing Variables and included in Zapier payload
+    accountsReceivableRate?: number;
+    accountsReceivableFrequency?: string;
+    accountsPayableRate?: number;
+    accountsPayableFrequency?: string;
+    ninetyNineFilingRate?: number;
+    ninetyNineFilingFrequency?: string;
+    scheduleCRate?: number;
+    scheduleCFrequency?: string;
+    salesTaxFee?: number;
+    salesTaxFrequency?: string;
+    taxPlanningFee?: number;
+    taxPlanningFrequency?: string;
+    form2553Fee?: number;
+    form2553Frequency?: string;
   };
 }
 

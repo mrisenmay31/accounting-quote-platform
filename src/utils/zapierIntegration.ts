@@ -68,10 +68,27 @@ const extractIndividualServiceFees = (services: ServiceQuote[], formData: FormDa
     bookkeepingAnnualFee: 0,
     bookkeepingCleanupFee: 0,
 
-    // Additional Services
+    // Additional Services - Aggregate Totals
     additionalServicesMonthlyFee: 0,
     additionalServicesOneTimeFee: 0,
-    additionalServicesAnnualFee: 0
+    additionalServicesAnnualFee: 0,
+
+    // Additional Services - Individual Service Rates and Fees
+    // These are extracted from quote.hourlyServices and formData.additionalServices
+    accountsReceivableRate: undefined as number | undefined,
+    accountsReceivableFrequency: undefined as string | undefined,
+    accountsPayableRate: undefined as number | undefined,
+    accountsPayableFrequency: undefined as string | undefined,
+    ninetyNineFilingRate: undefined as number | undefined,
+    ninetyNineFilingFrequency: undefined as string | undefined,
+    scheduleCRate: undefined as number | undefined,
+    scheduleCFrequency: undefined as string | undefined,
+    salesTaxFee: undefined as number | undefined,
+    salesTaxFrequency: undefined as string | undefined,
+    taxPlanningFee: undefined as number | undefined,
+    taxPlanningFrequency: undefined as string | undefined,
+    form2553Fee: undefined as number | undefined,
+    form2553Frequency: undefined as string | undefined
   };
 
   // Extract fees from each service in the quote
@@ -106,13 +123,71 @@ const extractIndividualServiceFees = (services: ServiceQuote[], formData: FormDa
       fees.bookkeepingAnnualFee = service.annualPrice || 0;
     }
 
-    // Additional Services
+    // Additional Services - Aggregate totals
+    // Note: Additional services are not aggregated into a single card in the quote
+    // Instead, they appear individually in hourlyServices array
     if (serviceName.includes('additional service')) {
       fees.additionalServicesMonthlyFee = service.monthlyFee || 0;
       fees.additionalServicesOneTimeFee = service.oneTimeFee || 0;
       fees.additionalServicesAnnualFee = service.annualPrice || 0;
     }
   });
+
+  // ADDITIONAL SERVICES PRICING EXTRACTION
+  // Extract individual pricing for each selected Additional Service from hourlyServices array
+  // This matches the pattern used for core services (Individual Tax, Business Tax, etc.)
+  console.log('=== EXTRACTING ADDITIONAL SERVICES PRICING ===');
+  console.log('Hourly Services:', quote.hourlyServices);
+  console.log('Selected Additional Services:', formData.additionalServices?.specializedFilings);
+
+  // Map service names to their corresponding fee field names
+  const serviceNameMapping: { [key: string]: { rateField: string; frequencyField: string } } = {
+    'Accounts Receivable Management': {
+      rateField: 'accountsReceivableRate',
+      frequencyField: 'accountsReceivableFrequency'
+    },
+    'Accounts Payable Management': {
+      rateField: 'accountsPayableRate',
+      frequencyField: 'accountsPayableFrequency'
+    },
+    '1099 Filing': {
+      rateField: 'ninetyNineFilingRate',
+      frequencyField: 'ninetyNineFilingFrequency'
+    },
+    'Schedule C Financial Statement Prep': {
+      rateField: 'scheduleCRate',
+      frequencyField: 'scheduleCFrequency'
+    },
+    'Sales Tax Filing': {
+      rateField: 'salesTaxFee',
+      frequencyField: 'salesTaxFrequency'
+    },
+    'Tax Planning Consultation': {
+      rateField: 'taxPlanningFee',
+      frequencyField: 'taxPlanningFrequency'
+    },
+    'S-Corp Election (Form 2553)': {
+      rateField: 'form2553Fee',
+      frequencyField: 'form2553Frequency'
+    }
+  };
+
+  // Extract rates from hourlyServices array (populated by quoteCalculator.ts)
+  quote.hourlyServices.forEach(hourlyService => {
+    const mapping = serviceNameMapping[hourlyService.name];
+
+    if (mapping) {
+      // Store the rate and frequency for this service
+      (fees as any)[mapping.rateField] = hourlyService.rate;
+      (fees as any)[mapping.frequencyField] = hourlyService.billingFrequency;
+
+      console.log(`Extracted: ${hourlyService.name}`);
+      console.log(`  Rate: ${hourlyService.rate}`);
+      console.log(`  Frequency: ${hourlyService.billingFrequency}`);
+    }
+  });
+
+  console.log('=== ADDITIONAL SERVICES EXTRACTION COMPLETE ===');
 
   // Calculate bookkeeping cleanup fee from form data and pricing rules
   // This should match what was calculated in the quote
@@ -229,10 +304,27 @@ export const sendQuoteToZapierWebhook = async (
     bookkeepingAnnualFee: individualFees.bookkeepingAnnualFee,
     bookkeepingCleanupFee: individualFees.bookkeepingCleanupFee,
 
-    // Individual Service Fees - Additional Services
+    // Individual Service Fees - Additional Services (Aggregate Totals)
     additionalServicesMonthlyFee: individualFees.additionalServicesMonthlyFee,
     additionalServicesOneTimeFee: individualFees.additionalServicesOneTimeFee,
     additionalServicesAnnualFee: individualFees.additionalServicesAnnualFee,
+
+    // Additional Services - Individual Service Rates and Fees
+    // Only included if the service is selected (follows same pattern as core services)
+    accountsReceivableRate: individualFees.accountsReceivableRate,
+    accountsReceivableFrequency: individualFees.accountsReceivableFrequency,
+    accountsPayableRate: individualFees.accountsPayableRate,
+    accountsPayableFrequency: individualFees.accountsPayableFrequency,
+    ninetyNineFilingRate: individualFees.ninetyNineFilingRate,
+    ninetyNineFilingFrequency: individualFees.ninetyNineFilingFrequency,
+    scheduleCRate: individualFees.scheduleCRate,
+    scheduleCFrequency: individualFees.scheduleCFrequency,
+    salesTaxFee: individualFees.salesTaxFee,
+    salesTaxFrequency: individualFees.salesTaxFrequency,
+    taxPlanningFee: individualFees.taxPlanningFee,
+    taxPlanningFrequency: individualFees.taxPlanningFrequency,
+    form2553Fee: individualFees.form2553Fee,
+    form2553Frequency: individualFees.form2553Frequency,
     
     // Service Details
     serviceBreakdown: quote.services.map(service => ({
