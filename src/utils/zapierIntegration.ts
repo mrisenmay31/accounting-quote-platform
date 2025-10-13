@@ -4,25 +4,30 @@ import { FormData, QuoteData, ServiceQuote, PricingConfig } from '../types/quote
 const ZAPIER_WEBHOOK_URL = import.meta.env.VITE_ZAPIER_WEBHOOK_URL || '';
 
 // Helper function to map pricing rule IDs to Airtable Multiple Select option names
+// Updated to match exact service names from Airtable CSV (Pricing Variables-Grid view 27)
 const mapPricingRuleToAirtableOption = (pricingRuleId: string): string | null => {
   const mappings: Record<string, string> = {
     'additional-services-accounts-receivable': 'Accounts Receivable Management',
     'additional-services-ar': 'Accounts Receivable Management',
     'accounts-receivable': 'Accounts Receivable Management',
+    'accounts-receivable-management': 'Accounts Receivable Management',
     'additional-services-accounts-payable': 'Accounts Payable Management',
     'additional-services-ap': 'Accounts Payable Management',
     'accounts-payable': 'Accounts Payable Management',
+    'accounts-payable-management': 'Accounts Payable Management',
     'additional-services-1099': '1099 Filing',
     '1099-processing': '1099 Filing',
     '1099-filing': '1099 Filing',
     'additional-services-sales-tax': 'Sales Tax Filing',
     'sales-tax-filing': 'Sales Tax Filing',
-    'additional-services-scorp-election': 'S-Corp Election (Form 2553)',
-    'scorp-election': 'S-Corp Election (Form 2553)',
-    'additional-services-schedule-c': 'Schedule C Financial Statement Prep',
-    'schedule-c-financial-statement': 'Schedule C Financial Statement Prep',
+    'additional-services-scorp-election': 'Form 2553 S-Corp Election',
+    'scorp-election': 'Form 2553 S-Corp Election',
+    'additional-services-schedule-c': 'Schedule C Financial Stmt Prep',
+    'schedule-c-financial-statement': 'Schedule C Financial Stmt Prep',
+    'schedulec-financial-statement-prep': 'Schedule C Financial Stmt Prep',
     'additional-services-tax-planning': 'Tax Planning Consultation',
     'tax-planning-consultation': 'Tax Planning Consultation',
+    'tax-planning-consultation-base': 'Tax Planning Consultation',
     'tax-planning': 'Tax Planning Consultation'
   };
 
@@ -87,15 +92,33 @@ const extractAdditionalServicePricing = (
   console.log('=== ADDITIONAL SERVICE PRICING EXTRACTION ===');
   console.log('Selected Services:', selectedServices);
   console.log('Has Advisory:', hasAdvisory);
+  console.log('Tax Planning Consultation (boolean):', formData.additionalServices?.taxPlanningConsultation);
 
-  // Filter pricing rules for additional services
+  // Filter pricing rules for additional services from specializedFilings array
   const additionalServiceRules = pricingConfig.filter(rule =>
     rule.serviceId === 'additional-services' &&
     rule.active &&
     selectedServices.includes(rule.serviceName)
   );
 
-  console.log('Matching Pricing Rules:', additionalServiceRules.length);
+  console.log('Matching Pricing Rules from specializedFilings:', additionalServiceRules.length);
+  console.log('Matched Service Names:', additionalServiceRules.map(r => r.serviceName));
+
+  // SPECIAL HANDLING: Tax Planning Consultation uses a boolean field, not specializedFilings array
+  // Check if taxPlanningConsultation is true and add that rule manually
+  if (formData.additionalServices?.taxPlanningConsultation === true) {
+    const taxPlanningRule = pricingConfig.find(rule =>
+      rule.serviceId === 'additional-services' &&
+      rule.active &&
+      (rule.serviceName === 'Tax Planning Consultation' ||
+       rule.pricingRuleId === 'tax-planning-consultation-base')
+    );
+
+    if (taxPlanningRule && !additionalServiceRules.some(r => r.serviceName === taxPlanningRule.serviceName)) {
+      additionalServiceRules.push(taxPlanningRule);
+      console.log('Added Tax Planning Consultation rule from boolean field');
+    }
+  }
 
   // Extract pricing for each selected Additional Service
   additionalServiceRules.forEach(rule => {
@@ -104,20 +127,24 @@ const extractAdditionalServicePricing = (
 
     // Determine price based on pricing structure
     if (rule.perUnitPricing && rule.unitPrice) {
-      // Hourly service - use unit price (hourly rate)
+      // Hourly/per-unit service - use unit price (hourly rate or per-unit rate)
       price = rule.unitPrice;
       billingType = `Hourly (per ${rule.unitName || 'hour'})`;
     } else if (rule.billingFrequency === 'One-Time Fee') {
-      // One-time fee service
-      price = rule.basePrice;
+      // One-time fee service - use base price
+      price = rule.basePrice || 0;
       billingType = 'One-Time Fee';
     } else if (rule.billingFrequency === 'Monthly') {
-      // Monthly service
-      price = rule.basePrice;
+      // Monthly service - use base price
+      price = rule.basePrice || 0;
       billingType = 'Monthly';
+    } else if (rule.billingFrequency === 'Hourly' || rule.billingFrequency === 'Hourly Rate') {
+      // Hourly rate services (alternative billing frequency from Airtable)
+      price = rule.unitPrice || rule.basePrice || 0;
+      billingType = `Hourly (per ${rule.unitName || 'hour'})`;
     } else if (rule.billingFrequency === 'Annual') {
-      // Annual service
-      price = rule.basePrice;
+      // Annual service - use base price
+      price = rule.basePrice || 0;
       billingType = 'Annual';
     }
 
@@ -128,36 +155,42 @@ const extractAdditionalServicePricing = (
     }
 
     // Map to specific fee fields based on service name
+    // UPDATED: Service names now match exact names from Airtable CSV (Pricing Variables-Grid view 27)
     const serviceName = rule.serviceName;
 
     if (serviceName === 'Accounts Receivable Management') {
       additionalServiceFees.arManagementFee = price;
       additionalServiceFees.arManagementBillingType = billingType;
-      console.log(`AR Management: $${price} - ${billingType}`);
+      console.log(`✓ AR Management: $${price} - ${billingType}`);
     } else if (serviceName === 'Accounts Payable Management') {
       additionalServiceFees.apManagementFee = price;
       additionalServiceFees.apManagementBillingType = billingType;
-      console.log(`AP Management: $${price} - ${billingType}`);
+      console.log(`✓ AP Management: $${price} - ${billingType}`);
     } else if (serviceName === '1099 Filing') {
       additionalServiceFees.form1099FilingFee = price;
       additionalServiceFees.form1099FilingBillingType = billingType;
-      console.log(`1099 Filing: $${price} - ${billingType}`);
+      console.log(`✓ 1099 Filing: $${price} - ${billingType}`);
     } else if (serviceName === 'Sales Tax Filing') {
       additionalServiceFees.salesTaxFilingFee = price;
       additionalServiceFees.salesTaxFilingBillingType = billingType;
-      console.log(`Sales Tax Filing: $${price} - ${billingType}`);
-    } else if (serviceName === 'S-Corp Election (Form 2553)') {
+      console.log(`✓ Sales Tax Filing: $${price} - ${billingType}`);
+    } else if (serviceName === 'Form 2553 S-Corp Election') {
+      // FIXED: Updated to match exact name from Airtable CSV
       additionalServiceFees.sCorpElectionFee = price;
       additionalServiceFees.sCorpElectionBillingType = billingType;
-      console.log(`S-Corp Election: $${price} - ${billingType}`);
-    } else if (serviceName === 'Schedule C Financial Statement Prep') {
+      console.log(`✓ S-Corp Election: $${price} - ${billingType}`);
+    } else if (serviceName === 'Schedule C Financial Stmt Prep') {
+      // FIXED: Updated to match exact name from Airtable CSV
       additionalServiceFees.scheduleCFinancialStatementFee = price;
       additionalServiceFees.scheduleCFinancialStatementBillingType = billingType;
-      console.log(`Schedule C Financial Statement: $${price} - ${billingType}`);
+      console.log(`✓ Schedule C Financial Statement: $${price} - ${billingType}`);
     } else if (serviceName === 'Tax Planning Consultation') {
+      // Service name matches - no change needed
       additionalServiceFees.taxPlanningConsultationFee = price;
       additionalServiceFees.taxPlanningConsultationBillingType = billingType;
-      console.log(`Tax Planning Consultation: $${price} - ${billingType}`);
+      console.log(`✓ Tax Planning Consultation: $${price} - ${billingType}`);
+    } else {
+      console.log(`⚠ Unrecognized service name: "${serviceName}"`);
     }
   });
 
