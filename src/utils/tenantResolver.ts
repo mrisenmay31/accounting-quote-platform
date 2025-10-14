@@ -6,6 +6,10 @@ export interface TenantResolutionResult {
 }
 
 const extractSubdomain = (hostname: string): string | null => {
+  if (hostname.includes('vercel.app') || hostname.includes('localhost') || hostname.includes('webcontainer') || hostname.includes('bolt.new')) {
+    return null;
+  }
+
   const parts = hostname.split('.');
 
   if (parts.length >= 3) {
@@ -15,39 +19,26 @@ const extractSubdomain = (hostname: string): string | null => {
   return null;
 };
 
-const getDefaultTenantForDevelopment = (): string => {
-  const urlParams = new URLSearchParams(window.location.search);
-  const tenantParam = urlParams.get('tenant');
-
-  if (tenantParam) {
-    return tenantParam;
-  }
-
-  return 'elevated-tax';
-};
-
 export const resolveTenant = async (): Promise<TenantResolutionResult> => {
   try {
     const hostname = window.location.hostname;
-    const isDevelopment = import.meta.env.DEV ||
-                         hostname.includes('localhost') ||
-                         hostname.includes('webcontainer') ||
-                         hostname.includes('bolt.new');
-
     let resolvedTenant: string;
 
-    if (isDevelopment) {
-      resolvedTenant = getDefaultTenantForDevelopment();
-      console.log('[TenantResolver] Development mode: Resolved tenant from query param or default:', resolvedTenant);
+    const urlParams = new URLSearchParams(window.location.search);
+    const tenantParam = urlParams.get('tenant');
+
+    if (tenantParam) {
+      resolvedTenant = tenantParam;
+      console.log('[TenantResolver] Using tenant from query parameter:', resolvedTenant);
     } else {
       const subdomain = extractSubdomain(hostname);
 
       if (subdomain) {
         resolvedTenant = subdomain;
-        console.log('[TenantResolver] Production mode: Resolved tenant from subdomain:', resolvedTenant);
+        console.log('[TenantResolver] Using tenant from subdomain:', resolvedTenant);
       } else {
         resolvedTenant = 'elevated-tax';
-        console.log('[TenantResolver] Production mode: No subdomain found, using default tenant:', resolvedTenant);
+        console.log('[TenantResolver] No tenant found, using default:', resolvedTenant);
       }
     }
 
