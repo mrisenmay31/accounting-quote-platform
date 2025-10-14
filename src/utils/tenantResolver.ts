@@ -23,26 +23,51 @@ const getDefaultTenantForDevelopment = (): string => {
     return tenantParam;
   }
 
-  return 'ledgerly';
+  return 'elevated-tax';
 };
 
 export const resolveTenant = async (): Promise<TenantResolutionResult> => {
   try {
-    // TEMPORARY HARDCODE FOR TESTING - REVERT BEFORE PRODUCTION
-    const hardcodedTenant = 'elevatedtax';
-    console.log(`[TESTING] Hardcoded tenant resolution: ${hardcodedTenant}`);
+    const hostname = window.location.hostname;
+    const isDevelopment = import.meta.env.DEV ||
+                         hostname.includes('localhost') ||
+                         hostname.includes('webcontainer') ||
+                         hostname.includes('bolt.new');
+
+    let resolvedTenant: string;
+
+    if (isDevelopment) {
+      resolvedTenant = getDefaultTenantForDevelopment();
+      console.log('[TenantResolver] Development mode: Resolved tenant from query param or default:', resolvedTenant);
+    } else {
+      const subdomain = extractSubdomain(hostname);
+
+      if (subdomain) {
+        resolvedTenant = subdomain;
+        console.log('[TenantResolver] Production mode: Resolved tenant from subdomain:', resolvedTenant);
+      } else {
+        resolvedTenant = 'elevated-tax';
+        console.log('[TenantResolver] Production mode: No subdomain found, using default tenant:', resolvedTenant);
+      }
+    }
 
     try {
-      const tenant = await fetchTenantByDomain(hardcodedTenant);
+      const tenant = await fetchTenantByDomain(resolvedTenant);
+      console.log('[TenantResolver] Successfully loaded tenant configuration:', {
+        subdomain: tenant.subdomain,
+        firmName: tenant.firmName,
+        customDomain: tenant.customDomain
+      });
       return { tenant, error: null };
     } catch (error) {
+      console.error('[TenantResolver] Failed to fetch tenant:', resolvedTenant, error);
       return {
         tenant: null,
-        error: `Tenant not found: ${hardcodedTenant}`,
+        error: `Tenant not found: ${resolvedTenant}`,
       };
     }
   } catch (error) {
-    console.error('Unexpected error during tenant resolution:', error);
+    console.error('[TenantResolver] Unexpected error during tenant resolution:', error);
     return {
       tenant: null,
       error: 'An unexpected error occurred while loading the application. Please try again later.',
