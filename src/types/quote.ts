@@ -178,3 +178,24 @@ export interface ServiceConfig {
   includedFeaturesCardTitle?: string;
   includedFeaturesCardList?: string[];
 }
+
+// Dynamic Form Field Types
+export interface FormField {
+  fieldId: string;
+  serviceId: string;
+  fieldName: string;
+  fieldType: 'text' | 'number' | 'dropdown' | 'checkbox' | 'textarea' | 'radio' | 'multi-select';
+  fieldLabel: string;
+  placeholder?: string;
+  options?: string; // JSON string containing field-specific options
+  required: boolean;
+  active: boolean;
+  displayOrder: number;
+  conditionalLogic?: string; // JSON string for future conditional logic implementation
+  helpText?: string;
+}
+
+export interface AirtableFormFieldConfig {
+  baseId: string;
+  apiKey: string;
+}

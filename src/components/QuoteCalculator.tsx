@@ -6,6 +6,7 @@ import ContactForm from './ContactForm';
 import ServiceSelection from './ServiceSelection';
 import AdvisorySalesPage from './AdvisorySalesPage';
 import IndividualTaxDetails from './IndividualTaxDetails';
+import IndividualTaxDynamic from './IndividualTaxDynamic';
 import BusinessTaxDetails from './BusinessTaxDetails';
 import BookkeepingDetails from './BookkeepingDetails';
 import AdditionalServicesDetails from './AdditionalServicesDetails';
@@ -18,6 +19,9 @@ import { getCachedServiceConfig, ServiceConfig } from '../utils/serviceConfigSer
 import { sendQuoteToZapierWebhook } from '../utils/zapierIntegration';
 import { useTenant } from '../contexts/TenantContext';
 import { saveQuote } from '../utils/quoteStorage';
+
+// Feature flag: Set to true to use dynamic Airtable form fields for Individual Tax
+const USE_DYNAMIC_INDIVIDUAL_TAX = false;
 
 const QuoteCalculator: React.FC = () => {
   const { tenant, firmInfo } = useTenant();
@@ -417,7 +421,13 @@ const QuoteCalculator: React.FC = () => {
           />
         );
       case 'individual-tax':
-        return (
+        // Use dynamic form rendering if feature flag is enabled
+        return USE_DYNAMIC_INDIVIDUAL_TAX ? (
+          <IndividualTaxDynamic
+            formData={formData}
+            updateFormData={updateFormData}
+          />
+        ) : (
           <IndividualTaxDetails
             formData={formData}
             updateFormData={updateFormData}
