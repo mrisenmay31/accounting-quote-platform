@@ -58,6 +58,14 @@ export const fetchFormFields = async (
   serviceId: string
 ): Promise<FormField[]> => {
   try {
+    // Validate configuration
+    if (!config.baseId) {
+      throw new Error('Airtable Base ID is missing from configuration');
+    }
+    if (!config.apiKey) {
+      throw new Error('Airtable API Key is missing from configuration');
+    }
+
     // Build Airtable API URL with filters
     // Filter by Service ID and Active = TRUE
     const filterFormula = `AND({Service ID}='${serviceId}', {Active}=TRUE())`;
@@ -67,6 +75,10 @@ export const fetchFormFields = async (
     const sortParams = 'sort%5B0%5D%5Bfield%5D=Display%20Order&sort%5B0%5D%5Bdirection%5D=asc';
 
     const url = `https://api.airtable.com/v0/${config.baseId}/Form%20Fields%20-%20Individual%20Tax?filterByFormula=${encodedFormula}&${sortParams}`;
+
+    console.log(`[FormFieldsService] Fetching form fields for service: ${serviceId}`);
+    console.log(`[FormFieldsService] Using Base ID: ${config.baseId}`);
+    console.log(`[FormFieldsService] API URL: ${url.replace(config.apiKey, 'REDACTED')}`);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -78,11 +90,19 @@ export const fetchFormFields = async (
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Airtable API error:', response.status, errorText);
-      throw new Error(`Failed to fetch form fields: ${response.statusText}`);
+      console.error('[FormFieldsService] Airtable API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        baseId: config.baseId,
+        serviceId: serviceId,
+        errorText: errorText
+      });
+      throw new Error(`Failed to fetch form fields (${response.status}): ${response.statusText}`);
     }
 
     const data: AirtableResponse = await response.json();
+
+    console.log(`[FormFieldsService] Received ${data.records?.length || 0} records from Airtable`);
 
     // Transform Airtable records to FormField objects
     const formFields: FormField[] = data.records.map(record => ({
@@ -100,11 +120,15 @@ export const fetchFormFields = async (
       helpText: record.fields['Help Text'],
     }));
 
-    console.log(`[FormFieldsService] Fetched ${formFields.length} active fields for service: ${serviceId}`);
+    console.log(`[FormFieldsService] Successfully fetched ${formFields.length} active fields for service: ${serviceId}`);
+    if (formFields.length > 0) {
+      console.log(`[FormFieldsService] First field:`, formFields[0]);
+    }
 
     return formFields;
   } catch (error) {
     console.error(`[FormFieldsService] Error fetching form fields for ${serviceId}:`, error);
+    console.error(`[FormFieldsService] Base ID used: ${config.baseId}`);
     throw error;
   }
 };

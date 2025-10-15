@@ -21,7 +21,7 @@ import { useTenant } from '../contexts/TenantContext';
 import { saveQuote } from '../utils/quoteStorage';
 
 // Feature flag: Set to true to use dynamic Airtable form fields for Individual Tax
-const USE_DYNAMIC_INDIVIDUAL_TAX = false;
+const USE_DYNAMIC_INDIVIDUAL_TAX = true;
 
 const QuoteCalculator: React.FC = () => {
   const { tenant, firmInfo } = useTenant();

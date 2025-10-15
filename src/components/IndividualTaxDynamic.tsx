@@ -28,7 +28,10 @@ const IndividualTaxDynamic: React.FC<IndividualTaxDynamicProps> = ({
   // Load form fields from Airtable on component mount
   useEffect(() => {
     const loadFormFields = async () => {
-      if (!tenant) return;
+      if (!tenant) {
+        console.log('[IndividualTaxDynamic] Waiting for tenant configuration...');
+        return;
+      }
 
       try {
         setIsLoadingFields(true);
@@ -41,15 +44,32 @@ const IndividualTaxDynamic: React.FC<IndividualTaxDynamicProps> = ({
         };
 
         console.log('[IndividualTaxDynamic] Loading form fields for individual-tax');
+        console.log('[IndividualTaxDynamic] Tenant configuration:', {
+          subdomain: tenant.subdomain,
+          firmName: tenant.firmName,
+          servicesBaseId: tenant.airtable.servicesBaseId,
+          pricingBaseId: tenant.airtable.pricingBaseId,
+          usingBaseId: airtableConfig.baseId,
+          hasApiKey: !!airtableConfig.apiKey
+        });
+
+        // Validate configuration
+        if (!airtableConfig.baseId) {
+          throw new Error('Airtable Base ID is not configured for this tenant. Please contact support.');
+        }
+        if (!airtableConfig.apiKey) {
+          throw new Error('Airtable API Key is not configured for this tenant. Please contact support.');
+        }
 
         // Fetch fields from Airtable filtered by service ID
         const fields = await getCachedFormFields(airtableConfig, 'individual-tax');
 
         setFormFields(fields);
-        console.log(`[IndividualTaxDynamic] Loaded ${fields.length} form fields`);
+        console.log(`[IndividualTaxDynamic] Successfully loaded ${fields.length} form fields`);
       } catch (error) {
         console.error('[IndividualTaxDynamic] Failed to load form fields:', error);
-        setLoadError('Unable to load form fields. Please try again.');
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        setLoadError(`Unable to load form fields: ${errorMessage}`);
       } finally {
         setIsLoadingFields(false);
       }
@@ -133,11 +153,19 @@ const IndividualTaxDynamic: React.FC<IndividualTaxDynamicProps> = ({
           </div>
         </div>
 
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">{loadError}</p>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <h3 className="font-semibold text-red-900 mb-2">Error Loading Form Fields</h3>
+          <p className="text-red-800 mb-3">{loadError}</p>
+          {tenant && (
+            <div className="text-sm text-red-700 mb-3">
+              <p><strong>Debug Information:</strong></p>
+              <p>Base ID: {tenant.airtable.servicesBaseId || tenant.airtable.pricingBaseId || 'Not configured'}</p>
+              <p>Tenant: {tenant.subdomain}</p>
+            </div>
+          )}
           <button
             onClick={() => window.location.reload()}
-            className="mt-2 text-red-600 hover:text-red-800 font-medium"
+            className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-medium transition-colors"
           >
             Reload Page
           </button>
