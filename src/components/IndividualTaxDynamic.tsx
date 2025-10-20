@@ -11,6 +11,7 @@ import { useTenant } from '../contexts/TenantContext';
 import { getCachedFormFields, FormField } from '../utils/formFieldsService';
 import DynamicFormFieldAirtable from './DynamicFormField';
 import { DynamicIcon } from '../utils/iconMapper';
+import { shouldShowField, getFieldsToClear } from '../utils/conditionalLogic';
 
 interface IndividualTaxDynamicProps {
   formData: FormData;
@@ -70,11 +71,21 @@ const IndividualTaxDynamic: React.FC<IndividualTaxDynamicProps> = ({
   }, [tenant]);
 
   const handleFieldChange = (fieldName: string, value: any) => {
+    const currentFormData = formData.individualTax || {};
+    const updatedData = {
+      ...currentFormData,
+      [fieldName]: value,
+    };
+
+    // Clear values of conditional fields that should be hidden after this change
+    const fieldsToClear = getFieldsToClear(formFields, fieldName, updatedData);
+    fieldsToClear.forEach(fieldToClear => {
+      updatedData[fieldToClear] = null;
+      console.log(`[IndividualTaxDynamic] Clearing hidden field: ${fieldToClear}`);
+    });
+
     updateFormData({
-      individualTax: {
-        ...formData.individualTax,
-        [fieldName]: value,
-      },
+      individualTax: updatedData,
     });
   };
 
@@ -162,8 +173,13 @@ const IndividualTaxDynamic: React.FC<IndividualTaxDynamicProps> = ({
     const elements: JSX.Element[] = [];
     let currentRowGroup: FormField[] = [];
 
-    formFields.forEach((field, index) => {
-      const prevField = index > 0 ? formFields[index - 1] : null;
+    // Filter fields by active status and conditional logic
+    const visibleFields = formFields.filter(field =>
+      field.active && shouldShowField(field, formData.individualTax || {})
+    );
+
+    visibleFields.forEach((field, index) => {
+      const prevField = index > 0 ? visibleFields[index - 1] : null;
 
       if (field.sectionHeader && (!prevField || prevField.sectionHeader !== field.sectionHeader)) {
         if (currentRowGroup.length > 0) {
@@ -186,7 +202,7 @@ const IndividualTaxDynamic: React.FC<IndividualTaxDynamicProps> = ({
       if (field.fieldWidth === 'half' && field.rowGroup !== undefined) {
         currentRowGroup.push(field);
 
-        const nextField = formFields[index + 1];
+        const nextField = visibleFields[index + 1];
         if (!nextField || nextField.rowGroup !== field.rowGroup) {
           elements.push(renderRowGroup(currentRowGroup));
           currentRowGroup = [];
@@ -198,7 +214,10 @@ const IndividualTaxDynamic: React.FC<IndividualTaxDynamicProps> = ({
         }
 
         elements.push(
-          <div key={field.fieldId} className="mb-6">
+          <div
+            key={field.fieldId}
+            className="mb-6 transition-all duration-300 ease-in-out animate-fadeIn"
+          >
             <DynamicFormFieldAirtable
               field={field}
               value={getFieldValue(field.fieldName)}
@@ -220,7 +239,10 @@ const IndividualTaxDynamic: React.FC<IndividualTaxDynamicProps> = ({
     const groupKey = fields.map(f => f.fieldId).join('-');
 
     return (
-      <div key={`row-${groupKey}`} className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+      <div
+        key={`row-${groupKey}`}
+        className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6 transition-all duration-300 ease-in-out animate-fadeIn"
+      >
         {fields.map((field) => (
           <div key={field.fieldId}>
             <DynamicFormFieldAirtable
