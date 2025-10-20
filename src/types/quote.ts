@@ -175,6 +175,7 @@ export interface ServiceConfig {
   quoteIncludedFeatures?: string[];
   active: boolean;
   serviceOrder?: number;
+  hasDetailForm?: boolean;
   includedFeaturesCardTitle?: string;
   includedFeaturesCardList?: string[];
 }

@@ -87,7 +87,7 @@ export const fetchFormFields = async (
     // Sort by Display Order ascending
     const sortParams = 'sort%5B0%5D%5Bfield%5D=Display%20Order&sort%5B0%5D%5Bdirection%5D=asc';
 
-    const url = `https://api.airtable.com/v0/${config.baseId}/Form%20Fields%20-%20Individual%20Tax?filterByFormula=${encodedFormula}&${sortParams}`;
+    const url = `https://api.airtable.com/v0/${config.baseId}/Form%20Fields?filterByFormula=${encodedFormula}&${sortParams}`;
 
     console.log(`[FormFieldsService] Fetching form fields for service: ${serviceId}`);
     console.log(`[FormFieldsService] Using Base ID: ${config.baseId}`);

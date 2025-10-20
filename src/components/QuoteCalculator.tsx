@@ -10,6 +10,7 @@ import IndividualTaxDynamic from './IndividualTaxDynamic';
 import BusinessTaxDetails from './BusinessTaxDetails';
 import BookkeepingDetails from './BookkeepingDetails';
 import AdditionalServicesDetails from './AdditionalServicesDetails';
+import DynamicServiceDetailStep from './DynamicServiceDetailStep';
 import QuoteResults from './QuoteResults';
 import TenantLogo from './TenantLogo';
 import { FormData, QuoteData } from '../types/quote';
@@ -102,28 +103,46 @@ const QuoteCalculator: React.FC = () => {
   // Build dynamic step sequence based on selected services
   const steps = useMemo(() => {
     const stepSequence = [];
-    
+
     // Always start with contact and services
     stepSequence.push('contact', 'services');
-    
-    // Add service-specific detail pages in priority order
-    const hasAdvisory = formData.services.includes('advisory');
-    const hasIndividualTax = formData.services.includes('individual-tax');
-    const hasBusinessTax = formData.services.includes('business-tax');
-    const hasBookkeeping = formData.services.includes('bookkeeping');
-    const hasAdditionalServices = formData.services.includes('additional-services');
-    
-    if (hasAdvisory) stepSequence.push('advisory-sales');
-    if (hasIndividualTax) stepSequence.push('individual-tax');
-    if (hasBusinessTax) stepSequence.push('business-tax');
-    if (hasBookkeeping) stepSequence.push('bookkeeping');
-    if (hasAdditionalServices) stepSequence.push('additional-services');
-    
+
+    // Add service-specific detail pages dynamically based on hasDetailForm
+    if (formData.services.length > 0 && serviceConfig.length > 0) {
+      // Get selected services with their config
+      const selectedServiceConfigs = formData.services
+        .map(serviceId => serviceConfig.find(s => s.serviceId === serviceId))
+        .filter(Boolean) as ServiceConfig[];
+
+      // Handle advisory specially (no detail form but has sales page)
+      const hasAdvisory = formData.services.includes('advisory');
+      if (hasAdvisory) {
+        stepSequence.push('advisory-sales');
+      }
+
+      // Handle additional-services specially (has custom component)
+      const hasAdditionalServices = formData.services.includes('additional-services');
+
+      // Add all services with hasDetailForm = true
+      selectedServiceConfigs.forEach(service => {
+        if (service.serviceId !== 'advisory' && service.serviceId !== 'additional-services') {
+          if (service.hasDetailForm) {
+            stepSequence.push(service.serviceId);
+          }
+        }
+      });
+
+      // Add additional-services at the end if selected
+      if (hasAdditionalServices) {
+        stepSequence.push('additional-services');
+      }
+    }
+
     // Always end with quote
     stepSequence.push('quote');
-    
+
     return stepSequence;
-  }, [formData.services]);
+  }, [formData.services, serviceConfig]);
 
   const totalSteps = steps.length;
   const currentStepType = steps[currentStep - 1];
@@ -150,7 +169,14 @@ const QuoteCalculator: React.FC = () => {
         case 'bookkeeping':
         case 'additional-services': return 4;
         case 'quote': return 5;
-        default: return 1;
+        default:
+          // For dynamic services, check if they have detail forms
+          const dynamicService = serviceConfig.find(s => s.serviceId === componentType);
+          if (dynamicService && dynamicService.hasDetailForm) {
+            // Tax services go to step 3, other services to step 4
+            return componentType.includes('tax') ? 3 : 4;
+          }
+          return 1;
       }
     };
 
@@ -162,9 +188,9 @@ const QuoteCalculator: React.FC = () => {
         maxConceptualStep = Math.max(maxConceptualStep, conceptualStepForComponent);
       }
     }
-    
+
     return maxConceptualStep;
-  }, [currentStep, steps]);
+  }, [currentStep, steps, serviceConfig]);
 
   // Load pricing configuration on component mount
   useEffect(() => {
@@ -421,31 +447,12 @@ const QuoteCalculator: React.FC = () => {
           />
         );
       case 'individual-tax':
-        // Use dynamic form rendering if feature flag is enabled
-        return USE_DYNAMIC_INDIVIDUAL_TAX ? (
-          <IndividualTaxDynamic
-            formData={formData}
-            updateFormData={updateFormData}
-            serviceConfig={serviceConfig}
-          />
-        ) : (
-          <IndividualTaxDetails
-            formData={formData}
-            updateFormData={updateFormData}
-            serviceConfig={serviceConfig}
-          />
-        );
       case 'business-tax':
-        return (
-          <BusinessTaxDetails
-            formData={formData}
-            updateFormData={updateFormData}
-            serviceConfig={serviceConfig}
-          />
-        );
       case 'bookkeeping':
+        // Use universal dynamic component for all services with hasDetailForm
         return (
-          <BookkeepingDetails
+          <DynamicServiceDetailStep
+            serviceId={currentStepType}
             formData={formData}
             updateFormData={updateFormData}
             serviceConfig={serviceConfig}
@@ -472,10 +479,24 @@ const QuoteCalculator: React.FC = () => {
           />
         );
       default:
+        // Handle any other dynamic service with hasDetailForm
+        const dynamicService = serviceConfig.find(s => s.serviceId === currentStepType && s.hasDetailForm);
+        if (dynamicService) {
+          return (
+            <DynamicServiceDetailStep
+              serviceId={currentStepType}
+              formData={formData}
+              updateFormData={updateFormData}
+              serviceConfig={serviceConfig}
+            />
+          );
+        }
+
+        // Fallback to contact form
         return (
-          <ContactForm 
-            formData={formData} 
-            updateFormData={updateFormData} 
+          <ContactForm
+            formData={formData}
+            updateFormData={updateFormData}
           />
         );
     }
