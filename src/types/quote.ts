@@ -193,6 +193,13 @@ export interface FormField {
   displayOrder: number;
   conditionalLogic?: string; // JSON string for future conditional logic implementation
   helpText?: string;
+  // Layout metadata
+  fieldWidth?: 'full' | 'half';
+  sectionHeader?: string;
+  sectionIcon?: string;
+  layoutType?: 'standard' | 'checkbox-grid' | 'radio-group' | 'textarea';
+  columns?: number; // Number of columns for checkbox grids
+  rowGroup?: number; // Group number for half-width fields on same row
 }
 
 export interface AirtableFormFieldConfig {

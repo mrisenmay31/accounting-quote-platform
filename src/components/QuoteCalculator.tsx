@@ -426,6 +426,7 @@ const QuoteCalculator: React.FC = () => {
           <IndividualTaxDynamic
             formData={formData}
             updateFormData={updateFormData}
+            serviceConfig={serviceConfig}
           />
         ) : (
           <IndividualTaxDetails

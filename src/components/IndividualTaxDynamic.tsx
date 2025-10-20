@@ -1,31 +1,33 @@
 /**
  * IndividualTaxDynamic Component
  * Dynamic form rendering for Individual Tax step using Airtable form fields
- * Replaces hardcoded form fields with data-driven approach
+ * Supports complex layouts with section headers, icons, row grouping, and checkbox grids
  */
 
 import React, { useState, useEffect } from 'react';
-import { FileText } from 'lucide-react';
-import { FormData } from '../types/quote';
+import { FileText, CheckCircle } from 'lucide-react';
+import { FormData, ServiceConfig } from '../types/quote';
 import { useTenant } from '../contexts/TenantContext';
 import { getCachedFormFields, FormField } from '../utils/formFieldsService';
-import DynamicFormField from './DynamicFormField';
+import DynamicFormFieldAirtable from './DynamicFormField';
+import { DynamicIcon } from '../utils/iconMapper';
 
 interface IndividualTaxDynamicProps {
   formData: FormData;
   updateFormData: (updates: Partial<FormData>) => void;
+  serviceConfig?: ServiceConfig[];
 }
 
 const IndividualTaxDynamic: React.FC<IndividualTaxDynamicProps> = ({
   formData,
   updateFormData,
+  serviceConfig = [],
 }) => {
-  const { tenant } = useTenant();
+  const { tenant, firmInfo } = useTenant();
   const [formFields, setFormFields] = useState<FormField[]>([]);
   const [isLoadingFields, setIsLoadingFields] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Load form fields from Airtable on component mount
   useEffect(() => {
     const loadFormFields = async () => {
       if (!tenant) {
@@ -37,23 +39,13 @@ const IndividualTaxDynamic: React.FC<IndividualTaxDynamicProps> = ({
         setIsLoadingFields(true);
         setLoadError(null);
 
-        // Use Airtable configuration from tenant
         const airtableConfig = {
           baseId: tenant.airtable.servicesBaseId || tenant.airtable.pricingBaseId,
           apiKey: tenant.airtable.servicesApiKey || tenant.airtable.pricingApiKey,
         };
 
         console.log('[IndividualTaxDynamic] Loading form fields for individual-tax');
-        console.log('[IndividualTaxDynamic] Tenant configuration:', {
-          subdomain: tenant.subdomain,
-          firmName: tenant.firmName,
-          servicesBaseId: tenant.airtable.servicesBaseId,
-          pricingBaseId: tenant.airtable.pricingBaseId,
-          usingBaseId: airtableConfig.baseId,
-          hasApiKey: !!airtableConfig.apiKey
-        });
 
-        // Validate configuration
         if (!airtableConfig.baseId) {
           throw new Error('Airtable Base ID is not configured for this tenant. Please contact support.');
         }
@@ -61,7 +53,6 @@ const IndividualTaxDynamic: React.FC<IndividualTaxDynamicProps> = ({
           throw new Error('Airtable API Key is not configured for this tenant. Please contact support.');
         }
 
-        // Fetch fields from Airtable filtered by service ID
         const fields = await getCachedFormFields(airtableConfig, 'individual-tax');
 
         setFormFields(fields);
@@ -78,7 +69,6 @@ const IndividualTaxDynamic: React.FC<IndividualTaxDynamicProps> = ({
     loadFormFields();
   }, [tenant]);
 
-  // Handle field value changes
   const handleFieldChange = (fieldName: string, value: any) => {
     updateFormData({
       individualTax: {
@@ -88,34 +78,20 @@ const IndividualTaxDynamic: React.FC<IndividualTaxDynamicProps> = ({
     });
   };
 
-  // Get current field value from formData
   const getFieldValue = (fieldName: string): any => {
     return (formData.individualTax as any)?.[fieldName] || '';
   };
 
-  // Loading state
   if (isLoadingFields) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center space-x-3 mb-8">
-          <div
-            className="w-12 h-12 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: 'var(--tenant-primary-100, #d1fae5)' }}
-          >
-            <FileText
-              className="w-6 h-6"
-              style={{ color: 'var(--tenant-primary-600, #10b981)' }}
-            />
-          </div>
-          <div>
-            <h2
-              className="text-2xl font-bold"
-              style={{ color: 'var(--tenant-primary-900, #064e3b)' }}
-            >
-              Individual Tax Details
-            </h2>
-            <p className="text-gray-600">Loading form fields...</p>
-          </div>
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">
+            Individual Tax Preparation Details
+          </h2>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Loading form fields...
+          </p>
         </div>
 
         <div className="flex items-center justify-center py-12">
@@ -128,29 +104,16 @@ const IndividualTaxDynamic: React.FC<IndividualTaxDynamicProps> = ({
     );
   }
 
-  // Error state
   if (loadError) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center space-x-3 mb-8">
-          <div
-            className="w-12 h-12 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: 'var(--tenant-primary-100, #d1fae5)' }}
-          >
-            <FileText
-              className="w-6 h-6"
-              style={{ color: 'var(--tenant-primary-600, #10b981)' }}
-            />
-          </div>
-          <div>
-            <h2
-              className="text-2xl font-bold"
-              style={{ color: 'var(--tenant-primary-900, #064e3b)' }}
-            >
-              Individual Tax Details
-            </h2>
-            <p className="text-gray-600">Please provide your tax information</p>
-          </div>
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">
+            Individual Tax Preparation Details
+          </h2>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Help us understand your tax situation
+          </p>
         </div>
 
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">
@@ -174,29 +137,16 @@ const IndividualTaxDynamic: React.FC<IndividualTaxDynamicProps> = ({
     );
   }
 
-  // No fields found state
   if (formFields.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center space-x-3 mb-8">
-          <div
-            className="w-12 h-12 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: 'var(--tenant-primary-100, #d1fae5)' }}
-          >
-            <FileText
-              className="w-6 h-6"
-              style={{ color: 'var(--tenant-primary-600, #10b981)' }}
-            />
-          </div>
-          <div>
-            <h2
-              className="text-2xl font-bold"
-              style={{ color: 'var(--tenant-primary-900, #064e3b)' }}
-            >
-              Individual Tax Details
-            </h2>
-            <p className="text-gray-600">Please provide your tax information</p>
-          </div>
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">
+            Individual Tax Preparation Details
+          </h2>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Help us understand your tax situation
+          </p>
         </div>
 
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
@@ -208,49 +158,124 @@ const IndividualTaxDynamic: React.FC<IndividualTaxDynamicProps> = ({
     );
   }
 
-  // Main render - dynamic form fields
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-3 mb-8">
-        <div
-          className="w-12 h-12 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: 'var(--tenant-primary-100, #d1fae5)' }}
-        >
-          <FileText
-            className="w-6 h-6"
-            style={{ color: 'var(--tenant-primary-600, #10b981)' }}
-          />
-        </div>
-        <div>
-          <h2
-            className="text-2xl font-bold"
-            style={{ color: 'var(--tenant-primary-900, #064e3b)' }}
-          >
-            Individual Tax Details
-          </h2>
-          <p className="text-gray-600">
-            Please provide your tax information to help us calculate your quote
-          </p>
-        </div>
-      </div>
+  const renderFields = () => {
+    const elements: JSX.Element[] = [];
+    let currentRowGroup: FormField[] = [];
 
-      <div className="space-y-4">
-        {formFields.map((field) => (
-          <DynamicFormField
-            key={field.fieldId}
-            field={field}
-            value={getFieldValue(field.fieldName)}
-            onChange={handleFieldChange}
-          />
+    formFields.forEach((field, index) => {
+      const prevField = index > 0 ? formFields[index - 1] : null;
+
+      if (field.sectionHeader && (!prevField || prevField.sectionHeader !== field.sectionHeader)) {
+        if (currentRowGroup.length > 0) {
+          elements.push(renderRowGroup(currentRowGroup));
+          currentRowGroup = [];
+        }
+
+        elements.push(
+          <div key={`section-${field.fieldId}`} className="mt-8 mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+              {field.sectionIcon && (
+                <DynamicIcon name={field.sectionIcon} className="w-5 h-5 text-emerald-600" size={20} />
+              )}
+              <span>{field.sectionHeader}</span>
+            </h3>
+          </div>
+        );
+      }
+
+      if (field.fieldWidth === 'half' && field.rowGroup !== undefined) {
+        currentRowGroup.push(field);
+
+        const nextField = formFields[index + 1];
+        if (!nextField || nextField.rowGroup !== field.rowGroup) {
+          elements.push(renderRowGroup(currentRowGroup));
+          currentRowGroup = [];
+        }
+      } else {
+        if (currentRowGroup.length > 0) {
+          elements.push(renderRowGroup(currentRowGroup));
+          currentRowGroup = [];
+        }
+
+        elements.push(
+          <div key={field.fieldId} className="mb-6">
+            <DynamicFormFieldAirtable
+              field={field}
+              value={getFieldValue(field.fieldName)}
+              onChange={handleFieldChange}
+            />
+          </div>
+        );
+      }
+    });
+
+    if (currentRowGroup.length > 0) {
+      elements.push(renderRowGroup(currentRowGroup));
+    }
+
+    return elements;
+  };
+
+  const renderRowGroup = (fields: FormField[]) => {
+    const groupKey = fields.map(f => f.fieldId).join('-');
+
+    return (
+      <div key={`row-${groupKey}`} className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+        {fields.map((field) => (
+          <div key={field.fieldId}>
+            <DynamicFormFieldAirtable
+              field={field}
+              value={getFieldValue(field.fieldName)}
+              onChange={handleFieldChange}
+            />
+          </div>
         ))}
       </div>
+    );
+  };
 
-      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-sm text-blue-800">
-          <strong>Note:</strong> All information provided is confidential and will be used
-          solely for preparing your quote.
+  const includedFeaturesCard = serviceConfig.find(s => s.serviceId === 'individual-tax');
+
+  return (
+    <div className="space-y-8">
+      <div className="text-center">
+        <h2 className="text-3xl font-bold text-gray-900 mb-3">
+          Individual Tax Preparation Details
+        </h2>
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          Help us understand your tax situation so we can provide the most accurate pricing and recommendations.
         </p>
       </div>
+
+      {renderFields()}
+
+      {includedFeaturesCard && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
+          <div className="flex items-start space-x-3">
+            <div className="w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              <CheckCircle className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-emerald-800 mb-2">
+                {includedFeaturesCard.includedFeaturesCardTitle || "What's Included in Our Individual Tax Service"}
+              </h3>
+              <ul className="space-y-1 text-sm text-emerald-700">
+                {(includedFeaturesCard.includedFeaturesCardList || [
+                  'Complete federal and state tax return preparation',
+                  'Tax planning consultation to minimize future liability',
+                  'Quarterly estimated tax calculations (if needed)',
+                  'Audit support and representation',
+                  'Prior year amendments (if needed)',
+                  'Secure document portal for easy file sharing',
+                  'Year-round tax advice and support'
+                ]).map((feature, index) => (
+                  <li key={index}>• {feature}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

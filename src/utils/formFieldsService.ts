@@ -17,6 +17,13 @@ export interface FormField {
   displayOrder: number;
   conditionalLogic?: string; // JSON string (for future implementation)
   helpText?: string;
+  // Layout metadata
+  fieldWidth?: 'full' | 'half';
+  sectionHeader?: string;
+  sectionIcon?: string;
+  layoutType?: 'standard' | 'checkbox-grid' | 'radio-group' | 'textarea';
+  columns?: number; // Number of columns for checkbox grids
+  rowGroup?: number; // Group number for half-width fields on same row
 }
 
 export interface AirtableFormFieldConfig {
@@ -39,6 +46,12 @@ interface AirtableRecord {
     'Display Order'?: number;
     'Conditional Logic'?: string;
     'Help Text'?: string;
+    'Field Width'?: string;
+    'Section Header'?: string;
+    'Section Icon'?: string;
+    'Layout Type'?: string;
+    'Columns'?: number;
+    'Row Group'?: number;
   };
 }
 
@@ -118,6 +131,12 @@ export const fetchFormFields = async (
       displayOrder: record.fields['Display Order'] || 999,
       conditionalLogic: record.fields['Conditional Logic'],
       helpText: record.fields['Help Text'],
+      fieldWidth: (record.fields['Field Width'] as 'full' | 'half') || 'full',
+      sectionHeader: record.fields['Section Header'],
+      sectionIcon: record.fields['Section Icon'],
+      layoutType: (record.fields['Layout Type'] as FormField['layoutType']) || 'standard',
+      columns: record.fields['Columns'] || 1,
+      rowGroup: record.fields['Row Group'],
     }));
 
     console.log(`[FormFieldsService] Successfully fetched ${formFields.length} active fields for service: ${serviceId}`);
