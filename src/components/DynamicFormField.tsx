@@ -58,6 +58,9 @@ const DynamicFormFieldAirtable: React.FC<DynamicFormFieldProps> = ({ field, valu
 
   const renderDropdown = () => {
     const dropdownOptions = Array.isArray(options) ? options : [];
+    const placeholderText = field.placeholder
+      ? `Please Select ${field.placeholder}`
+      : 'Please Select';
 
     return (
       <select
@@ -67,7 +70,7 @@ const DynamicFormFieldAirtable: React.FC<DynamicFormFieldProps> = ({ field, valu
         required={field.required}
         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors bg-white"
       >
-        <option value="">{field.placeholder || `Select ${field.fieldLabel}`}</option>
+        <option value="">{placeholderText}</option>
         {dropdownOptions.map((opt: string, idx: number) => (
           <option key={idx} value={opt}>
             {opt}
