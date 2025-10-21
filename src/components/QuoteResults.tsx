@@ -733,17 +733,21 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingCon
           <div className="flex-1 text-center md:text-left">
             <div className="text-xs text-gray-600 mb-1">Today's Total</div>
             <div className="flex items-baseline space-x-2">
-              <span className="text-2xl font-bold" style={{ color: 'var(--tenant-primary-600, #10b981)' }}>
-                ${quote.totalMonthlyFees.toLocaleString()}
-              </span>
-              <span className="text-base text-gray-600 font-normal">/mo</span>
+              <div className="flex flex-col items-start">
+                <span className="text-2xl font-bold" style={{ color: 'var(--tenant-primary-600, #10b981)' }}>
+                  ${quote.totalMonthlyFees.toLocaleString()}
+                </span>
+                <span className="text-xs text-gray-500 font-light tracking-wide">per month</span>
+              </div>
               {quote.totalOneTimeFees > 0 && (
                 <>
-                  <span className="text-lg text-gray-500 font-normal">+</span>
-                  <span className="text-2xl font-bold" style={{ color: 'var(--tenant-primary-600, #10b981)' }}>
-                    ${quote.totalOneTimeFees.toLocaleString()}
-                  </span>
-                  <span className="text-base text-gray-600 font-normal">one-time fees</span>
+                  <span className="text-lg text-gray-400 font-light">+</span>
+                  <div className="flex flex-col items-start">
+                    <span className="text-2xl font-bold" style={{ color: 'var(--tenant-primary-600, #10b981)' }}>
+                      ${quote.totalOneTimeFees.toLocaleString()}
+                    </span>
+                    <span className="text-xs text-gray-500 font-light tracking-wide">one-time fees</span>
+                  </div>
                 </>
               )}
             </div>
