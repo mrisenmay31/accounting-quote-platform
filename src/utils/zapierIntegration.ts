@@ -380,8 +380,49 @@ export const sendQuoteToZapierWebhook = async (
   // Extract individual Additional Service pricing
   const additionalServicePricing = extractAdditionalServicePricing(formData, pricingConfig, hasAdvisory);
 
-  // Build dynamic form fields payload
+  // Build dynamic form fields payload from Form Fields table if available
   const dynamicFormFields = formFields ? buildDynamicFormFields(formFields, formData) : {};
+
+  // ✅ EXTRACT ALL DYNAMIC FORM FIELDS FROM formData
+  // This ensures ALL fields are sent to Zapier, not just those in the Form Fields table
+  const allFormDataFields: Record<string, any> = {};
+
+  // Fields to exclude (already explicitly included in payload)
+  const excludedFields = [
+    'firstName', 'lastName', 'email', 'phone', 'services',
+    'individualTax', 'businessTax', 'bookkeeping', 'additionalServices'
+  ];
+
+  // Extract top-level fields
+  Object.keys(formData).forEach(key => {
+    if (!excludedFields.includes(key)) {
+      const value = formData[key as keyof FormData];
+      if (Array.isArray(value)) {
+        allFormDataFields[key] = value.join(', ');
+      } else if (value !== undefined && value !== null) {
+        allFormDataFields[key] = value;
+      }
+    }
+  });
+
+  // Extract nested fields from service objects
+  const extractNestedFields = (obj: any, prefix: string) => {
+    if (!obj || typeof obj !== 'object') return;
+
+    Object.keys(obj).forEach(key => {
+      const value = obj[key];
+      const fieldKey = `${prefix}_${key}`;
+
+      if (Array.isArray(value)) {
+        allFormDataFields[fieldKey] = value.join(', ');
+      } else if (typeof value === 'object' && value !== null) {
+        // Skip nested objects, only extract primitive values
+        return;
+      } else if (value !== undefined && value !== null) {
+        allFormDataFields[fieldKey] = value;
+      }
+    });
+  };
 
   // Log extracted individual fees for debugging
   console.log('=== EXTRACTED INDIVIDUAL SERVICE FEES ===');
@@ -395,8 +436,10 @@ export const sendQuoteToZapierWebhook = async (
   console.log('=========================================');
 
   console.log('=== DYNAMIC FORM FIELDS ===');
-  console.log('Total dynamic fields:', Object.keys(dynamicFormFields).length / 2); // Divided by 2 because we add _label for each
-  console.log('Dynamic fields included:', Object.keys(dynamicFormFields).filter(k => !k.endsWith('_label')));
+  console.log('From Form Fields table:', Object.keys(dynamicFormFields).filter(k => !k.endsWith('_label')).length);
+  console.log('From formData extraction:', Object.keys(allFormDataFields).length);
+  console.log('Total dynamic fields:', Object.keys(dynamicFormFields).filter(k => !k.endsWith('_label')).length + Object.keys(allFormDataFields).length);
+  console.log('FormData fields:', Object.keys(allFormDataFields));
   console.log('===========================');
 
   console.log('=== EXTRACTED INDIVIDUAL ADDITIONAL SERVICE PRICING ===');
@@ -607,6 +650,10 @@ export const sendQuoteToZapierWebhook = async (
     // Dynamic Form Fields (automatically populated from Form Fields table)
     ...dynamicFormFields,
 
+    // ✅ ALL ADDITIONAL FORM DATA FIELDS
+    // This includes any custom fields added to formData that aren't explicitly defined above
+    ...allFormDataFields,
+
     // Metadata
     leadSource: 'Quote Calculator',
     leadStatus: 'New Lead',
@@ -614,8 +661,11 @@ export const sendQuoteToZapierWebhook = async (
     timestamp: Date.now(),
 
     // Dynamic Fields Metadata
-    dynamicFieldsCount: formFields?.length || 0,
-    dynamicFieldsIncluded: formFields?.map(f => f.fieldName).join(', ') || ''
+    dynamicFieldsCount: (formFields?.length || 0) + Object.keys(allFormDataFields).length,
+    dynamicFieldsIncluded: [
+      ...(formFields?.map(f => f.fieldName) || []),
+      ...Object.keys(allFormDataFields)
+    ].join(', ')
   };
 
   try {

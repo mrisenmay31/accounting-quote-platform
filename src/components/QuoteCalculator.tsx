@@ -260,7 +260,8 @@ const QuoteCalculator: React.FC = () => {
         return;
       }
 
-      // Fetch all form fields for selected services
+      // ✅ OPTIONAL: Fetch form fields only if you want field labels in Zapier
+      // This is NOT required for sending dynamic form data (formData already has all values)
       let allFormFields: FormField[] = [];
       try {
         const formFieldsPromises = formData.services.map(serviceId =>
@@ -268,10 +269,10 @@ const QuoteCalculator: React.FC = () => {
         );
         const formFieldsArrays = await Promise.all(formFieldsPromises);
         allFormFields = formFieldsArrays.flat();
-        console.log(`Fetched ${allFormFields.length} form fields for Zapier webhook`);
+        console.log(`Fetched ${allFormFields.length} form field definitions for labels`);
       } catch (error) {
-        console.error('Error fetching form fields for Zapier:', error);
-        // Continue with empty array if fetch fails
+        console.warn('Could not fetch form field definitions (labels only):', error);
+        // Continue without field labels - all formData values will still be sent
       }
 
       // Save quote to database
@@ -282,7 +283,8 @@ const QuoteCalculator: React.FC = () => {
         tenant: tenant,
       });
 
-      // Send quote data to tenant's Zapier webhook with dynamic form fields
+      // Send quote data to tenant's Zapier webhook
+      // All formData fields will be sent, even if allFormFields is empty
       await sendQuoteToZapierWebhook(
         formData,
         quote,
