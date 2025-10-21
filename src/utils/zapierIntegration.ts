@@ -1,4 +1,5 @@
 import { FormData, QuoteData, ServiceQuote, PricingConfig } from '../types/quote';
+import { FormField } from './formFieldsService';
 
 // Zapier webhook configuration (fallback to env var for development)
 const ZAPIER_WEBHOOK_URL = import.meta.env.VITE_ZAPIER_WEBHOOK_URL || '';
@@ -310,12 +311,54 @@ const generateQuoteId = (): string => {
   return `QUOTE-${year}${month}${day}-${random}`;
 };
 
+// Helper function to build dynamic form field payload from Form Fields table
+const buildDynamicFormFields = (
+  formFields: FormField[],
+  formData: FormData
+): Record<string, any> => {
+  const dynamicFields: Record<string, any> = {};
+
+  formFields.forEach(field => {
+    const fieldName = field.fieldName;
+    let value = formData[fieldName as keyof FormData];
+
+    // Special handling for nested service data
+    if (!value && field.serviceId) {
+      // Try to get value from service-specific data
+      const serviceData = formData[field.serviceId as keyof FormData];
+      if (serviceData && typeof serviceData === 'object') {
+        value = (serviceData as any)[fieldName];
+      }
+    }
+
+    // Handle array values (checkboxes, multi-select)
+    if (Array.isArray(value)) {
+      dynamicFields[fieldName] = value.join(', ');
+      dynamicFields[`${fieldName}_count`] = value.length;
+    }
+    // Handle boolean values
+    else if (typeof value === 'boolean') {
+      dynamicFields[fieldName] = value;
+    }
+    // Handle all other values
+    else {
+      dynamicFields[fieldName] = value || null;
+    }
+
+    // Include human-readable label for easier Zapier mapping
+    dynamicFields[`${fieldName}_label`] = field.fieldLabel;
+  });
+
+  return dynamicFields;
+};
+
 export const sendQuoteToZapierWebhook = async (
   formData: FormData,
   quote: QuoteData,
   pricingConfig: PricingConfig[] = [],
   tenantId?: string,
-  webhookUrl?: string
+  webhookUrl?: string,
+  formFields?: FormField[]
 ): Promise<boolean> => {
   const url = webhookUrl || ZAPIER_WEBHOOK_URL;
   console.log('Using Zapier webhook URL:', url);
@@ -337,6 +380,9 @@ export const sendQuoteToZapierWebhook = async (
   // Extract individual Additional Service pricing
   const additionalServicePricing = extractAdditionalServicePricing(formData, pricingConfig, hasAdvisory);
 
+  // Build dynamic form fields payload
+  const dynamicFormFields = formFields ? buildDynamicFormFields(formFields, formData) : {};
+
   // Log extracted individual fees for debugging
   console.log('=== EXTRACTED INDIVIDUAL SERVICE FEES ===');
   console.log('Advisory Services Monthly Fee:', individualFees.advisoryServicesMonthlyFee);
@@ -347,6 +393,11 @@ export const sendQuoteToZapierWebhook = async (
   console.log('Additional Services Monthly Fee (Aggregated):', individualFees.additionalServicesMonthlyFee);
   console.log('Additional Services One-Time Fee (Aggregated):', individualFees.additionalServicesOneTimeFee);
   console.log('=========================================');
+
+  console.log('=== DYNAMIC FORM FIELDS ===');
+  console.log('Total dynamic fields:', Object.keys(dynamicFormFields).length / 2); // Divided by 2 because we add _label for each
+  console.log('Dynamic fields included:', Object.keys(dynamicFormFields).filter(k => !k.endsWith('_label')));
+  console.log('===========================');
 
   console.log('=== EXTRACTED INDIVIDUAL ADDITIONAL SERVICE PRICING ===');
   console.log('AR Management Fee:', additionalServicePricing.arManagementFee, additionalServicePricing.arManagementBillingType);
@@ -552,12 +603,19 @@ export const sendQuoteToZapierWebhook = async (
     accountsPayableBillRunFrequency: formData.additionalServices?.accountsPayableBillRunFrequency || null,
     form1099Count: formData.additionalServices?.form1099Count ?? null,
     taxPlanningConsultation: formData.additionalServices?.taxPlanningConsultation ?? false,
-    
+
+    // Dynamic Form Fields (automatically populated from Form Fields table)
+    ...dynamicFormFields,
+
     // Metadata
     leadSource: 'Quote Calculator',
     leadStatus: 'New Lead',
     createdDate: new Date().toISOString(),
-    timestamp: Date.now()
+    timestamp: Date.now(),
+
+    // Dynamic Fields Metadata
+    dynamicFieldsCount: formFields?.length || 0,
+    dynamicFieldsIncluded: formFields?.map(f => f.fieldName).join(', ') || ''
   };
 
   try {

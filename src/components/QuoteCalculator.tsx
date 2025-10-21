@@ -20,6 +20,7 @@ import { getCachedServiceConfig, ServiceConfig } from '../utils/serviceConfigSer
 import { sendQuoteToZapierWebhook } from '../utils/zapierIntegration';
 import { useTenant } from '../contexts/TenantContext';
 import { saveQuote } from '../utils/quoteStorage';
+import { fetchFormFields, FormField } from '../utils/formFieldsService';
 
 // Feature flag: Set to true to use dynamic Airtable form fields for Individual Tax
 const USE_DYNAMIC_INDIVIDUAL_TAX = true;
@@ -259,6 +260,20 @@ const QuoteCalculator: React.FC = () => {
         return;
       }
 
+      // Fetch all form fields for selected services
+      let allFormFields: FormField[] = [];
+      try {
+        const formFieldsPromises = formData.services.map(serviceId =>
+          fetchFormFields(tenant, serviceId)
+        );
+        const formFieldsArrays = await Promise.all(formFieldsPromises);
+        allFormFields = formFieldsArrays.flat();
+        console.log(`Fetched ${allFormFields.length} form fields for Zapier webhook`);
+      } catch (error) {
+        console.error('Error fetching form fields for Zapier:', error);
+        // Continue with empty array if fetch fails
+      }
+
       // Save quote to database
       await saveQuote({
         tenantId: tenant.id,
@@ -267,8 +282,15 @@ const QuoteCalculator: React.FC = () => {
         tenant: tenant,
       });
 
-      // Send quote data to tenant's Zapier webhook
-      await sendQuoteToZapierWebhook(formData, quote, pricingConfig, tenant.id, tenant.zapierWebhookUrl);
+      // Send quote data to tenant's Zapier webhook with dynamic form fields
+      await sendQuoteToZapierWebhook(
+        formData,
+        quote,
+        pricingConfig,
+        tenant.id,
+        tenant.zapierWebhookUrl,
+        allFormFields
+      );
 
       // Advance to quote results page regardless of webhook success/failure
       nextStep();
