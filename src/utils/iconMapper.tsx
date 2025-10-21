@@ -45,6 +45,10 @@ import {
   Receipt,
   Wallet,
   BanknoteIcon as Banknote,
+  CheckSquare,
+  Clipboard,
+  ClipboardList,
+  UserCheck,
   LucideIcon
 } from 'lucide-react';
 
@@ -57,6 +61,7 @@ const iconMap: Record<string, LucideIcon> = {
   'trending-up': TrendingUp,
   'users': Users,
   'check-circle': CheckCircle,
+  'check-square': CheckSquare,
   'info': Info,
   'building': Building,
   'package': Package,
@@ -94,6 +99,9 @@ const iconMap: Record<string, LucideIcon> = {
   'receipt': Receipt,
   'wallet': Wallet,
   'banknote': Banknote,
+  'clipboard': Clipboard,
+  'clipboard-list': ClipboardList,
+  'user-check': UserCheck,
 };
 
 interface IconProps {
@@ -130,6 +138,22 @@ export const getIconComponent = (iconName?: string): LucideIcon => {
   }
 
   return IconComponent;
+};
+
+// Field Icon Component for form field labels
+export const FieldIcon: React.FC<IconProps> = ({ name, className = '', size = 16 }) => {
+  if (!name) {
+    return null;
+  }
+
+  const IconComponent = iconMap[name.toLowerCase()];
+
+  if (!IconComponent) {
+    // Don't render anything if icon not found (no fallback for field labels)
+    return null;
+  }
+
+  return <IconComponent className={className} size={size} />;
 };
 
 export default DynamicIcon;

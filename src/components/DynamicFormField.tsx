@@ -7,6 +7,7 @@
 import React from 'react';
 import { Info, CheckCircle } from 'lucide-react';
 import { FormField, parseFieldOptions } from '../utils/formFieldsService';
+import { FieldIcon } from '../utils/iconMapper';
 
 interface DynamicFormFieldProps {
   field: FormField;
@@ -273,6 +274,7 @@ const DynamicFormFieldAirtable: React.FC<DynamicFormFieldProps> = ({ field, valu
     <div className="space-y-3">
       <label className="block">
         <div className="flex items-center space-x-2">
+          <FieldIcon name={field.sectionIcon} className="text-teal-600 flex-shrink-0" size={18} />
           <span className="text-sm font-semibold text-gray-700">
             {field.fieldLabel}
             {field.required && <span className="text-red-500 ml-1">*</span>}
