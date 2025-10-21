@@ -213,8 +213,39 @@ const IndividualTaxDynamic: React.FC<IndividualTaxDynamicProps> = ({
           sectionHeader: field.sectionHeader,
           sectionIcon: field.sectionIcon
         });
+      } else if (field.fieldWidth === 'half') {
+        // Handle half-width fields without explicit Row Group
+        // Look for consecutive half-width fields to pair them
+        const nextFieldIndex = sortedFields.findIndex(f =>
+          f.fieldId === field.fieldId
+        ) + 1;
+
+        const nextField = nextFieldIndex < sortedFields.length ? sortedFields[nextFieldIndex] : null;
+
+        if (nextField &&
+            nextField.fieldWidth === 'half' &&
+            !processedFields.has(nextField.fieldId) &&
+            Math.abs(nextField.displayOrder - field.displayOrder) <= 1) {
+          // Pair these two half-width fields
+          processedFields.add(field.fieldId);
+          processedFields.add(nextField.fieldId);
+
+          groupedFields.push({
+            type: 'group',
+            fields: [field, nextField],
+            sectionHeader: field.sectionHeader,
+            sectionIcon: field.sectionIcon
+          });
+        } else {
+          // Single half-width field (will still render at half width)
+          processedFields.add(field.fieldId);
+          groupedFields.push({
+            type: 'single',
+            field: field
+          });
+        }
       } else {
-        // Single field (no group)
+        // Full-width single field (no group, no special width)
         processedFields.add(field.fieldId);
         groupedFields.push({
           type: 'single',
@@ -285,12 +316,16 @@ const IndividualTaxDynamic: React.FC<IndividualTaxDynamicProps> = ({
           </div>
         );
       } else if (item.type === 'single' && item.field) {
-        // Single field (full width)
+        // Single field - respect Field Width setting
         const field = item.field;
+
+        // Determine width class based on Field Width column
+        const widthClass = field.fieldWidth === 'half' ? 'w-full md:w-1/2' : 'w-full';
+
         elements.push(
           <div
             key={`single-${field.fieldId}`}
-            className="mb-6 transition-all duration-300 ease-in-out animate-fadeIn"
+            className={`${widthClass} mb-6 transition-all duration-300 ease-in-out animate-fadeIn`}
           >
             <DynamicFormFieldAirtable
               field={field}
