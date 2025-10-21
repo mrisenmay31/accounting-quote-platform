@@ -171,57 +171,126 @@ const DynamicServiceDetailStep: React.FC<DynamicServiceDetailStepProps> = ({
   }
 
   const renderFields = () => {
-    const elements: JSX.Element[] = [];
-    let currentRowGroup: FormField[] = [];
-
     // Filter fields by active status and conditional logic
     const visibleFields = formFields.filter(field =>
       field.active && shouldShowField(field, formData as any)
     );
 
-    visibleFields.forEach((field, index) => {
-      const prevField = index > 0 ? visibleFields[index - 1] : null;
+    // Sort visible fields by Display Order
+    const sortedFields = [...visibleFields].sort((a, b) => a.displayOrder - b.displayOrder);
 
-      // Render section header if different from previous field
-      if (field.sectionHeader && (!prevField || prevField.sectionHeader !== field.sectionHeader)) {
-        // Flush any pending row group before section header
-        if (currentRowGroup.length > 0) {
-          elements.push(renderRowGroup(currentRowGroup));
-          currentRowGroup = [];
-        }
+    // Group fields by Row Group number
+    const groupedFields: Array<{
+      type: 'group' | 'single';
+      rowGroup?: number;
+      field?: FormField;
+      fields?: FormField[];
+      sectionHeader?: string;
+      sectionIcon?: string;
+    }> = [];
 
+    const processedFields = new Set<string>();
+
+    sortedFields.forEach((field) => {
+      if (processedFields.has(field.fieldId)) return;
+
+      if (field.rowGroup !== undefined && field.rowGroup !== null) {
+        // Find all fields with the same Row Group
+        const fieldsInGroup = sortedFields.filter(f =>
+          f.rowGroup === field.rowGroup && !processedFields.has(f.fieldId)
+        );
+
+        // Sort by Display Order within the group
+        fieldsInGroup.sort((a, b) => a.displayOrder - b.displayOrder);
+
+        // Mark all fields in this group as processed
+        fieldsInGroup.forEach(f => processedFields.add(f.fieldId));
+
+        // Add as a group
+        groupedFields.push({
+          type: 'group',
+          rowGroup: field.rowGroup,
+          fields: fieldsInGroup,
+          sectionHeader: field.sectionHeader,
+          sectionIcon: field.sectionIcon
+        });
+      } else {
+        // Single field (no group)
+        processedFields.add(field.fieldId);
+        groupedFields.push({
+          type: 'single',
+          field: field
+        });
+      }
+    });
+
+    // Track section headers to avoid duplicates
+    let lastSectionHeader: string | undefined;
+
+    // Render grouped and single fields
+    return groupedFields.map((item, index) => {
+      const elements: JSX.Element[] = [];
+
+      // Render section header if it's new
+      if (item.type === 'group' && item.sectionHeader && item.sectionHeader !== lastSectionHeader) {
+        lastSectionHeader = item.sectionHeader;
         elements.push(
-          <div key={`section-${field.fieldId}`} className="mt-8 mb-4">
+          <div key={`section-group-${item.rowGroup}-${index}`} className="mt-8 mb-4">
             <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-              {field.sectionIcon && (
-                <DynamicIcon name={field.sectionIcon} className="w-5 h-5 text-emerald-600" size={20} />
+              {item.sectionIcon && (
+                <DynamicIcon name={item.sectionIcon} className="w-5 h-5 text-emerald-600" size={20} />
               )}
-              <span>{field.sectionHeader}</span>
+              <span>{item.sectionHeader}</span>
+            </h3>
+          </div>
+        );
+      } else if (item.type === 'single' && item.field?.sectionHeader && item.field.sectionHeader !== lastSectionHeader) {
+        lastSectionHeader = item.field.sectionHeader;
+        elements.push(
+          <div key={`section-single-${item.field.fieldId}`} className="mt-8 mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+              {item.field.sectionIcon && (
+                <DynamicIcon name={item.field.sectionIcon} className="w-5 h-5 text-emerald-600" size={20} />
+              )}
+              <span>{item.field.sectionHeader}</span>
             </h3>
           </div>
         );
       }
 
-      // Handle row grouping for half-width fields
-      if (field.fieldWidth === 'half' && field.rowGroup !== undefined) {
-        currentRowGroup.push(field);
+      if (item.type === 'group' && item.fields) {
+        const numFields = item.fields.length;
+        const gridClass =
+          numFields === 2 ? 'grid-cols-1 md:grid-cols-2' :
+          numFields === 3 ? 'grid-cols-1 md:grid-cols-3' :
+          numFields === 4 ? 'grid-cols-1 md:grid-cols-4' :
+          numFields >= 5 ? 'grid-cols-1 md:grid-cols-5' :
+          'grid-cols-1';
 
-        const nextField = visibleFields[index + 1];
-        if (!nextField || nextField.rowGroup !== field.rowGroup) {
-          elements.push(renderRowGroup(currentRowGroup));
-          currentRowGroup = [];
-        }
-      } else {
-        // Flush any pending row group
-        if (currentRowGroup.length > 0) {
-          elements.push(renderRowGroup(currentRowGroup));
-          currentRowGroup = [];
-        }
-
-        // Render full-width field
         elements.push(
           <div
-            key={field.fieldId}
+            key={`group-${item.rowGroup}-${index}`}
+            className="mb-6 transition-all duration-300 ease-in-out animate-fadeIn"
+          >
+            <div className={`grid ${gridClass} gap-4`}>
+              {item.fields.map(field => (
+                <div key={field.fieldId}>
+                  <DynamicFormField
+                    field={field}
+                    value={getFieldValue(field.fieldName)}
+                    onChange={handleFieldChange}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      } else if (item.type === 'single' && item.field) {
+        // Single field (full width)
+        const field = item.field;
+        elements.push(
+          <div
+            key={`single-${field.fieldId}`}
             className="mb-6 transition-all duration-300 ease-in-out animate-fadeIn"
           >
             <DynamicFormField
@@ -232,35 +301,9 @@ const DynamicServiceDetailStep: React.FC<DynamicServiceDetailStepProps> = ({
           </div>
         );
       }
+
+      return <React.Fragment key={`fragment-${index}`}>{elements}</React.Fragment>;
     });
-
-    // Flush any remaining row group
-    if (currentRowGroup.length > 0) {
-      elements.push(renderRowGroup(currentRowGroup));
-    }
-
-    return elements;
-  };
-
-  const renderRowGroup = (fields: FormField[]) => {
-    const groupKey = fields.map(f => f.fieldId).join('-');
-
-    return (
-      <div
-        key={`row-${groupKey}`}
-        className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6 transition-all duration-300 ease-in-out animate-fadeIn"
-      >
-        {fields.map((field) => (
-          <div key={field.fieldId}>
-            <DynamicFormField
-              field={field}
-              value={getFieldValue(field.fieldName)}
-              onChange={handleFieldChange}
-            />
-          </div>
-        ))}
-      </div>
-    );
   };
 
   const includedFeaturesCard = serviceConfig.find(s => s.serviceId === serviceId);
