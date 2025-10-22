@@ -822,7 +822,7 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, quoteId, p
               ) : (
                 <>
                   <CheckCircle className="w-4 h-4" />
-                  <span>Accept & Get Started</span>
+                  <span>Accept Quote & Get Started</span>
                 </>
               )}
             </button>
