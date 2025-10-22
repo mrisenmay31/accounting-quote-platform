@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Phone, Calendar, CheckCircle, Star, ArrowRight, Send, X, Calculator, Info, ChevronDown, ChevronUp, TrendingUp, Zap, ClipboardCheck, GraduationCap, Code, Clock, RefreshCw, AlertCircle, Mail, Globe, MapPin, FileText } from 'lucide-react';
+import { Phone, Calendar, CheckCircle, Star, ArrowRight, Send, X, Calculator, Info, ChevronDown, ChevronUp, TrendingUp, Zap, ClipboardCheck, GraduationCap, Code, Clock, RefreshCw, AlertCircle, Mail, Globe, MapPin } from 'lucide-react';
 import { FormData, QuoteData, PricingConfig, ServiceConfig } from '../types/quote';
 import { useTenant } from '../contexts/TenantContext';
 import { sendQuoteToZapierWebhook } from '../utils/zapierIntegration';
@@ -61,7 +61,6 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingCon
     }
   };
 
-  const handleGetQuote = () => handleQuoteAction('new', 'get-quote');
   const handleAcceptQuote = () => handleQuoteAction('Quote Accepted', 'accept-quote');
   const handleScheduleConsultationWithStatus = () => handleQuoteAction('Call Scheduled', 'schedule-consultation');
 
@@ -799,38 +798,6 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingCon
             </div>
           </div>
           <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-            {/* Get Quote Button */}
-            <button
-              onClick={handleGetQuote}
-              disabled={isSubmitting}
-              className="inline-flex items-center justify-center space-x-2 bg-white border-2 font-semibold py-3 px-5 rounded-lg transition-all duration-200"
-              style={{
-                borderColor: isSubmitting && activeButton === 'get-quote' ? 'var(--tenant-primary-300, #6ee7b7)' : '#e5e7eb',
-                color: isSubmitting && activeButton === 'get-quote' ? 'var(--tenant-primary-600, #10b981)' : '#374151',
-                opacity: isSubmitting && activeButton !== 'get-quote' ? 0.5 : 1,
-              }}
-              onMouseEnter={(e) => !isSubmitting && (
-                e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)',
-                e.currentTarget.style.backgroundColor = '#f9fafb'
-              )}
-              onMouseLeave={(e) => !isSubmitting && (
-                e.currentTarget.style.borderColor = '#e5e7eb',
-                e.currentTarget.style.backgroundColor = 'white'
-              )}
-            >
-              {isSubmitting && activeButton === 'get-quote' ? (
-                <>
-                  <div className="animate-spin w-4 h-4 border-2 border-t-transparent rounded-full" style={{ borderColor: 'var(--tenant-primary-600, #10b981)' }} />
-                  <span>Sending...</span>
-                </>
-              ) : (
-                <>
-                  <FileText className="w-4 h-4" />
-                  <span>Get Quote</span>
-                </>
-              )}
-            </button>
-
             {/* Accept Quote Button */}
             <button
               onClick={handleAcceptQuote}

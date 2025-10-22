@@ -283,7 +283,7 @@ const QuoteCalculator: React.FC = () => {
         tenant: tenant,
       });
 
-      // Send quote data to tenant's Zapier webhook
+      // Send quote data to tenant's Zapier webhook with 'new' status
       // All formData fields will be sent, even if allFormFields is empty
       await sendQuoteToZapierWebhook(
         formData,
@@ -291,7 +291,8 @@ const QuoteCalculator: React.FC = () => {
         pricingConfig,
         tenant.id,
         tenant.zapierWebhookUrl,
-        allFormFields
+        allFormFields,
+        'new'
       );
 
       // Advance to quote results page regardless of webhook success/failure
