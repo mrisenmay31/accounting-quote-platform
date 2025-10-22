@@ -359,18 +359,28 @@ export const sendQuoteToZapierWebhook = async (
   tenantId?: string,
   webhookUrl?: string,
   formFields?: FormField[],
-  quoteStatus?: 'new' | 'Quote Accepted' | 'Call Scheduled'
-): Promise<boolean> => {
+  quoteStatus?: 'new' | 'Quote Accepted' | 'Call Scheduled',
+  existingQuoteId?: string
+): Promise<{ success: boolean; quoteId: string }> => {
   const url = webhookUrl || ZAPIER_WEBHOOK_URL;
   console.log('Using Zapier webhook URL:', url);
 
   if (!url) {
     console.error('Zapier webhook URL not configured');
-    return true; // Return true for demo purposes when webhook is not configured
+    // Generate or use existing quote ID even when webhook is not configured
+    const quoteId = existingQuoteId || generateQuoteId();
+    return { success: true, quoteId }; // Return true for demo purposes when webhook is not configured
   }
 
-  // Generate unique quote ID
-  const quoteId = generateQuoteId();
+  // Use existing quote ID if provided, otherwise generate a new one
+  const quoteId = existingQuoteId || generateQuoteId();
+
+  console.log('Quote ID for this webhook call:', quoteId);
+  if (existingQuoteId) {
+    console.log('Using existing Quote ID - will update same Airtable record');
+  } else {
+    console.log('Generated new Quote ID - will create new Airtable record');
+  }
 
   // Check if advisory service is selected
   const hasAdvisory = formData.services.includes('advisory');
@@ -692,7 +702,7 @@ export const sendQuoteToZapierWebhook = async (
     const responseData = await response.text();
     console.log('Zapier webhook response:', responseData);
     console.log('Successfully sent quote data to Zapier webhook');
-    return true;
+    return { success: true, quoteId };
   } catch (error) {
     console.error('Error sending quote data to Zapier webhook:', error);
     console.error('Error details:', {
@@ -700,7 +710,7 @@ export const sendQuoteToZapierWebhook = async (
       name: error instanceof Error ? error.name : 'Unknown',
       stack: error instanceof Error ? error.stack : 'No stack trace'
     });
-    return false;
+    return { success: false, quoteId };
   }
 };
 

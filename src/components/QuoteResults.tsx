@@ -7,12 +7,13 @@ import { sendQuoteToZapierWebhook } from '../utils/zapierIntegration';
 interface QuoteResultsProps {
   formData: FormData;
   quote: QuoteData | null;
+  quoteId: string | null;
   pricingConfig?: PricingConfig[];
   serviceConfig?: ServiceConfig[];
   onRecalculate?: () => void;
 }
 
-const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingConfig = [], serviceConfig = [], onRecalculate }) => {
+const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, quoteId, pricingConfig = [], serviceConfig = [], onRecalculate }) => {
   const { tenant, firmInfo } = useTenant();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -27,25 +28,32 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingCon
       return;
     }
 
+    if (!quoteId) {
+      console.error('Quote ID not available - cannot update existing quote');
+      alert('Quote ID not found. Please try recalculating your quote.');
+      return;
+    }
+
     setIsSubmitting(true);
     setActiveButton(buttonName);
 
     try {
-      console.log(`Sending quote with status: ${status}`);
+      console.log(`Sending quote with status: ${status} using Quote ID: ${quoteId}`);
 
-      // Send quote to Zapier with the specified status
-      const success = await sendQuoteToZapierWebhook(
+      // Send quote to Zapier with the specified status and EXISTING quote ID
+      const result = await sendQuoteToZapierWebhook(
         formData,
         quote,
         pricingConfig,
         tenant.id,
         tenant.zapierWebhookUrl,
         undefined, // formFields - optional
-        status
+        status,
+        quoteId // Pass the existing Quote ID to update the same record
       );
 
-      if (success) {
-        console.log(`Quote submitted successfully with status: ${status}`);
+      if (result.success) {
+        console.log(`Quote updated successfully with status: ${status} for Quote ID: ${result.quoteId}`);
         setSubmittedStatus(status);
         setIsSubmitted(true);
       } else {
@@ -141,12 +149,6 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingCon
 
   const handleCancelRecalculate = () => {
     setShowRecalculateModal(false);
-  };
-
-  const generateQuoteId = () => {
-    const timestamp = Date.now().toString(36);
-    const randomStr = Math.random().toString(36).substring(2, 7);
-    return `Q-${timestamp}-${randomStr}`.toUpperCase();
   };
 
   if (!quote) {
@@ -994,10 +996,10 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingCon
                 </div>
               )}
 
-              {quote && (
+              {quote && quoteId && (
                 <div className="mt-6 text-center">
                   <p className="text-sm text-gray-600">
-                    Your Quote Reference: <span className="font-bold text-gray-900">{generateQuoteId()}</span>
+                    Your Quote Reference: <span className="font-bold text-gray-900">{quoteId}</span>
                   </p>
                 </div>
               )}

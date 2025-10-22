@@ -29,6 +29,7 @@ const QuoteCalculator: React.FC = () => {
   const { tenant, firmInfo } = useTenant();
   const [currentStep, setCurrentStep] = useState(1);
   const [quote, setQuote] = useState<QuoteData | null>(null);
+  const [quoteId, setQuoteId] = useState<string | null>(null);
   const [pricingConfig, setPricingConfig] = useState<PricingConfig[]>([]);
   const [serviceConfig, setServiceConfig] = useState<ServiceConfig[]>([]);
   const [isLoadingPricing, setIsLoadingPricing] = useState(true);
@@ -275,17 +276,10 @@ const QuoteCalculator: React.FC = () => {
         // Continue without field labels - all formData values will still be sent
       }
 
-      // Save quote to database
-      await saveQuote({
-        tenantId: tenant.id,
-        formData,
-        quoteData: quote,
-        tenant: tenant,
-      });
-
-      // Send quote data to tenant's Zapier webhook with 'new' status
+      // Send quote data to tenant's Zapier webhook with 'new' status first
+      // This generates the Quote ID that we'll use everywhere
       // All formData fields will be sent, even if allFormFields is empty
-      await sendQuoteToZapierWebhook(
+      const zapierResult = await sendQuoteToZapierWebhook(
         formData,
         quote,
         pricingConfig,
@@ -294,6 +288,21 @@ const QuoteCalculator: React.FC = () => {
         allFormFields,
         'new'
       );
+
+      // Capture the generated Quote ID
+      if (zapierResult.quoteId) {
+        setQuoteId(zapierResult.quoteId);
+        console.log('Quote ID captured:', zapierResult.quoteId);
+
+        // Save quote to database with the Quote ID
+        await saveQuote({
+          tenantId: tenant.id,
+          formData,
+          quoteData: quote,
+          tenant: tenant,
+          quoteId: zapierResult.quoteId,
+        });
+      }
 
       // Advance to quote results page regardless of webhook success/failure
       nextStep();
@@ -411,6 +420,9 @@ const QuoteCalculator: React.FC = () => {
     // Clear quote data
     setQuote(null);
 
+    // Clear quote ID
+    setQuoteId(null);
+
     // Clear localStorage
     localStorage.removeItem('quoteData');
     localStorage.removeItem('currentQuote');
@@ -498,6 +510,7 @@ const QuoteCalculator: React.FC = () => {
           <QuoteResults
             formData={formData}
             quote={quote}
+            quoteId={quoteId}
             pricingConfig={pricingConfig}
             serviceConfig={serviceConfig}
             onRecalculate={resetQuote}
