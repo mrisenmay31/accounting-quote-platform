@@ -358,7 +358,8 @@ export const sendQuoteToZapierWebhook = async (
   pricingConfig: PricingConfig[] = [],
   tenantId?: string,
   webhookUrl?: string,
-  formFields?: FormField[]
+  formFields?: FormField[],
+  quoteStatus?: 'new' | 'Quote Accepted' | 'Call Scheduled'
 ): Promise<boolean> => {
   const url = webhookUrl || ZAPIER_WEBHOOK_URL;
   console.log('Using Zapier webhook URL:', url);
@@ -456,6 +457,8 @@ export const sendQuoteToZapierWebhook = async (
     // Quote Metadata
     quoteId: quoteId,
     tenantId: tenantId || '',
+    quoteStatus: quoteStatus || 'new',
+    statusTimestamp: new Date().toISOString(),
 
     // Contact Information
     firstName: formData.firstName || '',

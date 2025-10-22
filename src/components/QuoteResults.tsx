@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Phone, Calendar, CheckCircle, Star, ArrowRight, Send, X, Calculator, Info, ChevronDown, ChevronUp, TrendingUp, Zap, ClipboardCheck, GraduationCap, Code, Clock, RefreshCw, AlertCircle, Mail, Globe, MapPin } from 'lucide-react';
+import { Phone, Calendar, CheckCircle, Star, ArrowRight, Send, X, Calculator, Info, ChevronDown, ChevronUp, TrendingUp, Zap, ClipboardCheck, GraduationCap, Code, Clock, RefreshCw, AlertCircle, Mail, Globe, MapPin, FileText } from 'lucide-react';
 import { FormData, QuoteData, PricingConfig, ServiceConfig } from '../types/quote';
 import { useTenant } from '../contexts/TenantContext';
+import { sendQuoteToZapierWebhook } from '../utils/zapierIntegration';
 
 interface QuoteResultsProps {
   formData: FormData;
@@ -15,22 +16,54 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingCon
   const { tenant, firmInfo } = useTenant();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submittedStatus, setSubmittedStatus] = useState<'new' | 'Quote Accepted' | 'Call Scheduled'>('new');
   const [showRecalculateModal, setShowRecalculateModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [activeButton, setActiveButton] = useState<string | null>(null);
 
-  const handleSubmitToAirtable = async () => {
+  const handleQuoteAction = async (status: 'new' | 'Quote Accepted' | 'Call Scheduled', buttonName: string) => {
+    if (!quote || !tenant) {
+      console.error('Quote or tenant data not available');
+      return;
+    }
+
     setIsSubmitting(true);
-    
+    setActiveButton(buttonName);
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log('Quote accepted by user:', { formData, quote });
-      setIsSubmitted(true);
+      console.log(`Sending quote with status: ${status}`);
+
+      // Send quote to Zapier with the specified status
+      const success = await sendQuoteToZapierWebhook(
+        formData,
+        quote,
+        pricingConfig,
+        tenant.id,
+        tenant.zapierWebhookUrl,
+        undefined, // formFields - optional
+        status
+      );
+
+      if (success) {
+        console.log(`Quote submitted successfully with status: ${status}`);
+        setSubmittedStatus(status);
+        setIsSubmitted(true);
+      } else {
+        console.error('Failed to submit quote to Zapier');
+        alert('There was an issue submitting your quote. Please try again or contact us directly.');
+      }
     } catch (error) {
-      console.error('Error processing quote acceptance:', error);
+      console.error('Error processing quote action:', error);
+      alert('There was an issue submitting your quote. Please try again or contact us directly.');
     } finally {
       setIsSubmitting(false);
+      setActiveButton(null);
     }
   };
+
+  const handleGetQuote = () => handleQuoteAction('new', 'get-quote');
+  const handleAcceptQuote = () => handleQuoteAction('Quote Accepted', 'accept-quote');
+  const handleScheduleConsultationWithStatus = () => handleQuoteAction('Call Scheduled', 'schedule-consultation');
 
   const calculateLockDate = () => {
     const today = new Date();
@@ -111,14 +144,6 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingCon
     setShowRecalculateModal(false);
   };
 
-  const handleScheduleConsultation = () => {
-    if (firmInfo?.consultationLink) {
-      window.open(firmInfo.consultationLink, '_blank', 'noopener,noreferrer');
-    } else {
-      setShowContactModal(true);
-    }
-  };
-
   const generateQuoteId = () => {
     const timestamp = Date.now().toString(36);
     const randomStr = Math.random().toString(36).substring(2, 7);
@@ -135,16 +160,37 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingCon
   }
 
   if (isSubmitted) {
+    const getSuccessMessage = () => {
+      switch (submittedStatus) {
+        case 'Quote Accepted':
+          return {
+            title: 'Quote Accepted Successfully!',
+            description: `Thank you for choosing ${tenant?.firmName || 'us'}! We're excited to partner with you. Our team will contact you within 24 hours to finalize the details and get started on your engagement.`
+          };
+        case 'Call Scheduled':
+          return {
+            title: 'Consultation Request Received!',
+            description: `Thank you for your interest in ${tenant?.firmName || 'our'} services. We'll reach out within 1 business day to schedule your consultation and discuss your needs in detail.`
+          };
+        default:
+          return {
+            title: 'Quote Submitted Successfully!',
+            description: `Thank you for your interest in ${tenant?.firmName || 'our'} services. We'll review your requirements and contact you within 24 hours to discuss your customized quote and next steps.`
+          };
+      }
+    };
+
+    const message = getSuccessMessage();
+
     return (
       <div className="text-center py-12 space-y-6">
         <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto" style={{ backgroundColor: 'var(--tenant-primary-100, #d1fae5)' }}>
           <CheckCircle className="w-12 h-12" style={{ color: 'var(--tenant-primary-600, #10b981)' }} />
         </div>
         <div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-3">Quote Submitted Successfully!</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">{message.title}</h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Thank you for your interest in {tenant?.firmName || 'our'} services. We'll review your requirements and
-            contact you within 24 hours to discuss your customized quote and next steps.
+            {message.description}
           </p>
         </div>
         <div className="rounded-lg p-6 max-w-md mx-auto" style={{ backgroundColor: 'var(--tenant-primary-50, #f0fdf4)', borderWidth: '1px', borderStyle: 'solid', borderColor: 'var(--tenant-primary-200, #d1fae5)' }}>
@@ -753,19 +799,53 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingCon
             </div>
           </div>
           <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+            {/* Get Quote Button */}
             <button
-              onClick={handleSubmitToAirtable}
+              onClick={handleGetQuote}
               disabled={isSubmitting}
-              className="inline-flex items-center justify-center space-x-2 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:shadow-lg"
+              className="inline-flex items-center justify-center space-x-2 bg-white border-2 font-semibold py-3 px-5 rounded-lg transition-all duration-200"
               style={{
-                background: isSubmitting
+                borderColor: isSubmitting && activeButton === 'get-quote' ? 'var(--tenant-primary-300, #6ee7b7)' : '#e5e7eb',
+                color: isSubmitting && activeButton === 'get-quote' ? 'var(--tenant-primary-600, #10b981)' : '#374151',
+                opacity: isSubmitting && activeButton !== 'get-quote' ? 0.5 : 1,
+              }}
+              onMouseEnter={(e) => !isSubmitting && (
+                e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)',
+                e.currentTarget.style.backgroundColor = '#f9fafb'
+              )}
+              onMouseLeave={(e) => !isSubmitting && (
+                e.currentTarget.style.borderColor = '#e5e7eb',
+                e.currentTarget.style.backgroundColor = 'white'
+              )}
+            >
+              {isSubmitting && activeButton === 'get-quote' ? (
+                <>
+                  <div className="animate-spin w-4 h-4 border-2 border-t-transparent rounded-full" style={{ borderColor: 'var(--tenant-primary-600, #10b981)' }} />
+                  <span>Sending...</span>
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4" />
+                  <span>Get Quote</span>
+                </>
+              )}
+            </button>
+
+            {/* Accept Quote Button */}
+            <button
+              onClick={handleAcceptQuote}
+              disabled={isSubmitting}
+              className="inline-flex items-center justify-center space-x-2 text-white font-semibold py-3 px-5 rounded-lg transition-all duration-200 transform hover:shadow-lg"
+              style={{
+                background: isSubmitting && activeButton === 'accept-quote'
                   ? 'linear-gradient(to right, var(--tenant-primary-400, #34d399), var(--tenant-primary-500, #10b981))'
                   : 'linear-gradient(to right, var(--tenant-primary-600, #10b981), var(--tenant-primary-700, #059669))',
+                opacity: isSubmitting && activeButton !== 'accept-quote' ? 0.5 : 1,
               }}
               onMouseEnter={(e) => !isSubmitting && (e.currentTarget.style.background = 'linear-gradient(to right, var(--tenant-primary-700, #059669), var(--tenant-primary-800, #065f46))', e.currentTarget.style.transform = 'scale(1.05)')}
               onMouseLeave={(e) => !isSubmitting && (e.currentTarget.style.background = 'linear-gradient(to right, var(--tenant-primary-600, #10b981), var(--tenant-primary-700, #059669))', e.currentTarget.style.transform = 'scale(1)')}
             >
-              {isSubmitting ? (
+              {isSubmitting && activeButton === 'accept-quote' ? (
                 <>
                   <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
                   <span>Processing...</span>
@@ -773,26 +853,41 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, pricingCon
               ) : (
                 <>
                   <CheckCircle className="w-4 h-4" />
-                  <span>Accept Quote & Get Started</span>
+                  <span>Accept & Get Started</span>
                 </>
               )}
             </button>
+
+            {/* Schedule Consultation Button */}
             <button
-              onClick={handleScheduleConsultation}
-              className="inline-flex items-center justify-center space-x-2 bg-white border-2 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-all duration-200"
+              onClick={handleScheduleConsultationWithStatus}
+              disabled={isSubmitting}
+              className="inline-flex items-center justify-center space-x-2 bg-white border-2 text-gray-700 font-semibold py-3 px-5 rounded-lg transition-all duration-200"
               style={{
-                borderColor: '#e5e7eb',
+                borderColor: isSubmitting && activeButton === 'schedule-consultation' ? 'var(--tenant-primary-300, #6ee7b7)' : '#e5e7eb',
+                color: isSubmitting && activeButton === 'schedule-consultation' ? 'var(--tenant-primary-600, #10b981)' : '#374151',
+                opacity: isSubmitting && activeButton !== 'schedule-consultation' ? 0.5 : 1,
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)';
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#e5e7eb';
-                e.currentTarget.style.backgroundColor = 'white';
-              }}>
-              <Calendar className="w-4 h-4" />
-              <span>Schedule a Consultation</span>
+              onMouseEnter={(e) => !isSubmitting && (
+                e.currentTarget.style.borderColor = 'var(--tenant-primary-500, #10b981)',
+                e.currentTarget.style.backgroundColor = '#f9fafb'
+              )}
+              onMouseLeave={(e) => !isSubmitting && (
+                e.currentTarget.style.borderColor = '#e5e7eb',
+                e.currentTarget.style.backgroundColor = 'white'
+              )}
+            >
+              {isSubmitting && activeButton === 'schedule-consultation' ? (
+                <>
+                  <div className="animate-spin w-4 h-4 border-2 border-t-transparent rounded-full" style={{ borderColor: 'var(--tenant-primary-600, #10b981)' }} />
+                  <span>Sending...</span>
+                </>
+              ) : (
+                <>
+                  <Calendar className="w-4 h-4" />
+                  <span>Schedule Consultation</span>
+                </>
+              )}
             </button>
           </div>
         </div>
