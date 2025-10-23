@@ -331,22 +331,22 @@ const buildDynamicFormFields = (
       }
     }
 
+    // Create service-prefixed label for unique field identification
+    const servicePrefixedLabel = `${field.serviceId} ${field.fieldLabel}`;
+
     // Handle array values (checkboxes, multi-select)
     if (Array.isArray(value)) {
-      dynamicFields[fieldName] = value.join(', ');
-      dynamicFields[`${fieldName}_count`] = value.length;
+      dynamicFields[servicePrefixedLabel] = value.join(', ');
+      dynamicFields[`${servicePrefixedLabel}_count`] = value.length;
     }
     // Handle boolean values
     else if (typeof value === 'boolean') {
-      dynamicFields[fieldName] = value;
+      dynamicFields[servicePrefixedLabel] = value;
     }
     // Handle all other values
     else {
-      dynamicFields[fieldName] = value || null;
+      dynamicFields[servicePrefixedLabel] = value || null;
     }
-
-    // Include human-readable label for easier Zapier mapping
-    dynamicFields[`${fieldName}_label`] = field.fieldLabel;
   });
 
   return dynamicFields;
@@ -447,10 +447,10 @@ export const sendQuoteToZapierWebhook = async (
   console.log('=========================================');
 
   console.log('=== DYNAMIC FORM FIELDS ===');
-  console.log('From Form Fields table:', Object.keys(dynamicFormFields).filter(k => !k.endsWith('_label')).length);
+  console.log('From Form Fields table (service-prefixed):', Object.keys(dynamicFormFields).filter(k => !k.endsWith('_count')).length);
+  console.log('Service-prefixed field names:', Object.keys(dynamicFormFields).filter(k => !k.endsWith('_count')));
   console.log('From formData extraction:', Object.keys(allFormDataFields).length);
-  console.log('Total dynamic fields:', Object.keys(dynamicFormFields).filter(k => !k.endsWith('_label')).length + Object.keys(allFormDataFields).length);
-  console.log('FormData fields:', Object.keys(allFormDataFields));
+  console.log('Total dynamic fields:', Object.keys(dynamicFormFields).filter(k => !k.endsWith('_count')).length + Object.keys(allFormDataFields).length);
   console.log('===========================');
 
   console.log('=== EXTRACTED INDIVIDUAL ADDITIONAL SERVICE PRICING ===');
