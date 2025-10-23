@@ -4,6 +4,18 @@ import { FormField } from './formFieldsService';
 // Zapier webhook configuration (fallback to env var for development)
 const ZAPIER_WEBHOOK_URL = import.meta.env.VITE_ZAPIER_WEBHOOK_URL || '';
 
+// Helper function to convert service IDs to human-readable names
+const formatServiceIdForLabel = (serviceId: string): string => {
+  const mappings: Record<string, string> = {
+    'individual-tax': 'Individual Tax',
+    'business-tax': 'Business Tax',
+    'bookkeeping': 'Bookkeeping',
+    'additional-services': 'Additional Services',
+    'advisory': 'Advisory'
+  };
+  return mappings[serviceId] || serviceId;
+};
+
 // Helper function to map pricing rule IDs to Airtable Multiple Select option names
 // Updated to match exact service names from Airtable CSV (Pricing Variables-Grid view 27)
 const mapPricingRuleToAirtableOption = (pricingRuleId: string): string | null => {
@@ -331,22 +343,22 @@ const buildDynamicFormFields = (
       }
     }
 
+    // Create human-readable field key with service prefix
+    const serviceLabel = formatServiceIdForLabel(field.serviceId);
+    const fieldKey = `${serviceLabel} ${field.fieldLabel}`;
+
     // Handle array values (checkboxes, multi-select)
     if (Array.isArray(value)) {
-      dynamicFields[fieldName] = value.join(', ');
-      dynamicFields[`${fieldName}_count`] = value.length;
+      dynamicFields[fieldKey] = value.join(', ');
     }
     // Handle boolean values
     else if (typeof value === 'boolean') {
-      dynamicFields[fieldName] = value;
+      dynamicFields[fieldKey] = value;
     }
     // Handle all other values
     else {
-      dynamicFields[fieldName] = value || null;
+      dynamicFields[fieldKey] = value || null;
     }
-
-    // Include human-readable label for easier Zapier mapping
-    dynamicFields[`${fieldName}_label`] = field.fieldLabel;
   });
 
   return dynamicFields;
@@ -394,47 +406,6 @@ export const sendQuoteToZapierWebhook = async (
   // Build dynamic form fields payload from Form Fields table if available
   const dynamicFormFields = formFields ? buildDynamicFormFields(formFields, formData) : {};
 
-  // ✅ EXTRACT ALL DYNAMIC FORM FIELDS FROM formData
-  // This ensures ALL fields are sent to Zapier, not just those in the Form Fields table
-  const allFormDataFields: Record<string, any> = {};
-
-  // Fields to exclude (already explicitly included in payload)
-  const excludedFields = [
-    'firstName', 'lastName', 'email', 'phone', 'services',
-    'individualTax', 'businessTax', 'bookkeeping', 'additionalServices'
-  ];
-
-  // Extract top-level fields
-  Object.keys(formData).forEach(key => {
-    if (!excludedFields.includes(key)) {
-      const value = formData[key as keyof FormData];
-      if (Array.isArray(value)) {
-        allFormDataFields[key] = value.join(', ');
-      } else if (value !== undefined && value !== null) {
-        allFormDataFields[key] = value;
-      }
-    }
-  });
-
-  // Extract nested fields from service objects
-  const extractNestedFields = (obj: any, prefix: string) => {
-    if (!obj || typeof obj !== 'object') return;
-
-    Object.keys(obj).forEach(key => {
-      const value = obj[key];
-      const fieldKey = `${prefix}_${key}`;
-
-      if (Array.isArray(value)) {
-        allFormDataFields[fieldKey] = value.join(', ');
-      } else if (typeof value === 'object' && value !== null) {
-        // Skip nested objects, only extract primitive values
-        return;
-      } else if (value !== undefined && value !== null) {
-        allFormDataFields[fieldKey] = value;
-      }
-    });
-  };
-
   // Log extracted individual fees for debugging
   console.log('=== EXTRACTED INDIVIDUAL SERVICE FEES ===');
   console.log('Advisory Services Monthly Fee:', individualFees.advisoryServicesMonthlyFee);
@@ -447,10 +418,8 @@ export const sendQuoteToZapierWebhook = async (
   console.log('=========================================');
 
   console.log('=== DYNAMIC FORM FIELDS ===');
-  console.log('From Form Fields table:', Object.keys(dynamicFormFields).filter(k => !k.endsWith('_label')).length);
-  console.log('From formData extraction:', Object.keys(allFormDataFields).length);
-  console.log('Total dynamic fields:', Object.keys(dynamicFormFields).filter(k => !k.endsWith('_label')).length + Object.keys(allFormDataFields).length);
-  console.log('FormData fields:', Object.keys(allFormDataFields));
+  console.log('Total dynamic fields:', Object.keys(dynamicFormFields).length);
+  console.log('Dynamic field names:', Object.keys(dynamicFormFields));
   console.log('===========================');
 
   console.log('=== EXTRACTED INDIVIDUAL ADDITIONAL SERVICE PRICING ===');
@@ -544,146 +513,44 @@ export const sendQuoteToZapierWebhook = async (
     taxPlanningConsultationFee: additionalServicePricing.taxPlanningConsultationFee,
     taxPlanningConsultationBillingType: additionalServicePricing.taxPlanningConsultationBillingType,
 
-    // Service Details
-    serviceBreakdown: quote.services.map(service => ({
-      name: service.name,
-      description: service.description,
-      monthlyFee: service.monthlyFee,
-      oneTimeFee: service.oneTimeFee,
-      annualPrice: service.annualPrice,
-      included: service.included.join('; '),
-      addOns: service.addOns?.join('; ') || ''
-    })),
-    
-    // Individual Tax Details - Always send all fields
-    individualTaxFilingStatus: formData.individualTax?.filingStatus || '',
-    individualTaxAnnualIncome: formData.individualTax?.annualIncome || '',
-    individualTaxIncomeTypes: formData.individualTax?.incomeTypes?.join(', ') || '',
-    individualTaxDeductionType: formData.individualTax?.deductionType || '',
-    individualTaxSituations: formData.individualTax?.taxSituations?.join(', ') || '',
-    individualTaxSelfEmploymentBusinessCount: formData.individualTax?.selfEmploymentBusinessCount || 0,
-    individualTaxK1Count: formData.individualTax?.k1Count || 0,
-    individualTaxRentalPropertyCount: formData.individualTax?.rentalPropertyCount || 0,
-    individualTaxInterestDividendAmount: formData.individualTax?.interestDividendAmount || '',
-    individualTaxOtherIncomeTypes: formData.individualTax?.otherIncomeTypes?.join(', ') || '',
-    individualTaxAdditionalConsiderations: formData.individualTax?.additionalConsiderations?.join(', ') || '',
-    individualTaxHasOtherIncome: formData.individualTax?.hasOtherIncome || '',
-    individualTaxOtherIncomeDescription: formData.individualTax?.otherIncomeDescription || '',
-    individualTaxAdditionalStateCount: formData.individualTax?.additionalStateCount || 0,
-    individualTaxYear: formData.individualTax?.taxYear || '',
-    individualTaxTimeline: formData.individualTax?.timeline || '',
-    individualTaxPreviousPreparer: formData.individualTax?.previousPreparer || '',
-    individualTaxSpecialCircumstances: formData.individualTax?.specialCircumstances || '',
-    individualTaxHasPrimaryHomeSale: formData.individualTax?.hasPrimaryHomeSale || false,
-    individualTaxHasInvestmentPropertySale: formData.individualTax?.hasInvestmentPropertySale || false,
-    individualTaxHasAdoptedChild: formData.individualTax?.hasAdoptedChild || false,
-    individualTaxHasDivorce: formData.individualTax?.hasDivorce || false,
-    individualTaxHasMarriage: formData.individualTax?.hasMarriage || false,
-    individualTaxHasMultipleStates: formData.individualTax?.hasMultipleStates || false,
-    
-    // Business Tax Details - Always send all fields
-    businessTaxBusinessName: formData.businessTax?.businessName || '',
-    businessTaxEntityType: formData.businessTax?.entityType || '',
-    businessTaxBusinessIndustry: formData.businessTax?.businessIndustry || '',
-    businessTaxAnnualRevenue: formData.businessTax?.annualRevenue || '',
-    businessTaxNumberOfEmployees: formData.businessTax?.numberOfEmployees || '',
-    businessTaxNumberOfOwners: formData.businessTax?.numberOfOwners || 0,
-    businessTaxOtherSituations: formData.businessTax?.otherSituations?.join(', ') || '',
-    businessTaxAdditionalStateCount: formData.businessTax?.additionalStateCount || 0,
-    businessTaxFixedAssetAcquisitionCount: formData.businessTax?.fixedAssetAcquisitionCount || 0,
-    businessTaxAdditionalConsiderations: formData.businessTax?.additionalConsiderations?.join(', ') || '',
-    businessTaxYear: formData.businessTax?.taxYear || '',
-    businessTaxTimeline: formData.businessTax?.timeline || '',
-    businessTaxPreviousPreparer: formData.businessTax?.previousPreparer || '',
-    businessTaxSpecialCircumstances: formData.businessTax?.specialCircumstances || '',
-    businessTaxComplexity: formData.businessTax?.complexity || '',
-    businessTaxSituations: formData.businessTax?.taxSituations?.join(', ') || '',
-    businessTaxIsFirstYearEntity: formData.businessTax?.isFirstYearEntity || false,
-    businessTaxHasOwnershipChanges: formData.businessTax?.hasOwnershipChanges || false,
-    businessTaxHasFixedAssetAcquisitions: formData.businessTax?.hasFixedAssetAcquisitions || false,
-    
-    // Bookkeeping Details - Always send all fields
-    bookkeepingBusinessName: formData.bookkeeping?.businessName || '',
-    bookkeepingBusinessType: formData.bookkeeping?.businessType || '',
-    bookkeepingBusinessIndustry: formData.bookkeeping?.businessIndustry || '',
-    bookkeepingAnnualRevenue: formData.bookkeeping?.annualRevenue || '',
-    bookkeepingNumberOfEmployees: formData.bookkeeping?.numberOfEmployees || '',
-    bookkeepingCurrentStatus: formData.bookkeeping?.currentStatus || '',
-    bookkeepingCurrentBookkeepingMethod: formData.bookkeeping?.currentBookkeepingMethod || '',
-    bookkeepingMonthsBehind: formData.bookkeeping?.monthsBehind || '',
-    bookkeepingBankAccounts: formData.bookkeeping?.bankAccounts || 0,
-    bookkeepingCreditCards: formData.bookkeeping?.creditCards || 0,
-    bookkeepingBankLoans: formData.bookkeeping?.bankLoans || 0,
-    bookkeepingTransactionVolume: formData.bookkeeping?.transactionVolume || 0,
-    bookkeepingMonthlyTransactions: formData.bookkeeping?.monthlyTransactions || 0,
-    bookkeepingServiceFrequency: formData.bookkeeping?.servicefrequency || '',
-    bookkeepingServicesNeeded: formData.bookkeeping?.servicesNeeded?.join(', ') || '',
-    bookkeepingFrequency: formData.bookkeeping?.frequency || '',
-    bookkeepingAdditionalConsiderations: formData.bookkeeping?.additionalConsiderations?.join(', ') || '',
-    bookkeepingCleanupHours: formData.bookkeeping?.cleanuphours || 0,
-    bookkeepingFixedAssets: formData.bookkeeping?.fixedassets || 0,
-    bookkeepingFixedAssetsCount: formData.bookkeeping?.fixedAssetsCount || 0,
-    bookkeepingNeedsCleanup: formData.bookkeeping?.needsCleanup || false,
-    bookkeepingHasThirdPartyIntegration: formData.bookkeeping?.hasThirdPartyIntegration || false,
-    bookkeepingHasFixedAssets: formData.bookkeeping?.hasFixedAssets || false,
-    bookkeepingHasInventory: formData.bookkeeping?.hasInventory || false,
-    bookkeepingStartTimeline: formData.bookkeeping?.startTimeline || '',
-    bookkeepingChallenges: formData.bookkeeping?.challenges || '',
-    
-    // Additional Services - Convert pricing rule IDs to Airtable option names
-    additionalServicesSelected: formData.additionalServices?.selectedAdditionalServices
-      ? convertPricingRulesToServiceNames(formData.additionalServices.selectedAdditionalServices).join(',')
+    // Additional Services - Hourly Service Rates (extracted from quote data)
+    'Additional Services AR Rate': quote.hourlyServices.find(s =>
+      s.name.includes('Accounts Receivable') || s.name.includes('AR Management')
+    )?.rate || 0,
+    'Additional Services AP Rate': quote.hourlyServices.find(s =>
+      s.name.includes('Accounts Payable') || s.name.includes('AP Management')
+    )?.rate || 0,
+    'Additional Services 1099 Rate': quote.hourlyServices.find(s =>
+      s.name.includes('1099')
+    )?.rate || 0,
+    'Additional Services Schedule C Rate': quote.hourlyServices.find(s =>
+      s.name.includes('Schedule C')
+    )?.rate || 0,
+
+    // Additional Services - Services Selected
+    'Additional Services Services Selected': formData.additionalServices?.selectedAdditionalServices
+      ? convertPricingRulesToServiceNames(formData.additionalServices.selectedAdditionalServices).join(', ')
       : '',
+    'Additional Services Specialized Filings': formData.additionalServices?.specializedFilings?.join(', ') || '',
 
-    // Specialized Filings - Multi-select comma-separated
-    specializedFilings: formData.additionalServices?.specializedFilings?.join(',') || '',
-
-    // Hourly Services Rates (extracted from quote data)
-    hourlyServices: quote.hourlyServices.reduce((acc, service) => {
-      if (service.name.includes('Accounts Receivable') || service.name.includes('AR Management')) {
-        acc.arRate = service.rate;
-      } else if (service.name.includes('Accounts Payable') || service.name.includes('AP Management')) {
-        acc.apRate = service.rate;
-      } else if (service.name.includes('1099')) {
-        acc.ninetyNineRate = service.rate;
-      } else if (service.name.includes('Schedule C')) {
-        acc.scheduleCRate = service.rate;
-      }
-      return acc;
-    }, {} as { arRate?: number; apRate?: number; ninetyNineRate?: number; scheduleCRate?: number }),
-
-    // Additional Services - Conditional Fields (only populate if parent service is selected)
-    accountsReceivableInvoicesPerMonth: formData.additionalServices?.accountsReceivableInvoicesPerMonth ?? null,
-    accountsReceivableRecurring: formData.additionalServices?.accountsReceivableRecurring || null,
-    accountsPayableBillsPerMonth: formData.additionalServices?.accountsPayableBillsPerMonth ?? null,
-    accountsPayableBillRunFrequency: formData.additionalServices?.accountsPayableBillRunFrequency || null,
-    form1099Count: formData.additionalServices?.form1099Count ?? null,
-    taxPlanningConsultation: formData.additionalServices?.taxPlanningConsultation ?? false,
-
-    // Dynamic Form Fields (automatically populated from Form Fields table)
+    // Dynamic Form Fields (automatically populated from Form Fields table with service prefixes)
     ...dynamicFormFields,
-
-    // ✅ ALL ADDITIONAL FORM DATA FIELDS
-    // This includes any custom fields added to formData that aren't explicitly defined above
-    ...allFormDataFields,
 
     // Metadata
     leadSource: 'Quote Calculator',
     leadStatus: 'New Lead',
-    createdDate: new Date().toISOString(),
-    timestamp: Date.now(),
-
-    // Dynamic Fields Metadata
-    dynamicFieldsCount: (formFields?.length || 0) + Object.keys(allFormDataFields).length,
-    dynamicFieldsIncluded: [
-      ...(formFields?.map(f => f.fieldName) || []),
-      ...Object.keys(allFormDataFields)
-    ].join(', ')
+    createdDate: new Date().toISOString()
   };
 
   try {
-    console.log('Sending request to Zapier webhook:', url);
-    console.log('Payload:', payload);
+    console.log('=== SENDING ZAPIER WEBHOOK ===');
+    console.log('Webhook URL:', url);
+    console.log('Quote ID:', quoteId);
+    console.log('Services Requested:', formData.services.join(', '));
+    console.log('Dynamic Fields Count:', Object.keys(dynamicFormFields).length);
+    console.log('Sample Dynamic Fields:', Object.keys(dynamicFormFields).slice(0, 5));
+    console.log('Full Payload:', payload);
+    console.log('==============================');
 
     const response = await fetch(url, {
       method: 'POST',
@@ -700,8 +567,10 @@ export const sendQuoteToZapierWebhook = async (
     }
 
     const responseData = await response.text();
-    console.log('Zapier webhook response:', responseData);
-    console.log('Successfully sent quote data to Zapier webhook');
+    console.log('=== ZAPIER WEBHOOK SUCCESS ===');
+    console.log('Response:', responseData);
+    console.log('Quote ID:', quoteId);
+    console.log('==============================');
     return { success: true, quoteId };
   } catch (error) {
     console.error('Error sending quote data to Zapier webhook:', error);
