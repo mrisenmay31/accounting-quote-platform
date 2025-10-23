@@ -83,25 +83,43 @@ const DynamicServiceDetailStep: React.FC<DynamicServiceDetailStepProps> = ({
   }, [tenant, serviceId, serviceTitle]);
 
   const handleFieldChange = (fieldName: string, value: any) => {
-    // Use flat formData structure - no service nesting
-    const updatedData = {
-      ...formData,
+    // Store data in nested service objects for proper Zapier integration
+    // This ensures formData[serviceId][fieldName] = value structure
+    const serviceData = (formData as any)[serviceId] || {};
+
+    const updatedServiceData = {
+      ...serviceData,
       [fieldName]: value,
     };
 
+    const updatedData = {
+      ...formData,
+      [serviceId]: updatedServiceData,
+    };
+
     // Clear values of conditional fields that should be hidden after this change
-    const fieldsToClear = getFieldsToClear(formFields, fieldName, updatedData);
+    const fieldsToClear = getFieldsToClear(formFields, fieldName, updatedServiceData);
     fieldsToClear.forEach(fieldToClear => {
-      updatedData[fieldToClear] = null;
+      updatedServiceData[fieldToClear] = null;
       console.log(`[DynamicServiceDetailStep] Clearing hidden field: ${fieldToClear}`);
     });
 
-    updateFormData(updatedData);
+    // Update with cleared fields
+    updateFormData({
+      ...formData,
+      [serviceId]: updatedServiceData,
+    });
   };
 
   const getFieldValue = (fieldName: string): any => {
-    // Access field values directly from root level (flat structure)
-    return (formData as any)[fieldName] || '';
+    // Access field values from nested service object structure
+    const serviceData = (formData as any)[serviceId];
+    if (serviceData && typeof serviceData === 'object') {
+      return serviceData[fieldName] ?? '';
+    }
+
+    // Fallback to root level for backward compatibility
+    return (formData as any)[fieldName] ?? '';
   };
 
   // Format service ID into readable title
@@ -171,9 +189,12 @@ const DynamicServiceDetailStep: React.FC<DynamicServiceDetailStepProps> = ({
   }
 
   const renderFields = () => {
+    // Get the service-specific data for conditional logic evaluation
+    const serviceData = (formData as any)[serviceId] || {};
+
     // Filter fields by active status and conditional logic
     const visibleFields = formFields.filter(field =>
-      field.active && shouldShowField(field, formData as any)
+      field.active && shouldShowField(field, serviceData)
     );
 
     // Sort visible fields by Display Order
