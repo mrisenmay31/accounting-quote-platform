@@ -23,6 +23,7 @@ export interface AirtableServiceRecord {
     'Quote Included Features': string;
     'Active': boolean;
     'Service Order': number;
+    'Has Detail Form'?: boolean;
     'Included Features Card Title'?: string;
     'Included Features Card List'?: string;
   };
@@ -117,6 +118,7 @@ const convertAirtableServiceRecord = (record: AirtableServiceRecord): ServiceCon
     quoteIncludedFeatures: parseJsonField(fields['Quote Included Features']),
     active: fields['Active'] || false,
     serviceOrder: fields['Service Order'] || 999,
+    hasDetailForm: fields['Has Detail Form'] || false,
     includedFeaturesCardTitle: fields['Included Features Card Title'] || '',
     includedFeaturesCardList: parseJsonField(fields['Included Features Card List'])
   };

@@ -1,4 +1,5 @@
 import { FormData, QuoteData, ServiceQuote, PricingConfig } from '../types/quote';
+import { FormField } from './formFieldsService';
 
 // Zapier webhook configuration (fallback to env var for development)
 const ZAPIER_WEBHOOK_URL = import.meta.env.VITE_ZAPIER_WEBHOOK_URL || '';
@@ -310,23 +311,76 @@ const generateQuoteId = (): string => {
   return `QUOTE-${year}${month}${day}-${random}`;
 };
 
+// Helper function to build dynamic form field payload from Form Fields table
+const buildDynamicFormFields = (
+  formFields: FormField[],
+  formData: FormData
+): Record<string, any> => {
+  const dynamicFields: Record<string, any> = {};
+
+  formFields.forEach(field => {
+    const fieldName = field.fieldName;
+    let value = formData[fieldName as keyof FormData];
+
+    // Special handling for nested service data
+    if (!value && field.serviceId) {
+      // Try to get value from service-specific data
+      const serviceData = formData[field.serviceId as keyof FormData];
+      if (serviceData && typeof serviceData === 'object') {
+        value = (serviceData as any)[fieldName];
+      }
+    }
+
+    // Create service-prefixed label for unique field identification
+    const servicePrefixedLabel = `${field.serviceId} ${field.fieldLabel}`;
+
+    // Handle array values (checkboxes, multi-select)
+    if (Array.isArray(value)) {
+      dynamicFields[servicePrefixedLabel] = value.join(', ');
+      dynamicFields[`${servicePrefixedLabel}_count`] = value.length;
+    }
+    // Handle boolean values
+    else if (typeof value === 'boolean') {
+      dynamicFields[servicePrefixedLabel] = value;
+    }
+    // Handle all other values
+    else {
+      dynamicFields[servicePrefixedLabel] = value || null;
+    }
+  });
+
+  return dynamicFields;
+};
+
 export const sendQuoteToZapierWebhook = async (
   formData: FormData,
   quote: QuoteData,
   pricingConfig: PricingConfig[] = [],
   tenantId?: string,
-  webhookUrl?: string
-): Promise<boolean> => {
+  webhookUrl?: string,
+  formFields?: FormField[],
+  quoteStatus?: 'new' | 'Quote Accepted' | 'Call Scheduled',
+  existingQuoteId?: string
+): Promise<{ success: boolean; quoteId: string }> => {
   const url = webhookUrl || ZAPIER_WEBHOOK_URL;
   console.log('Using Zapier webhook URL:', url);
 
   if (!url) {
     console.error('Zapier webhook URL not configured');
-    return true; // Return true for demo purposes when webhook is not configured
+    // Generate or use existing quote ID even when webhook is not configured
+    const quoteId = existingQuoteId || generateQuoteId();
+    return { success: true, quoteId }; // Return true for demo purposes when webhook is not configured
   }
 
-  // Generate unique quote ID
-  const quoteId = generateQuoteId();
+  // Use existing quote ID if provided, otherwise generate a new one
+  const quoteId = existingQuoteId || generateQuoteId();
+
+  console.log('Quote ID for this webhook call:', quoteId);
+  if (existingQuoteId) {
+    console.log('Using existing Quote ID - will update same Airtable record');
+  } else {
+    console.log('Generated new Quote ID - will create new Airtable record');
+  }
 
   // Check if advisory service is selected
   const hasAdvisory = formData.services.includes('advisory');
@@ -336,6 +390,50 @@ export const sendQuoteToZapierWebhook = async (
 
   // Extract individual Additional Service pricing
   const additionalServicePricing = extractAdditionalServicePricing(formData, pricingConfig, hasAdvisory);
+
+  // Build dynamic form fields payload from Form Fields table if available
+  const dynamicFormFields = formFields ? buildDynamicFormFields(formFields, formData) : {};
+
+  // ✅ EXTRACT ALL DYNAMIC FORM FIELDS FROM formData
+  // This ensures ALL fields are sent to Zapier, not just those in the Form Fields table
+  const allFormDataFields: Record<string, any> = {};
+
+  // Fields to exclude (already explicitly included in payload)
+  const excludedFields = [
+    'firstName', 'lastName', 'email', 'phone', 'services',
+    'individualTax', 'businessTax', 'bookkeeping', 'additionalServices'
+  ];
+
+  // Extract top-level fields
+  Object.keys(formData).forEach(key => {
+    if (!excludedFields.includes(key)) {
+      const value = formData[key as keyof FormData];
+      if (Array.isArray(value)) {
+        allFormDataFields[key] = value.join(', ');
+      } else if (value !== undefined && value !== null) {
+        allFormDataFields[key] = value;
+      }
+    }
+  });
+
+  // Extract nested fields from service objects
+  const extractNestedFields = (obj: any, prefix: string) => {
+    if (!obj || typeof obj !== 'object') return;
+
+    Object.keys(obj).forEach(key => {
+      const value = obj[key];
+      const fieldKey = `${prefix}_${key}`;
+
+      if (Array.isArray(value)) {
+        allFormDataFields[fieldKey] = value.join(', ');
+      } else if (typeof value === 'object' && value !== null) {
+        // Skip nested objects, only extract primitive values
+        return;
+      } else if (value !== undefined && value !== null) {
+        allFormDataFields[fieldKey] = value;
+      }
+    });
+  };
 
   // Log extracted individual fees for debugging
   console.log('=== EXTRACTED INDIVIDUAL SERVICE FEES ===');
@@ -347,6 +445,13 @@ export const sendQuoteToZapierWebhook = async (
   console.log('Additional Services Monthly Fee (Aggregated):', individualFees.additionalServicesMonthlyFee);
   console.log('Additional Services One-Time Fee (Aggregated):', individualFees.additionalServicesOneTimeFee);
   console.log('=========================================');
+
+  console.log('=== DYNAMIC FORM FIELDS ===');
+  console.log('From Form Fields table (service-prefixed):', Object.keys(dynamicFormFields).filter(k => !k.endsWith('_count')).length);
+  console.log('Service-prefixed field names:', Object.keys(dynamicFormFields).filter(k => !k.endsWith('_count')));
+  console.log('From formData extraction:', Object.keys(allFormDataFields).length);
+  console.log('Total dynamic fields:', Object.keys(dynamicFormFields).filter(k => !k.endsWith('_count')).length + Object.keys(allFormDataFields).length);
+  console.log('===========================');
 
   console.log('=== EXTRACTED INDIVIDUAL ADDITIONAL SERVICE PRICING ===');
   console.log('AR Management Fee:', additionalServicePricing.arManagementFee, additionalServicePricing.arManagementBillingType);
@@ -362,6 +467,8 @@ export const sendQuoteToZapierWebhook = async (
     // Quote Metadata
     quoteId: quoteId,
     tenantId: tenantId || '',
+    quoteStatus: quoteStatus || 'new',
+    statusTimestamp: new Date().toISOString(),
 
     // Contact Information
     firstName: formData.firstName || '',
@@ -552,12 +659,26 @@ export const sendQuoteToZapierWebhook = async (
     accountsPayableBillRunFrequency: formData.additionalServices?.accountsPayableBillRunFrequency || null,
     form1099Count: formData.additionalServices?.form1099Count ?? null,
     taxPlanningConsultation: formData.additionalServices?.taxPlanningConsultation ?? false,
-    
+
+    // Dynamic Form Fields (automatically populated from Form Fields table)
+    ...dynamicFormFields,
+
+    // ✅ ALL ADDITIONAL FORM DATA FIELDS
+    // This includes any custom fields added to formData that aren't explicitly defined above
+    ...allFormDataFields,
+
     // Metadata
     leadSource: 'Quote Calculator',
     leadStatus: 'New Lead',
     createdDate: new Date().toISOString(),
-    timestamp: Date.now()
+    timestamp: Date.now(),
+
+    // Dynamic Fields Metadata
+    dynamicFieldsCount: (formFields?.length || 0) + Object.keys(allFormDataFields).length,
+    dynamicFieldsIncluded: [
+      ...(formFields?.map(f => f.fieldName) || []),
+      ...Object.keys(allFormDataFields)
+    ].join(', ')
   };
 
   try {
@@ -581,7 +702,7 @@ export const sendQuoteToZapierWebhook = async (
     const responseData = await response.text();
     console.log('Zapier webhook response:', responseData);
     console.log('Successfully sent quote data to Zapier webhook');
-    return true;
+    return { success: true, quoteId };
   } catch (error) {
     console.error('Error sending quote data to Zapier webhook:', error);
     console.error('Error details:', {
@@ -589,7 +710,7 @@ export const sendQuoteToZapierWebhook = async (
       name: error instanceof Error ? error.name : 'Unknown',
       stack: error instanceof Error ? error.stack : 'No stack trace'
     });
-    return false;
+    return { success: false, quoteId };
   }
 };
 

@@ -6,9 +6,11 @@ import ContactForm from './ContactForm';
 import ServiceSelection from './ServiceSelection';
 import AdvisorySalesPage from './AdvisorySalesPage';
 import IndividualTaxDetails from './IndividualTaxDetails';
+import IndividualTaxDynamic from './IndividualTaxDynamic';
 import BusinessTaxDetails from './BusinessTaxDetails';
 import BookkeepingDetails from './BookkeepingDetails';
 import AdditionalServicesDetails from './AdditionalServicesDetails';
+import DynamicServiceDetailStep from './DynamicServiceDetailStep';
 import QuoteResults from './QuoteResults';
 import TenantLogo from './TenantLogo';
 import { FormData, QuoteData } from '../types/quote';
@@ -18,11 +20,16 @@ import { getCachedServiceConfig, ServiceConfig } from '../utils/serviceConfigSer
 import { sendQuoteToZapierWebhook } from '../utils/zapierIntegration';
 import { useTenant } from '../contexts/TenantContext';
 import { saveQuote } from '../utils/quoteStorage';
+import { fetchFormFields, FormField } from '../utils/formFieldsService';
+
+// Feature flag: Set to true to use dynamic Airtable form fields for Individual Tax
+const USE_DYNAMIC_INDIVIDUAL_TAX = true;
 
 const QuoteCalculator: React.FC = () => {
   const { tenant, firmInfo } = useTenant();
   const [currentStep, setCurrentStep] = useState(1);
   const [quote, setQuote] = useState<QuoteData | null>(null);
+  const [quoteId, setQuoteId] = useState<string | null>(null);
   const [pricingConfig, setPricingConfig] = useState<PricingConfig[]>([]);
   const [serviceConfig, setServiceConfig] = useState<ServiceConfig[]>([]);
   const [isLoadingPricing, setIsLoadingPricing] = useState(true);
@@ -98,28 +105,46 @@ const QuoteCalculator: React.FC = () => {
   // Build dynamic step sequence based on selected services
   const steps = useMemo(() => {
     const stepSequence = [];
-    
+
     // Always start with contact and services
     stepSequence.push('contact', 'services');
-    
-    // Add service-specific detail pages in priority order
-    const hasAdvisory = formData.services.includes('advisory');
-    const hasIndividualTax = formData.services.includes('individual-tax');
-    const hasBusinessTax = formData.services.includes('business-tax');
-    const hasBookkeeping = formData.services.includes('bookkeeping');
-    const hasAdditionalServices = formData.services.includes('additional-services');
-    
-    if (hasAdvisory) stepSequence.push('advisory-sales');
-    if (hasIndividualTax) stepSequence.push('individual-tax');
-    if (hasBusinessTax) stepSequence.push('business-tax');
-    if (hasBookkeeping) stepSequence.push('bookkeeping');
-    if (hasAdditionalServices) stepSequence.push('additional-services');
-    
+
+    // Add service-specific detail pages dynamically based on hasDetailForm
+    if (formData.services.length > 0 && serviceConfig.length > 0) {
+      // Get selected services with their config
+      const selectedServiceConfigs = formData.services
+        .map(serviceId => serviceConfig.find(s => s.serviceId === serviceId))
+        .filter(Boolean) as ServiceConfig[];
+
+      // Handle advisory specially (no detail form but has sales page)
+      const hasAdvisory = formData.services.includes('advisory');
+      if (hasAdvisory) {
+        stepSequence.push('advisory-sales');
+      }
+
+      // Handle additional-services specially (has custom component)
+      const hasAdditionalServices = formData.services.includes('additional-services');
+
+      // Add all services with hasDetailForm = true
+      selectedServiceConfigs.forEach(service => {
+        if (service.serviceId !== 'advisory' && service.serviceId !== 'additional-services') {
+          if (service.hasDetailForm) {
+            stepSequence.push(service.serviceId);
+          }
+        }
+      });
+
+      // Add additional-services at the end if selected
+      if (hasAdditionalServices) {
+        stepSequence.push('additional-services');
+      }
+    }
+
     // Always end with quote
     stepSequence.push('quote');
-    
+
     return stepSequence;
-  }, [formData.services]);
+  }, [formData.services, serviceConfig]);
 
   const totalSteps = steps.length;
   const currentStepType = steps[currentStep - 1];
@@ -146,7 +171,14 @@ const QuoteCalculator: React.FC = () => {
         case 'bookkeeping':
         case 'additional-services': return 4;
         case 'quote': return 5;
-        default: return 1;
+        default:
+          // For dynamic services, check if they have detail forms
+          const dynamicService = serviceConfig.find(s => s.serviceId === componentType);
+          if (dynamicService && dynamicService.hasDetailForm) {
+            // Tax services go to step 3, other services to step 4
+            return componentType.includes('tax') ? 3 : 4;
+          }
+          return 1;
       }
     };
 
@@ -158,9 +190,9 @@ const QuoteCalculator: React.FC = () => {
         maxConceptualStep = Math.max(maxConceptualStep, conceptualStepForComponent);
       }
     }
-    
+
     return maxConceptualStep;
-  }, [currentStep, steps]);
+  }, [currentStep, steps, serviceConfig]);
 
   // Load pricing configuration on component mount
   useEffect(() => {
@@ -229,16 +261,48 @@ const QuoteCalculator: React.FC = () => {
         return;
       }
 
-      // Save quote to database
-      await saveQuote({
-        tenantId: tenant.id,
-        formData,
-        quoteData: quote,
-        tenant: tenant,
-      });
+      // ✅ OPTIONAL: Fetch form fields only if you want field labels in Zapier
+      // This is NOT required for sending dynamic form data (formData already has all values)
+      let allFormFields: FormField[] = [];
+      try {
+        const formFieldsPromises = formData.services.map(serviceId =>
+          fetchFormFields(tenant, serviceId)
+        );
+        const formFieldsArrays = await Promise.all(formFieldsPromises);
+        allFormFields = formFieldsArrays.flat();
+        console.log(`Fetched ${allFormFields.length} form field definitions for labels`);
+      } catch (error) {
+        console.warn('Could not fetch form field definitions (labels only):', error);
+        // Continue without field labels - all formData values will still be sent
+      }
 
-      // Send quote data to tenant's Zapier webhook
-      await sendQuoteToZapierWebhook(formData, quote, pricingConfig, tenant.id, tenant.zapierWebhookUrl);
+      // Send quote data to tenant's Zapier webhook with 'new' status first
+      // This generates the Quote ID that we'll use everywhere
+      // All formData fields will be sent, even if allFormFields is empty
+      const zapierResult = await sendQuoteToZapierWebhook(
+        formData,
+        quote,
+        pricingConfig,
+        tenant.id,
+        tenant.zapierWebhookUrl,
+        allFormFields,
+        'new'
+      );
+
+      // Capture the generated Quote ID
+      if (zapierResult.quoteId) {
+        setQuoteId(zapierResult.quoteId);
+        console.log('Quote ID captured:', zapierResult.quoteId);
+
+        // Save quote to database with the Quote ID
+        await saveQuote({
+          tenantId: tenant.id,
+          formData,
+          quoteData: quote,
+          tenant: tenant,
+          quoteId: zapierResult.quoteId,
+        });
+      }
 
       // Advance to quote results page regardless of webhook success/failure
       nextStep();
@@ -356,6 +420,9 @@ const QuoteCalculator: React.FC = () => {
     // Clear quote data
     setQuote(null);
 
+    // Clear quote ID
+    setQuoteId(null);
+
     // Clear localStorage
     localStorage.removeItem('quoteData');
     localStorage.removeItem('currentQuote');
@@ -417,24 +484,12 @@ const QuoteCalculator: React.FC = () => {
           />
         );
       case 'individual-tax':
-        return (
-          <IndividualTaxDetails
-            formData={formData}
-            updateFormData={updateFormData}
-            serviceConfig={serviceConfig}
-          />
-        );
       case 'business-tax':
-        return (
-          <BusinessTaxDetails
-            formData={formData}
-            updateFormData={updateFormData}
-            serviceConfig={serviceConfig}
-          />
-        );
       case 'bookkeeping':
+        // Use universal dynamic component for all services with hasDetailForm
         return (
-          <BookkeepingDetails
+          <DynamicServiceDetailStep
+            serviceId={currentStepType}
             formData={formData}
             updateFormData={updateFormData}
             serviceConfig={serviceConfig}
@@ -455,16 +510,31 @@ const QuoteCalculator: React.FC = () => {
           <QuoteResults
             formData={formData}
             quote={quote}
+            quoteId={quoteId}
             pricingConfig={pricingConfig}
             serviceConfig={serviceConfig}
             onRecalculate={resetQuote}
           />
         );
       default:
+        // Handle any other dynamic service with hasDetailForm
+        const dynamicService = serviceConfig.find(s => s.serviceId === currentStepType && s.hasDetailForm);
+        if (dynamicService) {
+          return (
+            <DynamicServiceDetailStep
+              serviceId={currentStepType}
+              formData={formData}
+              updateFormData={updateFormData}
+              serviceConfig={serviceConfig}
+            />
+          );
+        }
+
+        // Fallback to contact form
         return (
-          <ContactForm 
-            formData={formData} 
-            updateFormData={updateFormData} 
+          <ContactForm
+            formData={formData}
+            updateFormData={updateFormData}
           />
         );
     }

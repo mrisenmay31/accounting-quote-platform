@@ -175,6 +175,35 @@ export interface ServiceConfig {
   quoteIncludedFeatures?: string[];
   active: boolean;
   serviceOrder?: number;
+  hasDetailForm?: boolean;
   includedFeaturesCardTitle?: string;
   includedFeaturesCardList?: string[];
+}
+
+// Dynamic Form Field Types
+export interface FormField {
+  fieldId: string;
+  serviceId: string;
+  fieldName: string;
+  fieldType: 'text' | 'number' | 'dropdown' | 'checkbox' | 'textarea' | 'radio' | 'multi-select';
+  fieldLabel: string;
+  placeholder?: string;
+  options?: string; // JSON string containing field-specific options
+  required: boolean;
+  active: boolean;
+  displayOrder: number;
+  conditionalLogic?: string; // JSON string for future conditional logic implementation
+  helpText?: string;
+  // Layout metadata
+  fieldWidth?: 'full' | 'half';
+  sectionHeader?: string;
+  sectionIcon?: string;
+  layoutType?: 'standard' | 'checkbox-grid' | 'radio-group' | 'textarea';
+  columns?: number; // Number of columns for checkbox grids
+  rowGroup?: number; // Group number for half-width fields on same row
+}
+
+export interface AirtableFormFieldConfig {
+  baseId: string;
+  apiKey: string;
 }

@@ -8,6 +8,7 @@ export interface SaveQuoteParams {
   formData: FormData;
   quoteData: QuoteData;
   tenant: TenantConfig;
+  quoteId?: string;
 }
 
 const generateQuoteNumber = (): string => {
@@ -17,7 +18,7 @@ const generateQuoteNumber = (): string => {
 };
 
 export const saveQuote = async (params: SaveQuoteParams): Promise<any> => {
-  const { tenantId, formData, quoteData, tenant } = params;
+  const { tenantId, formData, quoteData, tenant, quoteId } = params;
 
   try {
     const airtableResult = await saveQuoteToAirtable(
@@ -36,9 +37,15 @@ export const saveQuote = async (params: SaveQuoteParams): Promise<any> => {
 
     console.log('Quote saved to Airtable successfully:', airtableResult.recordId);
 
+    // Store the quote ID if provided for future reference
+    if (quoteId) {
+      console.log('Quote ID stored with Airtable record:', quoteId);
+    }
+
     return {
       id: airtableResult.recordId,
       quote_number: airtableResult.quoteNumber,
+      quote_id: quoteId || airtableResult.quoteNumber,
       airtable_record_id: airtableResult.recordId,
     };
   } catch (error) {

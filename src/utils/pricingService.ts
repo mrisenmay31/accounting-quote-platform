@@ -5,6 +5,23 @@ const AIRTABLE_PRICING_BASE_ID = import.meta.env.VITE_AIRTABLE_PRICING_BASE_ID |
 const AIRTABLE_PRICING_API_KEY = import.meta.env.VITE_AIRTABLE_PRICING_API_KEY || '';
 const AIRTABLE_PRICING_TABLE_NAME = 'Pricing Variables';
 
+/**
+ * Helper function to extract string value from Airtable field
+ * Handles: plain strings, linked records (single/array), lookup formulas
+ */
+function extractFieldValue(field: any): string | undefined {
+  if (!field) return undefined;
+  if (typeof field === 'string') return field.trim();
+  if (Array.isArray(field)) return extractFieldValue(field[0]);
+  if (typeof field === 'object' && field.name) return field.name.trim();
+  if (typeof field === 'object' && field.id) {
+    // Linked record without name field - return id as fallback
+    console.warn('Linked record missing name field:', field);
+    return field.id;
+  }
+  return undefined;
+}
+
 export interface AirtableConfig {
   baseId: string;
   apiKey: string;
@@ -277,13 +294,13 @@ const convertAirtableRecord = (record: AirtablePricingRecord): PricingConfig => 
     basePrice: parseCurrency(fields['Base Price']),
     billingFrequency: fields['Billing Frequency'] as 'Monthly' | 'One-Time Fee' | 'Annual',
     active: parseCheckbox(fields['Active']),
-    triggerFormField: fields['Trigger Form Field']?.trim(),
-    requiredFormValue: fields['Required Form Field']?.trim(),
+    triggerFormField: extractFieldValue(fields['Trigger Form Field']),
+    requiredFormValue: extractFieldValue(fields['Required Form Field']),
     comparisonLogic: fields['Comparison Logic'] as 'equals' | 'includes' | 'notEquals' | 'greaterThan' | 'lessThan' | 'contains',
     perUnitPricing: parseCheckbox(fields['Per-Unit Pricing']),
     unitPrice: parseCurrency(fields['Unit Price']) || 0,
     unitName: fields['Unit Name']?.trim(),
-    quantitySourceField: fields['Quantity Source Field']?.trim(),
+    quantitySourceField: extractFieldValue(fields['Quantity Source Field']),
     advisoryDiscountEligible: parseCheckbox(fields['Advisory Discount Eligible']),
     advisoryDiscountPercentage: parsePercentage(fields['Advisory Discount Percentage']),
     includedFeatures: [],
