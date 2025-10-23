@@ -330,17 +330,48 @@ const buildDynamicFormFields = (
 ): Record<string, any> => {
   const dynamicFields: Record<string, any> = {};
 
+  console.log('=== BUILDING DYNAMIC FORM FIELDS FOR ZAPIER ===');
+  console.log('Total form field definitions:', formFields.length);
+  console.log('Services in formData:', Object.keys(formData).filter(key =>
+    typeof formData[key as keyof FormData] === 'object' &&
+    !Array.isArray(formData[key as keyof FormData])
+  ));
+
+  let fieldsFound = 0;
+  let fieldsNotFound = 0;
+
   formFields.forEach(field => {
     const fieldName = field.fieldName;
-    let value = formData[fieldName as keyof FormData];
+    let value = undefined;
+    let valueSource = 'not found';
 
-    // Special handling for nested service data
-    if (!value && field.serviceId) {
-      // Try to get value from service-specific data
+    // PRIORITY 1: Try to get value from service-specific nested data first
+    if (field.serviceId) {
       const serviceData = formData[field.serviceId as keyof FormData];
       if (serviceData && typeof serviceData === 'object') {
         value = (serviceData as any)[fieldName];
+        if (value !== undefined && value !== null && value !== '') {
+          valueSource = `nested (${field.serviceId})`;
+          fieldsFound++;
+        }
       }
+    }
+
+    // PRIORITY 2: Try root level if not found in nested data
+    if ((value === undefined || value === null || value === '') && !field.serviceId) {
+      value = formData[fieldName as keyof FormData];
+      if (value !== undefined && value !== null && value !== '') {
+        valueSource = 'root level';
+        fieldsFound++;
+      }
+    }
+
+    // Track fields without values
+    if (value === undefined || value === null || value === '') {
+      fieldsNotFound++;
+      console.log(`  ⚠ Field not found: "${field.fieldLabel}" (${fieldName}) - Service: ${field.serviceId}`);
+    } else {
+      console.log(`  ✓ Field found: "${field.fieldLabel}" (${fieldName}) = ${JSON.stringify(value).substring(0, 50)} [${valueSource}]`);
     }
 
     // Create human-readable field key with service prefix
@@ -355,11 +386,21 @@ const buildDynamicFormFields = (
     else if (typeof value === 'boolean') {
       dynamicFields[fieldKey] = value;
     }
-    // Handle all other values
+    // Handle numeric values (including 0)
+    else if (typeof value === 'number') {
+      dynamicFields[fieldKey] = value;
+    }
+    // Handle all other values (but include null for fields that exist but have no value)
     else {
       dynamicFields[fieldKey] = value || null;
     }
   });
+
+  console.log(`\nDynamic Fields Summary:`);
+  console.log(`  Fields with values: ${fieldsFound}`);
+  console.log(`  Fields without values: ${fieldsNotFound}`);
+  console.log(`  Total dynamic fields in payload: ${Object.keys(dynamicFields).length}`);
+  console.log('===============================================\n');
 
   return dynamicFields;
 };
@@ -417,10 +458,14 @@ export const sendQuoteToZapierWebhook = async (
   console.log('Additional Services One-Time Fee (Aggregated):', individualFees.additionalServicesOneTimeFee);
   console.log('=========================================');
 
-  console.log('=== DYNAMIC FORM FIELDS ===');
+  console.log('=== DYNAMIC FORM FIELDS IN ZAPIER PAYLOAD ===');
   console.log('Total dynamic fields:', Object.keys(dynamicFormFields).length);
   console.log('Dynamic field names:', Object.keys(dynamicFormFields));
-  console.log('===========================');
+  console.log('Sample values (first 3):');
+  Object.entries(dynamicFormFields).slice(0, 3).forEach(([key, value]) => {
+    console.log(`  ${key}: ${JSON.stringify(value)}`);
+  });
+  console.log('==============================================')
 
   console.log('=== EXTRACTED INDIVIDUAL ADDITIONAL SERVICE PRICING ===');
   console.log('AR Management Fee:', additionalServicePricing.arManagementFee, additionalServicePricing.arManagementBillingType);
@@ -549,7 +594,8 @@ export const sendQuoteToZapierWebhook = async (
     console.log('Services Requested:', formData.services.join(', '));
     console.log('Dynamic Fields Count:', Object.keys(dynamicFormFields).length);
     console.log('Sample Dynamic Fields:', Object.keys(dynamicFormFields).slice(0, 5));
-    console.log('Full Payload:', payload);
+    console.log('Payload Keys:', Object.keys(payload).length);
+    console.log('Full Payload:', JSON.stringify(payload, null, 2));
     console.log('==============================');
 
     const response = await fetch(url, {

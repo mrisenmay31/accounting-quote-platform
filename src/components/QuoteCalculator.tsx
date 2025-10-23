@@ -261,19 +261,24 @@ const QuoteCalculator: React.FC = () => {
         return;
       }
 
-      // ✅ OPTIONAL: Fetch form fields only if you want field labels in Zapier
-      // This is NOT required for sending dynamic form data (formData already has all values)
+      // Fetch form fields for all selected services to build dynamic Zapier payload
       let allFormFields: FormField[] = [];
       try {
+        const airtableConfig = {
+          baseId: tenant.airtable.servicesBaseId || tenant.airtable.pricingBaseId,
+          apiKey: tenant.airtable.servicesApiKey || tenant.airtable.pricingApiKey,
+        };
+
         const formFieldsPromises = formData.services.map(serviceId =>
-          fetchFormFields(tenant, serviceId)
+          fetchFormFields(airtableConfig, serviceId)
         );
         const formFieldsArrays = await Promise.all(formFieldsPromises);
         allFormFields = formFieldsArrays.flat();
-        console.log(`Fetched ${allFormFields.length} form field definitions for labels`);
+        console.log(`[QuoteCalculator] Fetched ${allFormFields.length} form field definitions for Zapier payload`);
+        console.log(`[QuoteCalculator] Services with form fields:`, formData.services.join(', '));
       } catch (error) {
-        console.warn('Could not fetch form field definitions (labels only):', error);
-        // Continue without field labels - all formData values will still be sent
+        console.error('[QuoteCalculator] Failed to fetch form field definitions for Zapier:', error);
+        // Continue without field definitions - hardcoded fields will still be sent
       }
 
       // Send quote data to tenant's Zapier webhook with 'new' status first
