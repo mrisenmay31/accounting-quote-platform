@@ -70,7 +70,42 @@ const QuoteResults: React.FC<QuoteResultsProps> = ({ formData, quote, quoteId, p
   };
 
   const handleAcceptQuote = () => handleQuoteAction('Quote Accepted', 'accept-quote');
-  const handleScheduleConsultationWithStatus = () => handleQuoteAction('Call Scheduled', 'schedule-consultation');
+
+  const handleScheduleConsultationWithStatus = async () => {
+    // Check if consultation link exists and is valid
+    const consultationLink = firmInfo?.consultationLink;
+
+    if (consultationLink && consultationLink.trim().length > 0) {
+      // Validate URL format
+      let redirectUrl = consultationLink.trim();
+
+      // Add https:// if no protocol is specified
+      if (!redirectUrl.startsWith('http://') && !redirectUrl.startsWith('https://')) {
+        redirectUrl = `https://${redirectUrl}`;
+      }
+
+      // Validate that it's a proper URL
+      try {
+        new URL(redirectUrl);
+        console.log('Valid consultation link found, redirecting to:', redirectUrl);
+
+        // Send Zapier webhook with 'Call Scheduled' status
+        await handleQuoteAction('Call Scheduled', 'schedule-consultation');
+
+        // Redirect to consultation link in new tab
+        window.open(redirectUrl, '_blank', 'noopener,noreferrer');
+
+        return;
+      } catch (error) {
+        console.error('Invalid consultation link format:', consultationLink, error);
+        // Fall through to default behavior
+      }
+    }
+
+    // Fallback: No valid consultation link - use existing flow
+    console.log('No valid consultation link found, using default behavior');
+    handleQuoteAction('Call Scheduled', 'schedule-consultation');
+  };
 
   const calculateLockDate = () => {
     const today = new Date();
