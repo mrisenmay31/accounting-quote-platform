@@ -47,6 +47,12 @@ export interface AirtablePricingRecord {
     'Quantity Source Field': string;
     'Advisory Discount Eligible': string;
     'Advisory Discount Percentage': string;
+    // Formula-based pricing fields
+    'Calculation Method'?: string;
+    'Formula Expression'?: string;
+    'Formula Input Fields'?: string;
+    'Minimum Value'?: string;
+    'Maximum Value'?: string;
   };
 }
 
@@ -285,6 +291,18 @@ const convertAirtableRecord = (record: AirtablePricingRecord): PricingConfig => 
     return normalizedValue === 'checked' || normalizedValue === 'true' || normalizedValue === '1' || normalizedValue === 'yes';
   };
   
+  // Helper function to parse formula input fields (JSON array)
+  const parseFormulaInputFields = (value: string | undefined): string[] | undefined => {
+    if (!value) return undefined;
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : undefined;
+    } catch (error) {
+      console.warn('Failed to parse formulaInputFields:', value, error);
+      return undefined;
+    }
+  };
+
   return {
     serviceId: fields['Service ID'],
     pricingRuleId: fields['Pricing Rule ID'],
@@ -304,7 +322,14 @@ const convertAirtableRecord = (record: AirtablePricingRecord): PricingConfig => 
     advisoryDiscountEligible: parseCheckbox(fields['Advisory Discount Eligible']),
     advisoryDiscountPercentage: parsePercentage(fields['Advisory Discount Percentage']),
     includedFeatures: [],
-    addOns: []
+    addOns: [],
+
+    // Formula-based pricing fields
+    calculationMethod: fields['Calculation Method'] as 'simple' | 'formula' | 'per-unit' | undefined,
+    formulaExpression: fields['Formula Expression'] as string | undefined,
+    formulaInputFields: parseFormulaInputFields(fields['Formula Input Fields'] as string | undefined),
+    minimumValue: parseCurrency(fields['Minimum Value']) || undefined,
+    maximumValue: parseCurrency(fields['Maximum Value']) || undefined
   };
 };
 

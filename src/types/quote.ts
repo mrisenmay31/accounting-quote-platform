@@ -162,6 +162,13 @@ export interface PricingConfig {
     name: string;
     price: number;
   }>;
+
+  // Formula-based pricing fields
+  calculationMethod?: 'simple' | 'formula' | 'per-unit';
+  formulaExpression?: string;
+  formulaInputFields?: string[];
+  minimumValue?: number;
+  maximumValue?: number;
 }
 
 export interface ServiceConfig {

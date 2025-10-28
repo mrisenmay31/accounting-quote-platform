@@ -1,6 +1,7 @@
 import { FormData, QuoteData, ServiceQuote, HourlyService } from '../types/quote';
 import { PricingConfig, getServicePricing } from './pricingService';
 import { ServiceConfig, getServiceConfig } from './serviceConfigService';
+import { FormulaEvaluator } from './formulaEvaluator';
 
 // Helper function to safely get nested object values using dot notation
 const getNestedValue = (obj: any, path: string): any => {
@@ -65,40 +66,64 @@ const evaluateCondition = (
 const calculateRulePrice = (
   rule: PricingConfig,
   formData: FormData,
-  hasAdvisoryService: boolean
+  hasAdvisoryService: boolean,
+  calculatedPrices: Map<string, number>
 ): number => {
   let price = 0;
-  
-  if (rule.perUnitPricing && rule.quantitySourceField && rule.unitPrice) {
-    const quantity = getNestedValue(formData, rule.quantitySourceField);
-    let adjustedQuantity = Number(quantity) || 0;
 
-    // Special handling for additional owners fee - entity-type-specific thresholds
-    if (rule.pricingRuleId?.startsWith('business-tax-additional-owners') &&
-        rule.quantitySourceField === 'businessTax.numberOfOwners') {
+  // Determine calculation method (default to 'simple' for backward compatibility)
+  const method = rule.calculationMethod || (rule.perUnitPricing ? 'per-unit' : 'simple');
 
-      // Determine threshold based on entity type
-      let threshold = 0;
+  console.log(`Calculating price for ${rule.pricingRuleId} using method: ${method}`);
 
-      if (rule.pricingRuleId === 'business-tax-additional-owners-partnership' ||
-          rule.pricingRuleId === 'business-tax-additional-owners-llc') {
-        threshold = 2; // Partnership and LLC: charge for owners beyond 2
-      } else if (rule.pricingRuleId === 'business-tax-additional-owners-scorp' ||
-                 rule.pricingRuleId === 'business-tax-additional-owners-ccorp') {
-        threshold = 1; // S-Corp and C-Corp: charge for owners beyond 1
-      } else if (rule.pricingRuleId === 'business-tax-additional-owners') {
-        // Legacy rule (if still active) - use threshold of 2
-        threshold = 2;
+  switch (method) {
+    case 'formula':
+      // Use FormulaEvaluator for formula-based pricing
+      const evaluator = new FormulaEvaluator(formData, calculatedPrices);
+      price = evaluator.evaluateFormula(rule);
+      break;
+
+    case 'per-unit':
+      // Per-unit pricing (quantity × unit price)
+      if (rule.quantitySourceField && rule.unitPrice) {
+        const quantity = getNestedValue(formData, rule.quantitySourceField);
+        let adjustedQuantity = Number(quantity) || 0;
+
+        // Special handling for additional owners fee - entity-type-specific thresholds
+        if (rule.pricingRuleId?.startsWith('business-tax-additional-owners') &&
+            rule.quantitySourceField === 'businessTax.numberOfOwners') {
+
+          // Determine threshold based on entity type
+          let threshold = 0;
+
+          if (rule.pricingRuleId === 'business-tax-additional-owners-partnership' ||
+              rule.pricingRuleId === 'business-tax-additional-owners-llc') {
+            threshold = 2; // Partnership and LLC: charge for owners beyond 2
+          } else if (rule.pricingRuleId === 'business-tax-additional-owners-scorp' ||
+                     rule.pricingRuleId === 'business-tax-additional-owners-ccorp') {
+            threshold = 1; // S-Corp and C-Corp: charge for owners beyond 1
+          } else if (rule.pricingRuleId === 'business-tax-additional-owners') {
+            // Legacy rule (if still active) - use threshold of 2
+            threshold = 2;
+          }
+
+          adjustedQuantity = Math.max(0, adjustedQuantity - threshold);
+        }
+
+        price = adjustedQuantity * rule.unitPrice;
+      } else {
+        // Fallback to base price if per-unit fields are missing
+        price = rule.basePrice;
       }
+      break;
 
-      adjustedQuantity = Math.max(0, adjustedQuantity - threshold);
-    }
-
-    price = adjustedQuantity * rule.unitPrice;
-  } else {
-    price = rule.basePrice;
+    case 'simple':
+    default:
+      // Simple base price
+      price = rule.basePrice;
+      break;
   }
-  
+
   // Diagnostic logging for Advisory Services discount
   if (hasAdvisoryService) {
     console.log('=== ADVISORY DISCOUNT DEBUG ===');
@@ -108,19 +133,31 @@ const calculateRulePrice = (
     console.log('Advisory Discount Eligible:', rule.advisoryDiscountEligible);
     console.log('Advisory Discount Percentage:', rule.advisoryDiscountPercentage);
   }
-  
-  // Apply advisory discount if applicable
-  if (hasAdvisoryService && rule.advisoryDiscountEligible && rule.advisoryDiscountPercentage > 0) {
+
+  // Apply advisory discount if applicable (ONLY for non-formula methods)
+  // Formula methods should handle discounts within their expressions
+  if (method !== 'formula' && hasAdvisoryService && rule.advisoryDiscountEligible && rule.advisoryDiscountPercentage > 0) {
     price = price * (1 - rule.advisoryDiscountPercentage);
     console.log('Discounted Price:', price);
   }
-  
+
   if (hasAdvisoryService) {
     console.log('Final Price:', price);
     console.log('================================');
   }
-  
+
   return Math.round(price * 100) / 100; // Round to 2 decimal places
+};
+
+// Helper function to sort pricing rules by dependency
+// Formula rules should be processed AFTER the rules they reference
+const sortRulesByDependency = (rules: PricingConfig[]): PricingConfig[] => {
+  const formulaRules = rules.filter(r => r.calculationMethod === 'formula');
+  const otherRules = rules.filter(r => r.calculationMethod !== 'formula');
+
+  // Process non-formula rules first, then formula rules
+  // This ensures all base prices are calculated before formulas that reference them
+  return [...otherRules, ...formulaRules];
 };
 
 export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[] = [], serviceConfig: ServiceConfig[] = []): QuoteData => {
@@ -129,29 +166,36 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
   let totalAnnual = 0;
   let complexity: 'low' | 'medium' | 'high' | 'very-high' = 'low';
   const recommendations: string[] = [];
-  
+
   // Check if advisory service is selected
   const hasAdvisoryService = formData.services.includes('advisory');
-  
+
+  // Create a Map to store calculated prices for formula references
+  const calculatedPrices = new Map<string, number>();
+
   // Debug logging
   console.log('=== QUOTE CALCULATION DEBUG ===');
   console.log('Selected services:', formData.services);
   console.log('Has advisory service:', hasAdvisoryService);
   console.log('Pricing config length:', pricingConfig.length);
   console.log('Pricing config:', pricingConfig);
-  
+
   // If no pricing config is available, fall back to original logic
   if (pricingConfig.length === 0) {
     console.log('No pricing config available, using defaults');
     return calculateQuoteWithDefaults(formData, serviceConfig);
   }
-  
+
+  // Sort rules to ensure base pricing rules are calculated before formulas that reference them
+  const sortedRules = sortRulesByDependency(pricingConfig);
+  console.log('Rules sorted by dependency. Formula rules will be processed last.');
+
   // Group pricing rules by service for better organization
   const serviceGroups: { [key: string]: { rules: PricingConfig[], totalMonthlyFees: number, totalOneTimeFees: number } } = {};
   const hourlyServices: HourlyService[] = [];
-  
+
   // Process each pricing rule
-  for (const rule of pricingConfig) {
+  for (const rule of sortedRules) {
     console.log(`\n--- Processing rule: ${rule.pricingRuleId} ---`);
     console.log('Rule details:', {
       pricingRuleId: rule.pricingRuleId,
@@ -243,7 +287,13 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
     }
 
     // Calculate price for this rule
-    const rulePrice = calculateRulePrice(rule, formData, hasAdvisoryService);
+    const rulePrice = calculateRulePrice(rule, formData, hasAdvisoryService, calculatedPrices);
+
+    // Store calculated price for this rule (for use by formula rules)
+    if (rulePrice > 0) {
+      calculatedPrices.set(rule.pricingRuleId, rulePrice);
+      console.log(`Stored calculated price: ${rule.pricingRuleId} = $${rulePrice}`);
+    }
 
     if (rulePrice <= 0) continue;
 
