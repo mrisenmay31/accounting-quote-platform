@@ -16,7 +16,7 @@ export class FormulaEvaluator {
 
   constructor(formData: FormData, calculatedPrices: Map<string, number>) {
     this.formData = formData;
-    this.calculatedPrices = calculatedPrices;
+    this.calculatedPrices = calculatedPrices || new Map<string, number>();
   }
 
   /**
