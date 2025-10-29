@@ -311,9 +311,10 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
     // Calculate price for this rule
     const rulePrice = calculateRulePrice(rule, formData, hasAdvisoryService, calculatedPrices);
 
-    // Store calculated price for this rule (for use by formula rules)
+    // Store calculated price for this rule (formula evaluator needs access to all entries)
+    calculatedPrices.set(rule.pricingRuleId, rulePrice);
+
     if (rulePrice > 0) {
-      calculatedPrices.set(rule.pricingRuleId, rulePrice);
       console.log(`💰 ${rule.pricingRuleId}: $${rulePrice} (method: ${rule.calculationMethod || 'simple'})`);
     }
 
