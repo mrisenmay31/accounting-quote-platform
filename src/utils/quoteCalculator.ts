@@ -314,7 +314,7 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
     // Store calculated price for this rule (for use by formula rules)
     if (rulePrice > 0) {
       calculatedPrices.set(rule.pricingRuleId, rulePrice);
-      console.log(`💰 ${rule.pricingRuleId}: $${rulePrice} (method: ${method})`);
+      console.log(`💰 ${rule.pricingRuleId}: $${rulePrice} (method: ${rule.calculationMethod || 'simple'})`);
     }
 
     if (rulePrice <= 0) continue;
