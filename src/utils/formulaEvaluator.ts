@@ -177,26 +177,24 @@ export class FormulaEvaluator {
       console.log(`    ${id}: $${price}`);
     });
 
-    // Find the triggered monthly bookkeeping tier rate from calculatedPrices
-    // Look for bookkeeping rules that contain "transactions" or "tier" in the ID
-    const bookkeepingRules = Array.from(this.calculatedPrices.entries())
-      .filter(([id, price]) => {
-        const match = id.includes('bookkeeping') &&
-                      (id.includes('transactions') || id.includes('tier')) &&
-                      price > 0;
-        console.log(`  Checking ${id}: ${match ? '✅ MATCH' : '❌ no match'} (price: $${price})`);
-        return match;
-      });
+    // Sum ALL bookkeeping service monthly fees
+    let totalMonthlyRate = 0;
 
-    if (bookkeepingRules.length > 0) {
-      // Return the first matched rate (highest priority)
-      console.log(`✅ Found monthly rate: $${bookkeepingRules[0][1]}`);
+    Array.from(this.calculatedPrices.entries()).forEach(([id, price]) => {
+      // Include ANY bookkeeping-related monthly fee (not just transactions)
+      if (id.includes('bookkeeping') && price > 0) {
+        console.log(`  ✅ Including ${id}: $${price}`);
+        totalMonthlyRate += price;
+      }
+    });
+
+    if (totalMonthlyRate > 0) {
+      console.log(`✅ Total monthly bookkeeping rate: $${totalMonthlyRate}`);
       console.log('-------------------------------------------');
-      return bookkeepingRules[0][1];
+      return totalMonthlyRate;
     }
 
-    // Default to lowest tier if nothing found (fallback)
-    console.warn('⚠️  No monthly bookkeeping rate found! Using default: $105');
+    console.warn('⚠️ No monthly bookkeeping charges found! Using default: $105');
     console.log('-------------------------------------------');
     return 105;
   }
