@@ -155,12 +155,34 @@ const sortRulesByDependency = (rules: PricingConfig[]): PricingConfig[] => {
   const formulaRules = rules.filter(r => r.calculationMethod === 'formula');
   const otherRules = rules.filter(r => r.calculationMethod !== 'formula');
 
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('📊 RULE PROCESSING ORDER');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('Rules to process FIRST (non-formula):');
+  otherRules.forEach((rule, i) => {
+    console.log(`  ${i + 1}. ${rule.pricingRuleId} (method: ${rule.calculationMethod || 'simple'})`);
+  });
+  console.log('');
+  console.log('Rules to process LAST (formula):');
+  formulaRules.forEach((rule, i) => {
+    console.log(`  ${i + 1}. ${rule.pricingRuleId} (method: formula)`);
+  });
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('');
+
   // Process non-formula rules first, then formula rules
   // This ensures all base prices are calculated before formulas that reference them
   return [...otherRules, ...formulaRules];
 };
 
 export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[] = [], serviceConfig: ServiceConfig[] = []): QuoteData => {
+  console.log('╔══════════════════════════════════════════════════════╗');
+  console.log('║         QUOTE CALCULATION STARTED                    ║');
+  console.log('╚══════════════════════════════════════════════════════╝');
+  console.log('Form Data Keys:', Object.keys(formData));
+  console.log('Total Pricing Rules:', pricingConfig.length);
+  console.log('');
+
   let totalMonthlyFees = 0;
   let totalOneTimeFees = 0;
   let totalAnnual = 0;
@@ -292,7 +314,7 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
     // Store calculated price for this rule (for use by formula rules)
     if (rulePrice > 0) {
       calculatedPrices.set(rule.pricingRuleId, rulePrice);
-      console.log(`Stored calculated price: ${rule.pricingRuleId} = $${rulePrice}`);
+      console.log(`💰 ${rule.pricingRuleId}: $${rulePrice} (method: ${method})`);
     }
 
     if (rulePrice <= 0) continue;
@@ -562,6 +584,13 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
   const potentialSavings = Math.round((totalMonthlyFees * 12 + totalOneTimeFees) * 0.3); // Estimate 30% savings from tax optimization
 
   const finalTotalAnnual = totalMonthlyFees * 12 + totalOneTimeFees;
+
+  console.log('');
+  console.log('╔══════════════════════════════════════════════════════╗');
+  console.log('║         QUOTE CALCULATION COMPLETE                   ║');
+  console.log('╚══════════════════════════════════════════════════════╝');
+  console.log('Total rules triggered:', calculatedPrices.size);
+  console.log('');
 
   return {
     services,

@@ -23,50 +23,57 @@ export class FormulaEvaluator {
    * Evaluate a formula expression and return the calculated value
    */
   evaluateFormula(rule: PricingConfig): number {
+    console.log('===========================================');
+    console.log('🔍 FORMULA EVALUATION START');
+    console.log('===========================================');
+    console.log('Rule ID:', rule.pricingRuleId);
+    console.log('Formula:', rule.formulaExpression);
+    console.log('Minimum Value:', rule.minimumValue);
+    console.log('Maximum Value:', rule.maximumValue);
+
     if (!rule.formulaExpression) {
       console.warn(`Rule ${rule.pricingRuleId} has no formula expression`);
       return 0;
     }
 
     try {
-      console.log(`\n=== FORMULA EVALUATION: ${rule.pricingRuleId} ===`);
-      console.log('Original formula:', rule.formulaExpression);
 
       // Step 1: Parse the formula expression
       let expression = rule.formulaExpression;
 
       // Step 2: Extract and resolve all {{variable}} placeholders
       const variables = this.extractVariables(expression);
-      console.log('Variables found:', variables);
+      console.log('📋 Variables to resolve:', variables);
 
       for (const variable of variables) {
         const value = this.resolveVariable(variable);
-        console.log(`Resolving {{${variable}}} = ${value}`);
+        console.log(`  Variable: {{${variable}}} = ${value}`);
         expression = expression.replace(
           new RegExp(`\\{\\{${this.escapeRegex(variable)}\\}\\}`, 'g'),
           String(value)
         );
       }
 
-      console.log('After substitution:', expression);
+      console.log('✏️  Expression after substitution:', expression);
 
       // Step 3: Safely evaluate the expression
       const result = this.safeEval(expression);
-      console.log('Evaluated result:', result);
+      console.log('🧮 Calculated result:', result);
 
       // Step 4: Apply min/max constraints
       let finalValue = result;
       if (rule.minimumValue !== undefined && finalValue < rule.minimumValue) {
-        console.log(`Applying minimum constraint: ${rule.minimumValue} (was ${finalValue})`);
         finalValue = rule.minimumValue;
+        console.log(`⬆️  Applied minimum: Math.max(${result}, ${rule.minimumValue}) = ${finalValue}`);
       }
       if (rule.maximumValue !== undefined && finalValue > rule.maximumValue) {
-        console.log(`Applying maximum constraint: ${rule.maximumValue} (was ${finalValue})`);
         finalValue = rule.maximumValue;
+        console.log(`⬇️  Applied maximum: Math.min(${result}, ${rule.maximumValue}) = ${finalValue}`);
       }
 
-      console.log('Final value:', finalValue);
-      console.log('===========================================\n');
+      console.log('✅ Final result:', finalValue);
+      console.log('===========================================');
+      console.log('');
 
       return Math.round(finalValue * 100) / 100; // Round to 2 decimal places
     } catch (error) {
@@ -106,7 +113,7 @@ export class FormulaEvaluator {
       const calculatedPrice = this.calculatedPrices.get(ruleId);
 
       if (calculatedPrice !== undefined) {
-        console.log(`  → Found calculated price for ${ruleId}: ${calculatedPrice}`);
+        console.log(`    ✓ Resolved from calculatedPrices: {{${variable}}} = ${calculatedPrice}`);
         return calculatedPrice;
       } else {
         console.warn(`  → Pricing rule "${ruleId}" not found in calculated prices`);
@@ -116,8 +123,8 @@ export class FormulaEvaluator {
 
     // Special calculated values
     if (variable === 'monthlyBookkeepingRate') {
+      console.log('    📞 Calling getMonthlyBookkeepingRate()...');
       const rate = this.getMonthlyBookkeepingRate();
-      console.log(`  → Monthly bookkeeping rate: ${rate}`);
       return rate;
     }
 
@@ -126,7 +133,7 @@ export class FormulaEvaluator {
       const value = this.getNestedValue(this.formData, variable);
       if (value !== undefined && value !== null) {
         const numValue = Number(value) || 0;
-        console.log(`  → Nested field ${variable}: ${value} → ${numValue}`);
+        console.log(`    ✓ Resolved from formData: {{${variable}}} = ${numValue}`);
         return numValue;
       }
     }
@@ -135,11 +142,12 @@ export class FormulaEvaluator {
     const directValue = (this.formData as any)[variable];
     if (directValue !== undefined && directValue !== null) {
       const numValue = Number(directValue) || 0;
-      console.log(`  → Direct field ${variable}: ${directValue} → ${numValue}`);
+      console.log(`    ✓ Resolved from formData: {{${variable}}} = ${numValue}`);
       return numValue;
     }
 
-    console.warn(`  → Variable "${variable}" not found, defaulting to 0`);
+    console.warn(`    ⚠️  Variable "{{${variable}}}" not found, defaulting to 0`);
+    console.warn(`Variable "${variable}" not found in form data or calculated prices, defaulting to 0`);
     return 0;
   }
 
@@ -162,23 +170,34 @@ export class FormulaEvaluator {
    * This looks for active bookkeeping tier rules and returns the matched rate
    */
   private getMonthlyBookkeepingRate(): number {
+    console.log('-------------------------------------------');
+    console.log('🔍 Searching for monthly bookkeeping rate...');
+    console.log('📊 calculatedPrices Map contents:');
+    Array.from(this.calculatedPrices.entries()).forEach(([id, price]) => {
+      console.log(`    ${id}: $${price}`);
+    });
+
     // Find the triggered monthly bookkeeping tier rate from calculatedPrices
     // Look for bookkeeping rules that contain "transactions" or "tier" in the ID
     const bookkeepingRules = Array.from(this.calculatedPrices.entries())
-      .filter(([id, price]) =>
-        id.includes('bookkeeping') &&
-        (id.includes('transactions') || id.includes('tier')) &&
-        price > 0
-      );
+      .filter(([id, price]) => {
+        const match = id.includes('bookkeeping') &&
+                      (id.includes('transactions') || id.includes('tier')) &&
+                      price > 0;
+        console.log(`  Checking ${id}: ${match ? '✅ MATCH' : '❌ no match'} (price: $${price})`);
+        return match;
+      });
 
     if (bookkeepingRules.length > 0) {
       // Return the first matched rate (highest priority)
-      console.log(`  → Found bookkeeping tier: ${bookkeepingRules[0][0]} = $${bookkeepingRules[0][1]}`);
+      console.log(`✅ Found monthly rate: $${bookkeepingRules[0][1]}`);
+      console.log('-------------------------------------------');
       return bookkeepingRules[0][1];
     }
 
     // Default to lowest tier if nothing found (fallback)
-    console.log(`  → No bookkeeping tier found, using default: $105`);
+    console.warn('⚠️  No monthly bookkeeping rate found! Using default: $105');
+    console.log('-------------------------------------------');
     return 105;
   }
 
