@@ -31,7 +31,7 @@ export function shouldShowField(field: FormField, formData: any): boolean {
 
     // Validate condition structure
     if (!condition.showIf || !condition.showIf.field || !condition.showIf.operator) {
-      console.warn(`[ConditionalLogic] Invalid condition structure for field ${field.fieldId}`);
+      console.warn(`[ConditionalLogic] Invalid condition structure for field ${field.fieldName}`);
       return true;
     }
 
@@ -85,7 +85,7 @@ export function shouldShowField(field: FormField, formData: any): boolean {
         return true;
     }
   } catch (error) {
-    console.error(`[ConditionalLogic] Error parsing conditional logic for field ${field.fieldId}:`, error);
+    console.error(`[ConditionalLogic] Error parsing conditional logic for field ${field.fieldName}:`, error);
     // Show field if condition parsing fails (fail-safe)
     return true;
   }

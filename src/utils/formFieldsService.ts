@@ -5,7 +5,6 @@
  */
 
 export interface FormField {
-  fieldId: string;
   serviceId: string;
   fieldName: string;
   fieldType: 'text' | 'number' | 'dropdown' | 'checkbox' | 'textarea' | 'radio' | 'multi-select';
@@ -34,7 +33,6 @@ export interface AirtableFormFieldConfig {
 interface AirtableRecord {
   id: string;
   fields: {
-    'Field ID'?: string;
     'Service ID'?: string;
     'Field Name'?: string;
     'Field Type'?: string;
@@ -119,7 +117,6 @@ export const fetchFormFields = async (
 
     // Transform Airtable records to FormField objects
     const formFields: FormField[] = data.records.map(record => ({
-      fieldId: record.fields['Field ID'] || record.id,
       serviceId: record.fields['Service ID'] || serviceId,
       fieldName: record.fields['Field Name'] || '',
       fieldType: (record.fields['Field Type'] as FormField['fieldType']) || 'text',

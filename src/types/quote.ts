@@ -188,7 +188,6 @@ export interface ServiceConfig {
 
 // Dynamic Form Field Types
 export interface FormField {
-  fieldId: string;
   serviceId: string;
   fieldName: string;
   fieldType: 'text' | 'number' | 'dropdown' | 'checkbox' | 'textarea' | 'radio' | 'multi-select';
