@@ -198,7 +198,6 @@ export interface FormField {
   active: boolean;
   displayOrder: number;
   conditionalLogic?: string; // JSON string for future conditional logic implementation
-  validationRules?: string; // JSON string containing validation rules
   helpText?: string;
   // Layout metadata
   fieldWidth?: 'full' | 'half';
