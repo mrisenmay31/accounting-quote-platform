@@ -390,6 +390,69 @@ The app caches Airtable data for 5 minutes per tenant, so:
 
 ---
 
+## Display Order Standardization
+
+### Why Use Increments of 10?
+
+Form fields use a `Display Order` column to control their sequence in the calculator. Using increments of 10 (10, 20, 30, 40...) instead of 1 (1, 2, 3, 4...) makes it easier to insert new fields without renumbering existing fields.
+
+**Example:**
+- With increments of 1: To insert between fields 3 and 4, you must renumber 4→5, 5→6, etc.
+- With increments of 10: To insert between 30 and 40, just use 35 (no renumbering needed)
+
+### Standardization Script
+
+A script is provided to automatically update Display Order values to use increments of 10:
+
+**Location:** `scripts/standardize-display-order.js`
+
+**Usage:**
+
+```bash
+# Preview changes (dry-run mode)
+node scripts/standardize-display-order.js
+
+# Apply changes to Airtable
+node scripts/standardize-display-order.js --apply
+```
+
+**What it does:**
+1. Fetches all Form Fields from Airtable
+2. Groups fields by Service ID
+3. Sorts fields by current Display Order
+4. Calculates new Display Order values: 10, 20, 30, 40, etc.
+5. Shows a preview of all changes
+6. Optionally applies changes in batches (with rate limiting)
+
+**Example output:**
+
+```
+📊 CHANGES SUMMARY:
+Total records to update: 45
+
+Service              | Field Name                          | Old →  New | Active
+────────────────────────────────────────────────────────────────────────────────
+individual-tax       | filingStatus                        |   1 →   10 | ✓
+individual-tax       | annualIncome                        |   2 →   20 | ✓
+individual-tax       | taxYear                             |   3 →   30 | ✓
+```
+
+**Best practices:**
+- Run in dry-run mode first to review changes
+- Run this script after importing new fields
+- Run periodically to maintain clean numbering
+- Coordinate with tenants before running on their bases
+
+### When to Standardize
+
+Run the standardization script:
+- After initial base setup
+- When you've manually added many fields
+- Before onboarding a new tenant (use standardized base as template)
+- After importing fields from CSV
+
+---
+
 ## Future Enhancements
 
 Consider building:
