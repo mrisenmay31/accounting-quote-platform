@@ -25,6 +25,7 @@ export interface FormField {
   active: boolean;
   displayOrder: number;
   conditionalLogic?: string; // JSON string for show/hide logic
+  validationRules?: string; // JSON string containing validation rules
   helpText?: string;
   // Layout metadata
   fieldWidth?: 'full' | 'half';
@@ -60,6 +61,7 @@ interface AirtableRecord {
     'Active'?: boolean;
     'Display Order'?: number;
     'Conditional Logic'?: string;
+    'Validation Rules'?: string;
     'Help Text'?: string;
     'Field Width'?: string;
     'Section Header'?: string;
@@ -144,6 +146,7 @@ export const fetchFormFields = async (
       active: record.fields['Active'] !== false,
       displayOrder: record.fields['Display Order'] || 999,
       conditionalLogic: record.fields['Conditional Logic'],
+      validationRules: record.fields['Validation Rules'],
       helpText: record.fields['Help Text'],
       fieldWidth: (record.fields['Field Width'] as 'full' | 'half') || 'full',
       sectionHeader: record.fields['Section Header'],

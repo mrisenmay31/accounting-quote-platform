@@ -5,9 +5,10 @@
  */
 
 import React from 'react';
-import { Info, CheckCircle } from 'lucide-react';
+import { Info, CheckCircle, AlertCircle } from 'lucide-react';
 import { FormField, parseFieldOptions } from '../utils/formFieldsService';
 import { FieldIcon } from '../utils/iconMapper';
+import { parseValidationRules, validateField, ValidationResult } from '../utils/fieldValidation';
 
 interface DynamicFormFieldProps {
   field: FormField;
@@ -17,12 +18,36 @@ interface DynamicFormFieldProps {
 
 const DynamicFormFieldAirtable: React.FC<DynamicFormFieldProps> = ({ field, value, onChange }) => {
   const [showHelpText, setShowHelpText] = React.useState(false);
+  const [validationResult, setValidationResult] = React.useState<ValidationResult>({ isValid: true });
+  const [touched, setTouched] = React.useState(false);
 
   const options = parseFieldOptions(field.options);
+  const validationRules = parseValidationRules(field.validationRules);
 
   const handleChange = (newValue: any) => {
     onChange(field.fieldName, newValue);
+
+    if (validationRules) {
+      const result = validateField(newValue, validationRules, field.fieldType, field.fieldLabel);
+      setValidationResult(result);
+    }
   };
+
+  const handleBlur = () => {
+    setTouched(true);
+
+    if (validationRules) {
+      const result = validateField(value, validationRules, field.fieldType, field.fieldLabel);
+      setValidationResult(result);
+    }
+  };
+
+  const showError = touched && !validationResult.isValid;
+  const inputClassName = `w-full px-4 py-3 border rounded-lg focus:ring-2 transition-colors ${
+    showError
+      ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+      : 'border-gray-300 focus:ring-emerald-500 focus:border-emerald-500'
+  }`;
 
   const renderTextInput = () => (
     <input
@@ -30,9 +55,10 @@ const DynamicFormFieldAirtable: React.FC<DynamicFormFieldProps> = ({ field, valu
       name={field.fieldName}
       value={value || ''}
       onChange={(e) => handleChange(e.target.value)}
+      onBlur={handleBlur}
       placeholder={field.placeholder}
       required={field.required}
-      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+      className={inputClassName}
     />
   );
 
@@ -47,12 +73,13 @@ const DynamicFormFieldAirtable: React.FC<DynamicFormFieldProps> = ({ field, valu
         name={field.fieldName}
         value={value || ''}
         onChange={(e) => handleChange(parseInt(e.target.value) || 0)}
+        onBlur={handleBlur}
         placeholder={field.placeholder}
         required={field.required}
         min={min}
         max={max}
         step={step}
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+        className={inputClassName}
       />
     );
   };
@@ -68,8 +95,9 @@ const DynamicFormFieldAirtable: React.FC<DynamicFormFieldProps> = ({ field, valu
         name={field.fieldName}
         value={value || ''}
         onChange={(e) => handleChange(e.target.value)}
+        onBlur={handleBlur}
         required={field.required}
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors bg-white"
+        className={`${inputClassName} bg-white`}
       >
         <option value="">{placeholderText}</option>
         {dropdownOptions.map((opt: string, idx: number) => (
@@ -99,10 +127,11 @@ const DynamicFormFieldAirtable: React.FC<DynamicFormFieldProps> = ({ field, valu
       name={field.fieldName}
       value={value || ''}
       onChange={(e) => handleChange(e.target.value)}
+      onBlur={handleBlur}
       placeholder={field.placeholder}
       required={field.required}
       rows={options?.rows || 4}
-      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors resize-none"
+      className={`${inputClassName} resize-none`}
     />
   );
 
@@ -309,6 +338,12 @@ const DynamicFormFieldAirtable: React.FC<DynamicFormFieldProps> = ({ field, valu
         {field.helpText && (
           <p className="mt-2 text-sm text-gray-600">{field.helpText}</p>
         )}
+        {showError && validationResult.error && (
+          <div className="mt-2 flex items-center space-x-2 text-red-600 text-sm">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span>{validationResult.error}</span>
+          </div>
+        )}
       </div>
     );
   }
@@ -342,6 +377,13 @@ const DynamicFormFieldAirtable: React.FC<DynamicFormFieldProps> = ({ field, valu
       )}
 
       {renderFieldInput()}
+
+      {showError && validationResult.error && (
+        <div className="mt-2 flex items-center space-x-2 text-red-600 text-sm">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <span>{validationResult.error}</span>
+        </div>
+      )}
     </div>
   );
 };
