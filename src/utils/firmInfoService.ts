@@ -2,7 +2,6 @@ export interface FirmInfo {
   firmName: string;
   primaryBrandColor: string;
   secondaryBrandColor: string;
-  servicesOffered: string;
 
   // Tool Branding
   toolName?: string;
@@ -104,7 +103,6 @@ export const getFirmInfo = async (
       firmName: fields['Firm Name'] || '',
       primaryBrandColor: fields['Primary Brand Color'] || '',
       secondaryBrandColor: fields['Secondary Brand Color'] || '',
-      servicesOffered: fields['Services Offered'] || '',
 
       // Tool Branding
       toolName: fields['Tool Name'] || 'Quote Calculator',
