@@ -457,18 +457,10 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
     // Get the main service name and description from service config or fallback
     const baseRule = group.rules.find(r => r.pricingType === 'Base Service') || group.rules[0];
     
-    // Determine included features based on service type and configuration
-    let includedFeatures: string[] = [];
-    
-    if (serviceId === 'advisory' && serviceConfigData?.quoteIncludedFeatures && serviceConfigData.quoteIncludedFeatures.length > 0) {
-      // Use comprehensive features from Airtable for Advisory Services
-      includedFeatures = serviceConfigData.quoteIncludedFeatures;
-    } else {
-      // Use pricing rules for other services
-      includedFeatures = group.rules
-        .filter(r => r.pricingType === 'Base Service' || (r.pricingType === 'Add-on' && calculateRulePrice(r, formData, hasAdvisoryService) > 0))
-        .map(r => r.serviceName);
-    }
+    // Determine included features from pricing rules
+    const includedFeatures: string[] = group.rules
+      .filter(r => r.pricingType === 'Base Service' || (r.pricingType === 'Add-on' && calculateRulePrice(r, formData, hasAdvisoryService) > 0))
+      .map(r => r.serviceName);
     
     // Generate pricing factors for individual tax service
     let pricingFactors: string[] = [];

@@ -20,7 +20,6 @@ export interface AirtableServiceRecord {
     'Color': string;
     'Featured': boolean;
     'Benefits': string;
-    'Quote Included Features': string;
     'Active': boolean;
     'Service Order': number;
     'Has Detail Form'?: boolean;
@@ -115,7 +114,6 @@ const convertAirtableServiceRecord = (record: AirtableServiceRecord): ServiceCon
     color: fields['Color'],
     featured: fields['Featured'] || false,
     benefits: parseJsonField(fields['Benefits']),
-    quoteIncludedFeatures: parseJsonField(fields['Quote Included Features']),
     active: fields['Active'] || false,
     serviceOrder: fields['Service Order'] || 999,
     hasDetailForm: fields['Has Detail Form'] || false,
