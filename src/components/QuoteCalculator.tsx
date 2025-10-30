@@ -7,8 +7,6 @@ import ServiceSelection from './ServiceSelection';
 import AdvisorySalesPage from './AdvisorySalesPage';
 import IndividualTaxDetails from './IndividualTaxDetails';
 import IndividualTaxDynamic from './IndividualTaxDynamic';
-import BusinessTaxDetails from './BusinessTaxDetails';
-import BookkeepingDetails from './BookkeepingDetails';
 import AdditionalServicesDetails from './AdditionalServicesDetails';
 import DynamicServiceDetailStep from './DynamicServiceDetailStep';
 import QuoteResults from './QuoteResults';
