@@ -136,6 +136,19 @@ export interface QuoteData {
   complexity: 'low' | 'medium' | 'high' | 'very-high';
 }
 
+export type ComparisonOperator =
+  | 'equals'
+  | 'notEquals'
+  | 'contains'
+  | 'notContains'
+  | 'isEmpty'
+  | 'isNotEmpty'
+  | 'lessThan'
+  | 'lessThanOrEqual'
+  | 'greaterThan'
+  | 'greaterThanOrEqual'
+  | 'includes';  // Legacy support
+
 export interface PricingConfig {
   serviceId: string;
   pricingRuleId: string;
@@ -147,7 +160,7 @@ export interface PricingConfig {
   active: boolean;
   triggerFormField?: string;
   requiredFormValue?: string;
-  comparisonLogic?: 'equals' | 'includes' | 'notEquals' | 'greaterThan' | 'lessThan' | 'contains';
+  comparisonLogic?: ComparisonOperator;
   perUnitPricing: boolean;
   unitPrice?: number;
   unitName?: string;

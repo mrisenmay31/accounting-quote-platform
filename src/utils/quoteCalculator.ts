@@ -17,7 +17,34 @@ const getNestedValue = (obj: any, path: string): any => {
   return result;
 };
 
-// Helper function to evaluate pricing rule conditions
+/**
+ * Evaluates conditional logic for pricing rules
+ *
+ * @param formData - Complete form data object
+ * @param triggerField - Field name to check (supports dot notation for nested fields)
+ * @param requiredValue - Value to compare against (empty string for isEmpty/isNotEmpty)
+ * @param comparisonLogic - Comparison operator
+ *
+ * Supported Operators:
+ *
+ * TEXT OPERATORS:
+ * - equals: Exact match (case-insensitive, trimmed)
+ * - notEquals: Not equal (case-insensitive, trimmed)
+ * - contains: Field contains value (case-insensitive)
+ * - notContains: Field does not contain value (case-insensitive)
+ *
+ * NUMERIC OPERATORS:
+ * - lessThan: Field < value (strips currency formatting)
+ * - lessThanOrEqual: Field <= value
+ * - greaterThan: Field > value
+ * - greaterThanOrEqual: Field >= value
+ *
+ * EXISTENCE OPERATORS:
+ * - isEmpty: Field is undefined, null, empty string, or empty array
+ * - isNotEmpty: Field has a value
+ *
+ * @returns true if condition is met, false otherwise
+ */
 const evaluateCondition = (
   formData: FormData,
   triggerField: string,
@@ -26,40 +53,85 @@ const evaluateCondition = (
 ): boolean => {
   const fieldValue = getNestedValue(formData, triggerField);
 
-  if (fieldValue === undefined || fieldValue === null) {
+  // Handle isEmpty check first (before value comparisons)
+  if (comparisonLogic === 'isEmpty') {
+    return fieldValue === undefined ||
+           fieldValue === null ||
+           fieldValue === '' ||
+           (Array.isArray(fieldValue) && fieldValue.length === 0);
+  }
+
+  if (comparisonLogic === 'isNotEmpty') {
+    return fieldValue !== undefined &&
+           fieldValue !== null &&
+           fieldValue !== '' &&
+           !(Array.isArray(fieldValue) && fieldValue.length === 0);
+  }
+
+  // If field value is empty and not checking for empty, return false
+  if (fieldValue === undefined || fieldValue === null || fieldValue === '') {
     return false;
   }
+
+  // Detect if we're working with numbers
+  const isNumericComparison = ['lessThan', 'lessThanOrEqual', 'greaterThan', 'greaterThanOrEqual'].includes(comparisonLogic);
 
   let result = false;
 
   switch (comparisonLogic) {
+    // TEXT OPERATORS (work on strings)
     case 'equals':
-      const trimmedFieldValue = String(fieldValue).trim();
-      const trimmedRequiredValue = String(requiredValue).trim();
-      result = trimmedFieldValue === trimmedRequiredValue;
-      return result;
-    case 'includes':
-      if (Array.isArray(fieldValue)) {
-        result = fieldValue.includes(requiredValue);
-      } else {
-        result = String(fieldValue).includes(requiredValue);
-      }
-      return result;
+      result = String(fieldValue).toLowerCase().trim() === String(requiredValue).toLowerCase().trim();
+      break;
+
     case 'notEquals':
-      result = fieldValue !== requiredValue;
-      return result;
-    case 'greaterThan':
-      result = Number(fieldValue) > Number(requiredValue);
-      return result;
-    case 'lessThan':
-      result = Number(fieldValue) < Number(requiredValue);
-      return result;
+      result = String(fieldValue).toLowerCase().trim() !== String(requiredValue).toLowerCase().trim();
+      break;
+
     case 'contains':
       result = String(fieldValue).toLowerCase().includes(String(requiredValue).toLowerCase());
-      return result;
+      break;
+
+    case 'notContains':
+      result = !String(fieldValue).toLowerCase().includes(String(requiredValue).toLowerCase());
+      break;
+
+    // NUMERIC OPERATORS (work on numbers)
+    case 'lessThan':
+      const ltValue = parseFloat(String(fieldValue).replace(/[^0-9.-]/g, ''));
+      const ltRequired = parseFloat(String(requiredValue).replace(/[^0-9.-]/g, ''));
+      result = !isNaN(ltValue) && !isNaN(ltRequired) && ltValue < ltRequired;
+      break;
+
+    case 'lessThanOrEqual':
+      const lteValue = parseFloat(String(fieldValue).replace(/[^0-9.-]/g, ''));
+      const lteRequired = parseFloat(String(requiredValue).replace(/[^0-9.-]/g, ''));
+      result = !isNaN(lteValue) && !isNaN(lteRequired) && lteValue <= lteRequired;
+      break;
+
+    case 'greaterThan':
+      const gtValue = parseFloat(String(fieldValue).replace(/[^0-9.-]/g, ''));
+      const gtRequired = parseFloat(String(requiredValue).replace(/[^0-9.-]/g, ''));
+      result = !isNaN(gtValue) && !isNaN(gtRequired) && gtValue > gtRequired;
+      break;
+
+    case 'greaterThanOrEqual':
+      const gteValue = parseFloat(String(fieldValue).replace(/[^0-9.-]/g, ''));
+      const gteRequired = parseFloat(String(requiredValue).replace(/[^0-9.-]/g, ''));
+      result = !isNaN(gteValue) && !isNaN(gteRequired) && gteValue >= gteRequired;
+      break;
+
+    // LEGACY: includes (alias for contains - backward compatibility)
+    case 'includes':
+      result = String(fieldValue).toLowerCase().includes(String(requiredValue).toLowerCase());
+      break;
+
     default:
-      return false;
+      console.warn(`Unknown comparison logic: ${comparisonLogic}`);
+      result = false;
   }
+
+  return result;
 };
 
 // Helper function to calculate price for a pricing rule

@@ -1,4 +1,4 @@
-import { PricingConfig } from '../types/quote';
+import { PricingConfig, ComparisonOperator } from '../types/quote';
 
 // Airtable configuration for pricing (fallback to env vars for development)
 const AIRTABLE_PRICING_BASE_ID = import.meta.env.VITE_AIRTABLE_PRICING_BASE_ID || '';
@@ -314,7 +314,7 @@ const convertAirtableRecord = (record: AirtablePricingRecord): PricingConfig => 
     active: parseCheckbox(fields['Active']),
     triggerFormField: extractFieldValue(fields['Trigger Form Field']),
     requiredFormValue: extractFieldValue(fields['Required Form Field']),
-    comparisonLogic: fields['Comparison Logic'] as 'equals' | 'includes' | 'notEquals' | 'greaterThan' | 'lessThan' | 'contains',
+    comparisonLogic: fields['Comparison Logic'] as ComparisonOperator,
     perUnitPricing: parseCheckbox(fields['Per-Unit Pricing']),
     unitPrice: parseCurrency(fields['Unit Price']) || 0,
     unitName: fields['Unit Name']?.trim(),
