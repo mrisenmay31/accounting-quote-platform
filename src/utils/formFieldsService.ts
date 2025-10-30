@@ -55,7 +55,7 @@ interface AirtableRecord {
     'Field Type'?: string;
     'Field Label'?: string;
     'Placeholder'?: string;
-    'Options'?: string;
+    'Field Options'?: string;
     'Required'?: boolean;
     'Active'?: boolean;
     'Display Order'?: number;
@@ -139,7 +139,7 @@ export const fetchFormFields = async (
       fieldType: (record.fields['Field Type'] as FormField['fieldType']) || 'text',
       fieldLabel: record.fields['Field Label'] || '',
       placeholder: record.fields['Placeholder'],
-      options: record.fields['Options'],
+      options: record.fields['Field Options'],
       required: record.fields['Required'] || false,
       active: record.fields['Active'] !== false,
       displayOrder: record.fields['Display Order'] || 999,
