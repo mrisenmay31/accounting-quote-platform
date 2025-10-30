@@ -1,5 +1,9 @@
 # Airtable Quick Setup Guide
 
+## ⚠️ Important: Inactive Fields
+
+**"Validation Rules"** field is NOT implemented yet. Do not configure it - values are ignored by the application. See `VALIDATION_RULES_STATUS.md` for details.
+
 ## Required Columns for "Form Fields - Individual Tax" Table
 
 ### Core Fields (Existing)

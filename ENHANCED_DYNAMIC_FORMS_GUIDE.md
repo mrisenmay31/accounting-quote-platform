@@ -469,7 +469,11 @@ Show/hide fields based on other field values:
 
 ### Field Validation Rules (Phase 3)
 
-Custom validation patterns:
+⚠️ **NOT YET IMPLEMENTED** - This is a planned future feature.
+
+The "Validation Rules" field in Airtable should NOT be used yet. Any values entered will be ignored.
+
+Planned custom validation patterns:
 
 ```json
 {
@@ -479,6 +483,8 @@ Custom validation patterns:
   }
 }
 ```
+
+See `VALIDATION_RULES_STATUS.md` for details.
 
 ### Multi-Page Forms (Phase 4)
 

@@ -216,7 +216,11 @@ Implement conditional field visibility:
 
 ### Phase 3: Field Validation Rules
 
-Add custom validation:
+⚠️ **NOT YET IMPLEMENTED** - This is a planned future feature.
+
+The "Validation Rules" field in Airtable should NOT be used yet. Any values entered will be ignored.
+
+Planned functionality:
 
 ```json
 {
@@ -226,6 +230,8 @@ Add custom validation:
   }
 }
 ```
+
+See `VALIDATION_RULES_STATUS.md` for details.
 
 ### Phase 4: Multi-Step Conditional Forms
 
