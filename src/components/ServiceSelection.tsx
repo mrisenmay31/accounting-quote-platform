@@ -78,6 +78,25 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({
     );
   }
 
+  // Group services by serviceId to prevent duplicate cards
+  const groupedServices = React.useMemo(() => {
+    const groups: Record<string, ServiceConfig[]> = {};
+
+    services.forEach(service => {
+      if (!groups[service.serviceId]) {
+        groups[service.serviceId] = [];
+      }
+      groups[service.serviceId].push(service);
+    });
+
+    return groups;
+  }, [services]);
+
+  // Get unique services for card display (use first variant of each serviceId)
+  const uniqueServices = React.useMemo(() => {
+    return Object.values(groupedServices).map(serviceGroup => serviceGroup[0]);
+  }, [groupedServices]);
+
   return (
     <div className="space-y-8">
       <div className="text-center">
@@ -90,7 +109,7 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {services.map((service) => {
+        {uniqueServices.map((service) => {
           const isSelected = formData.services.includes(service.serviceId);
           const Icon = getIconComponent(service.iconName);
           const colors = getColorValues(service.color);
@@ -171,7 +190,7 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({
           <h3 className="font-semibold mb-3" style={{ color: 'var(--tenant-primary-800, #065f46)' }}>Selected Services:</h3>
           <div className="flex flex-wrap gap-2">
             {formData.services.map((serviceId) => {
-              const service = services.find(s => s.serviceId === serviceId);
+              const service = uniqueServices.find(s => s.serviceId === serviceId);
               return (
                 <span
                   key={serviceId}
