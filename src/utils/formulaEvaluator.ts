@@ -145,29 +145,16 @@ export class FormulaEvaluator {
       return rate;
     }
 
-    // Check if it's a service-level total variable (DUAL-PATH RESOLUTION)
-    // Priority 1: Check totalVariables array (for complex services with multiple totals)
-    // Priority 2: Check individual fields (for simple services with one total)
+    // Check if it's a service-level total variable (SINGLE-ROW-PER-ENDPOINT)
+    // Each ServiceConfig row represents ONE pricing endpoint
     for (const service of this.serviceConfigs) {
-      // APPROACH 1: Check totalVariables array first
-      if (service.totalVariables && service.totalVariables.length > 0) {
-        for (const totalVar of service.totalVariables) {
-          if (totalVar.variableName === variable) {
-            console.log(`    🎯 Matched service total variable (ARRAY): {{${variable}}}`);
-            console.log(`       Service: ${service.title} (${service.serviceId})`);
-            console.log(`       Display Name: ${totalVar.displayName}`);
-            const total = this.calculateServiceTotalFromVariable(totalVar, service);
-            console.log(`    ✓ Resolved service total: {{${variable}}} = ${total}`);
-            return total;
-          }
-        }
-      }
-
-      // APPROACH 2: Fall back to individual fields
-      if (service.totalVariableName === variable && service.canReferenceInFormulas) {
-        console.log(`    🎯 Matched service total variable (INDIVIDUAL FIELDS): {{${variable}}}`);
+      if (service.totalVariableName === variable) {
+        console.log(`    🎯 Matched service total variable: {{${variable}}}`);
         console.log(`       Service: ${service.title} (${service.serviceId})`);
-        const total = this.calculateServiceTotalFromIndividualFields(service);
+        console.log(`       Billing Frequency: ${service.billingFrequency || 'N/A'}`);
+        console.log(`       Display Name: ${service.displayNameQuote || service.title}`);
+
+        const total = this.calculateServiceTotal(service);
         console.log(`    ✓ Resolved service total: {{${variable}}} = ${total}`);
         return total;
       }
@@ -245,129 +232,65 @@ export class FormulaEvaluator {
   }
 
   /**
-   * Calculate service total from a ServiceTotalVariable (APPROACH 1: array-based)
-   * Used for complex services with multiple total variables
+   * Calculate service total using simplified single-row-per-endpoint approach
    *
-   * @param totalVar - The specific total variable definition
-   * @param service - The parent service configuration
-   * @returns Calculated total based on the variable's aggregation rules
+   * Each ServiceConfig row represents ONE pricing endpoint.
+   * This method sums all pricing rules where:
+   * - serviceId matches the ServiceConfig.serviceId
+   * - billingFrequency matches the ServiceConfig.billingFrequency (if specified)
+   *
+   * @param service - The service configuration (one row = one endpoint)
+   * @returns Calculated total for this specific service + billing frequency combination
    */
-  private calculateServiceTotalFromVariable(totalVar: any, service: ServiceConfig): number {
+  private calculateServiceTotal(service: ServiceConfig): number {
     console.log('═══════════════════════════════════════════════════════════');
-    console.log('🔢 CALCULATING SERVICE TOTAL (FROM ARRAY)');
+    console.log('🔢 CALCULATING SERVICE TOTAL (SINGLE-ROW-PER-ENDPOINT)');
     console.log('═══════════════════════════════════════════════════════════');
     console.log('Service ID:', service.serviceId);
-    console.log('Variable Name:', totalVar.variableName);
-    console.log('Display Name:', totalVar.displayName);
-    console.log('Aggregation Rules:', JSON.stringify(totalVar.aggregationRules, null, 2));
-
-    return this.calculateServiceTotalWithRules(
-      service.serviceId,
-      totalVar.variableName,
-      totalVar.aggregationRules
-    );
-  }
-
-  /**
-   * Calculate service total from individual fields (APPROACH 2: individual fields)
-   * Used for simple services with one total variable
-   *
-   * @param serviceConfig - The service configuration with individual field definitions
-   * @returns Calculated total based on the service's aggregation rules
-   */
-  private calculateServiceTotalFromIndividualFields(serviceConfig: ServiceConfig): number {
-    console.log('═══════════════════════════════════════════════════════════');
-    console.log('🔢 CALCULATING SERVICE TOTAL (FROM INDIVIDUAL FIELDS)');
-    console.log('═══════════════════════════════════════════════════════════');
-    console.log('Service ID:', serviceConfig.serviceId);
-    console.log('Total Variable Name:', serviceConfig.totalVariableName);
-    console.log('Aggregation Rules:', JSON.stringify(serviceConfig.aggregationRules, null, 2));
-
-    return this.calculateServiceTotalWithRules(
-      serviceConfig.serviceId,
-      serviceConfig.totalVariableName || '',
-      serviceConfig.aggregationRules || {}
-    );
-  }
-
-  /**
-   * Core calculation logic for service totals
-   * Applies aggregation rules to filter and sum pricing rules
-   *
-   * @param serviceId - The service ID to filter by
-   * @param variableName - The variable name (for logging)
-   * @param aggregationRules - The rules to apply
-   * @returns Calculated total with minimum fee applied
-   */
-  private calculateServiceTotalWithRules(
-    serviceId: string,
-    variableName: string,
-    aggregationRules: any
-  ): number {
-    // Get aggregation rules with defaults
-    const rules = aggregationRules || {};
-    const includeTypes = rules.includeTypes || ['Base Service', 'Add-on'];
-    const excludeTypes = rules.excludeTypes || [];
-    const includeBillingFrequencies = rules.includeBillingFrequencies || ['Monthly', 'One-Time Fee', 'Annual'];
-    const excludeBillingFrequencies = rules.excludeBillingFrequencies || [];
-    const minimumFee = rules.minimumFee || 0;
-
-    console.log('Applied Filters:');
-    console.log('  Include Types:', includeTypes);
-    console.log('  Exclude Types:', excludeTypes);
-    console.log('  Include Billing Frequencies:', includeBillingFrequencies);
-    console.log('  Exclude Billing Frequencies:', excludeBillingFrequencies);
-    console.log('  Minimum Fee:', minimumFee);
+    console.log('Billing Frequency Filter:', service.billingFrequency || 'ALL');
+    console.log('Total Variable Name:', service.totalVariableName);
 
     let total = 0;
     let matchedRules = 0;
 
     console.log('\n📋 Evaluating calculatedPrices entries:');
-    Array.from(this.priceMetadata.entries()).forEach(([ruleId, metadata]) => {
-      // Check if this rule belongs to the current service
-      if (metadata.serviceId === serviceId) {
-        console.log(`  Rule: ${ruleId}`);
-        console.log(`    Service ID: ${metadata.serviceId}`);
-        console.log(`    Pricing Type: ${metadata.pricingType}`);
-        console.log(`    Billing Frequency: ${metadata.billingFrequency}`);
-        console.log(`    Price: $${metadata.price}`);
 
-        // Apply pricingType filters
-        const pricingTypeMatch = includeTypes.includes(metadata.pricingType) && !excludeTypes.includes(metadata.pricingType);
-        const billingFrequencyMatch = includeBillingFrequencies.includes(metadata.billingFrequency) && !excludeBillingFrequencies.includes(metadata.billingFrequency);
+    // Use priceMetadata if available for accurate filtering
+    if (this.priceMetadata.size > 0) {
+      Array.from(this.priceMetadata.entries()).forEach(([ruleId, metadata]) => {
+        // Match by serviceId
+        const serviceIdMatch = metadata.serviceId === service.serviceId;
 
-        if (pricingTypeMatch && billingFrequencyMatch) {
+        // Match by billingFrequency (if specified in service config)
+        const billingFrequencyMatch = !service.billingFrequency || metadata.billingFrequency === service.billingFrequency;
+
+        if (serviceIdMatch && billingFrequencyMatch) {
+          console.log(`  Rule: ${ruleId}`);
+          console.log(`    Service ID: ${metadata.serviceId}`);
+          console.log(`    Pricing Type: ${metadata.pricingType}`);
+          console.log(`    Billing Frequency: ${metadata.billingFrequency}`);
+          console.log(`    Price: $${metadata.price}`);
+          console.log(`    ✅ Included`);
+
           total += metadata.price;
           matchedRules++;
-          console.log(`    ✅ Included (total now: $${total})`);
-        } else {
-          console.log(`    ❌ Excluded (pricingType match: ${pricingTypeMatch}, billingFrequency match: ${billingFrequencyMatch})`);
         }
-      }
-    });
-
-    // Fallback: If no metadata available, use simple serviceId prefix matching
-    if (this.priceMetadata.size === 0) {
+      });
+    } else {
+      // Fallback: If no metadata available, use simple serviceId prefix matching
       console.log('⚠️  No metadata available, falling back to simple serviceId matching');
       Array.from(this.calculatedPrices.entries()).forEach(([ruleId, price]) => {
-        if (ruleId.startsWith(serviceId)) {
+        if (ruleId.startsWith(service.serviceId)) {
           console.log(`  Rule: ${ruleId}, Price: $${price}`);
+          console.log(`    ✅ Included (fallback mode - no billing frequency filtering)`);
           total += price;
           matchedRules++;
-          console.log(`    ✅ Included (total now: $${total})`);
         }
       });
     }
 
-    console.log(`\n📊 Subtotal from ${matchedRules} matched rules: $${total}`);
-
-    // Apply minimum fee
-    if (minimumFee > 0 && total < minimumFee) {
-      console.log(`⬆️  Applying minimum fee: Math.max($${total}, $${minimumFee}) = $${minimumFee}`);
-      total = minimumFee;
-    }
-
-    console.log(`✅ Final Service Total for ${variableName}: $${total}`);
+    console.log(`\n📊 Total from ${matchedRules} matched rules: $${total}`);
+    console.log(`✅ Final Service Total for ${service.totalVariableName}: $${total}`);
     console.log('═══════════════════════════════════════════════════════════\n');
 
     return total;

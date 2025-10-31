@@ -25,14 +25,10 @@ export interface AirtableServiceRecord {
     'Has Detail Form'?: boolean;
     'Included Features Card Title'?: string;
     'Included Features Card List'?: string;
-    // APPROACH 1: Individual fields (for simple services with one total)
-    'Total Variable Name'?: string;
-    'Default Billing Frequency'?: string;
-    'Aggregation Rules'?: string;         // JSON string
-    'Display Name (Quote)'?: string;
-    'Can Reference in Formulas'?: boolean;
-    // APPROACH 2: Array of total variables (for complex services with multiple totals)
-    'Total Variables'?: string;           // JSON string - array of ServiceTotalVariable objects
+    // Service-Level Total Variable Configuration (Single-Row-Per-Endpoint)
+    'Billing Frequency'?: string;         // "Monthly", "One-Time Fee", "Annual"
+    'Total Variable Name'?: string;       // e.g., "monthly_bookkeeping_fee"
+    'Display Name (Quote)'?: string;      // e.g., "Monthly Bookkeeping Total"
   };
 }
 
@@ -127,18 +123,6 @@ const parseJsonField = (field: string | undefined | any): any => {
 const convertAirtableServiceRecord = (record: AirtableServiceRecord): ServiceConfig => {
   const fields = record.fields;
 
-  // Parse Total Variables array (APPROACH 2)
-  let totalVariables = undefined;
-  if (fields['Total Variables']) {
-    const parsed = parseJsonField(fields['Total Variables']);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      totalVariables = parsed;
-      console.log(`Service "${fields['Service ID']}" loaded with ${parsed.length} total variable(s) from array`);
-    } else if (parsed && !Array.isArray(parsed)) {
-      console.warn(`Service "${fields['Service ID']}": Total Variables field is not an array, ignoring`);
-    }
-  }
-
   return {
     serviceId: fields['Service ID'],
     title: fields['Title'],
@@ -152,14 +136,10 @@ const convertAirtableServiceRecord = (record: AirtableServiceRecord): ServiceCon
     hasDetailForm: fields['Has Detail Form'] || false,
     includedFeaturesCardTitle: fields['Included Features Card Title'] || '',
     includedFeaturesCardList: parseJsonField(fields['Included Features Card List']),
-    // APPROACH 1: Individual fields (for simple services with one total)
+    // Service-Level Total Variable Configuration (Single-Row-Per-Endpoint)
+    billingFrequency: fields['Billing Frequency'] || undefined,
     totalVariableName: fields['Total Variable Name'] || undefined,
-    defaultBillingFrequency: fields['Default Billing Frequency'] || undefined,
-    aggregationRules: parseJsonField(fields['Aggregation Rules']) || undefined,
-    displayNameQuote: fields['Display Name (Quote)'] || undefined,
-    canReferenceInFormulas: fields['Can Reference in Formulas'] || false,
-    // APPROACH 2: Array of total variables (for complex services with multiple totals)
-    totalVariables: totalVariables
+    displayNameQuote: fields['Display Name (Quote)'] || undefined
   };
 };
 
