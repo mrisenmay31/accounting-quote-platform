@@ -1,4 +1,4 @@
-import { FormData, PricingConfig } from '../types/quote';
+import { FormData, PricingConfig, ServiceConfig } from '../types/quote';
 
 /**
  * FormulaEvaluator - Evaluates formula-based pricing expressions
@@ -10,13 +10,30 @@ import { FormData, PricingConfig } from '../types/quote';
  * - Mathematical expressions with operators: +, -, *, /, (), ternary operators
  * - Min/max constraints
  */
+// Interface to store pricing rule metadata alongside calculated prices
+interface CalculatedPriceMetadata {
+  price: number;
+  serviceId: string;
+  pricingType: string;
+  billingFrequency: string;
+}
+
 export class FormulaEvaluator {
   private formData: FormData;
   private calculatedPrices: Map<string, number>;
+  private serviceConfigs: ServiceConfig[];
+  private priceMetadata: Map<string, CalculatedPriceMetadata>;
 
-  constructor(formData: FormData, calculatedPrices: Map<string, number>) {
+  constructor(
+    formData: FormData,
+    calculatedPrices: Map<string, number>,
+    serviceConfigs: ServiceConfig[] = [],
+    priceMetadata: Map<string, CalculatedPriceMetadata> = new Map()
+  ) {
     this.formData = formData;
     this.calculatedPrices = calculatedPrices || new Map<string, number>();
+    this.serviceConfigs = serviceConfigs || [];
+    this.priceMetadata = priceMetadata;
   }
 
   /**
@@ -128,6 +145,19 @@ export class FormulaEvaluator {
       return rate;
     }
 
+    // Check if it's a service-level total variable
+    const matchingService = this.serviceConfigs.find(
+      svc => svc.totalVariableName === variable && svc.canReferenceInFormulas
+    );
+
+    if (matchingService) {
+      console.log(`    🎯 Matched service total variable: {{${variable}}}`);
+      console.log(`       Service: ${matchingService.title} (${matchingService.serviceId})`);
+      const total = this.calculateServiceTotal(matchingService);
+      console.log(`    ✓ Resolved service total: {{${variable}}} = ${total}`);
+      return total;
+    }
+
     // Check for nested form field values (e.g., "bookkeeping.monthsBehind")
     if (variable.includes('.')) {
       const value = this.getNestedValue(this.formData, variable);
@@ -197,6 +227,95 @@ export class FormulaEvaluator {
     console.warn('⚠️ No monthly bookkeeping charges found! Using default: $105');
     console.log('-------------------------------------------');
     return 105;
+  }
+
+  /**
+   * Dynamically calculate service-level total based on aggregation rules
+   * This is called on-demand during formula evaluation when a service total variable is referenced
+   *
+   * @param serviceConfig - The service configuration with aggregation rules
+   * @returns Calculated total based on current calculatedPrices state
+   */
+  private calculateServiceTotal(serviceConfig: ServiceConfig): number {
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('🔢 CALCULATING SERVICE TOTAL DYNAMICALLY');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('Service ID:', serviceConfig.serviceId);
+    console.log('Total Variable Name:', serviceConfig.totalVariableName);
+    console.log('Aggregation Rules:', JSON.stringify(serviceConfig.aggregationRules, null, 2));
+
+    // Get aggregation rules with defaults
+    const rules = serviceConfig.aggregationRules || {};
+    const includeTypes = rules.includeTypes || ['Base Service', 'Add-on'];
+    const excludeTypes = rules.excludeTypes || [];
+    const includeBillingFrequencies = rules.includeBillingFrequencies || ['Monthly', 'One-Time Fee', 'Annual'];
+    const excludeBillingFrequencies = rules.excludeBillingFrequencies || [];
+    const minimumFee = rules.minimumFee || 0;
+
+    console.log('Applied Filters:');
+    console.log('  Include Types:', includeTypes);
+    console.log('  Exclude Types:', excludeTypes);
+    console.log('  Include Billing Frequencies:', includeBillingFrequencies);
+    console.log('  Exclude Billing Frequencies:', excludeBillingFrequencies);
+    console.log('  Minimum Fee:', minimumFee);
+
+    // We need access to the full pricing rules with their metadata
+    // Since calculatedPrices only has rule IDs and prices, we'll need to use a different approach
+    // For now, we'll sum all prices matching the serviceId from calculatedPrices
+    // Note: This requires pricing rules to be stored with full metadata, which we'll handle in quoteCalculator
+
+    let total = 0;
+    let matchedRules = 0;
+
+    console.log('\n📋 Evaluating calculatedPrices entries:');
+    Array.from(this.priceMetadata.entries()).forEach(([ruleId, metadata]) => {
+      // Check if this rule belongs to the current service
+      if (metadata.serviceId === serviceConfig.serviceId) {
+        console.log(`  Rule: ${ruleId}`);
+        console.log(`    Service ID: ${metadata.serviceId}`);
+        console.log(`    Pricing Type: ${metadata.pricingType}`);
+        console.log(`    Billing Frequency: ${metadata.billingFrequency}`);
+        console.log(`    Price: $${metadata.price}`);
+
+        // Apply pricingType filters
+        const pricingTypeMatch = includeTypes.includes(metadata.pricingType) && !excludeTypes.includes(metadata.pricingType);
+        const billingFrequencyMatch = includeBillingFrequencies.includes(metadata.billingFrequency) && !excludeBillingFrequencies.includes(metadata.billingFrequency);
+
+        if (pricingTypeMatch && billingFrequencyMatch) {
+          total += metadata.price;
+          matchedRules++;
+          console.log(`    ✅ Included (total now: $${total})`);
+        } else {
+          console.log(`    ❌ Excluded (pricingType match: ${pricingTypeMatch}, billingFrequency match: ${billingFrequencyMatch})`);
+        }
+      }
+    });
+
+    // Fallback: If no metadata available, use simple serviceId prefix matching
+    if (this.priceMetadata.size === 0) {
+      console.log('⚠️  No metadata available, falling back to simple serviceId matching');
+      Array.from(this.calculatedPrices.entries()).forEach(([ruleId, price]) => {
+        if (ruleId.startsWith(serviceConfig.serviceId)) {
+          console.log(`  Rule: ${ruleId}, Price: $${price}`);
+          total += price;
+          matchedRules++;
+          console.log(`    ✅ Included (total now: $${total})`);
+        }
+      });
+    }
+
+    console.log(`\n📊 Subtotal from ${matchedRules} matched rules: $${total}`);
+
+    // Apply minimum fee
+    if (minimumFee > 0 && total < minimumFee) {
+      console.log(`⬆️  Applying minimum fee: Math.max($${total}, $${minimumFee}) = $${minimumFee}`);
+      total = minimumFee;
+    }
+
+    console.log(`✅ Final Service Total: $${total}`);
+    console.log('═══════════════════════════════════════════════════════════\n');
+
+    return total;
   }
 
   /**

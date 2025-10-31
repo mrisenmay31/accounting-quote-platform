@@ -25,6 +25,12 @@ export interface AirtableServiceRecord {
     'Has Detail Form'?: boolean;
     'Included Features Card Title'?: string;
     'Included Features Card List'?: string;
+    // Service-level pricing total fields
+    'Total Variable Name'?: string;
+    'Default Billing Frequency'?: string;
+    'Aggregation Rules'?: string;         // JSON string
+    'Display Name (Quote)'?: string;
+    'Can Reference in Formulas'?: boolean;
   };
 }
 
@@ -118,7 +124,13 @@ const convertAirtableServiceRecord = (record: AirtableServiceRecord): ServiceCon
     serviceOrder: fields['Service Order'] || 999,
     hasDetailForm: fields['Has Detail Form'] || false,
     includedFeaturesCardTitle: fields['Included Features Card Title'] || '',
-    includedFeaturesCardList: parseJsonField(fields['Included Features Card List'])
+    includedFeaturesCardList: parseJsonField(fields['Included Features Card List']),
+    // Service-level pricing total fields
+    totalVariableName: fields['Total Variable Name'] || undefined,
+    defaultBillingFrequency: fields['Default Billing Frequency'] || undefined,
+    aggregationRules: parseJsonField(fields['Aggregation Rules']) || undefined,
+    displayNameQuote: fields['Display Name (Quote)'] || undefined,
+    canReferenceInFormulas: fields['Can Reference in Formulas'] || false
   };
 };
 

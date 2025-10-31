@@ -184,6 +184,14 @@ export interface PricingConfig {
   maximumValue?: number;
 }
 
+export interface AggregationRules {
+  includeTypes?: string[];              // e.g., ["Base Service", "Add-on"]
+  excludeTypes?: string[];              // e.g., ["Discount"]
+  includeBillingFrequencies?: string[]; // e.g., ["Monthly", "One-Time Fee"]
+  excludeBillingFrequencies?: string[]; // e.g., ["Annual"]
+  minimumFee?: number;                  // Service-level minimum
+}
+
 export interface ServiceConfig {
   serviceId: string;
   title: string;
@@ -197,6 +205,13 @@ export interface ServiceConfig {
   hasDetailForm?: boolean;
   includedFeaturesCardTitle?: string;
   includedFeaturesCardList?: string[];
+
+  // Service-level pricing configuration
+  totalVariableName?: string;           // e.g., "individualTaxTotal"
+  defaultBillingFrequency?: string;     // "Monthly", "One-Time Fee", etc.
+  aggregationRules?: AggregationRules;  // Rules for calculating service totals
+  displayNameQuote?: string;            // "Total Individual Tax Fee"
+  canReferenceInFormulas?: boolean;     // Allow formula references (default: false)
 }
 
 // Dynamic Form Field Types

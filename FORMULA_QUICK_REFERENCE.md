@@ -7,7 +7,8 @@
 | `{{fieldName}}` | `{{quantity}}` | `formData.quantity` |
 | `{{service.field}}` | `{{bookkeeping.monthsBehind}}` | `formData.bookkeeping.monthsBehind` |
 | `{{pricingRule.rule-id}}` | `{{pricingRule.monthly-base}}` | Calculated price from another rule |
-| Special | `{{monthlyBookkeepingRate}}` | Sum of monthly bookkeeping rules |
+| Service Totals | `{{individualTaxTotal}}` | Dynamic service-level total with filters |
+| Special | `{{monthlyBookkeepingRate}}` | Sum of monthly bookkeeping rules (legacy) |
 
 ## Operators
 
@@ -30,6 +31,95 @@
 | `Math.abs(x)` | Absolute value | `Math.abs({{difference}})` |
 | `Math.pow(base, exp)` | Power | `Math.pow({{base}}, 2)` |
 | `Math.sqrt(x)` | Square root | `Math.sqrt({{value}})` |
+
+## Service-Level Total Variables
+
+Service-level total variables are dynamically calculated from all pricing rules for each service, based on configuration in the Services table. These variables update in real-time as pricing rules are calculated.
+
+### How They Work
+
+1. Configured in Services table via `Total Variable Name` field
+2. Filtered by `Aggregation Rules` (pricingType and billingFrequency)
+3. Calculated on-demand during formula evaluation
+4. Can enforce service-level minimum fees
+5. Must have `Can Reference in Formulas` = true
+
+### Configuration in Services Table
+
+**Field: Total Variable Name**
+- Example: `individualTaxTotal`, `businessTaxTotal`, `bookkeepingMonthly`
+
+**Field: Aggregation Rules** (JSON format)
+```json
+{
+  "includeTypes": ["Base Service", "Add-on"],
+  "excludeTypes": ["Discount"],
+  "includeBillingFrequencies": ["One-Time Fee"],
+  "excludeBillingFrequencies": [],
+  "minimumFee": 0
+}
+```
+
+**Field: Can Reference in Formulas**
+- Set to `true` to allow formula access
+
+### Available Service Total Variables
+
+Variables are defined in your Services table. Common examples:
+
+| Variable | Service | Billing Frequency | Description |
+|----------|---------|-------------------|-------------|
+| `{{individualTaxTotal}}` | Individual Tax | One-Time Fee | Total of all individual tax preparation fees |
+| `{{businessTaxTotal}}` | Business Tax | One-Time Fee | Total of all business tax fees including add-ons |
+| `{{bookkeepingMonthly}}` | Bookkeeping | Monthly | Monthly bookkeeping base fee (includes minimum) |
+| `{{additionalServicesTotal}}` | Additional Services | One-Time Fee | Total additional services fees |
+
+**Note:** Actual variable names depend on your Services table configuration. Check the `Total Variable Name` field in Airtable.
+
+### Usage Examples
+
+**Catch-up bookkeeping based on monthly rate:**
+```javascript
+{{bookkeepingMonthly}} * {{bookkeeping.monthsBehind}} * 1.25
+```
+
+**Annual tax package discount:**
+```javascript
+({{individualTaxTotal}} + {{businessTaxTotal}}) * 0.90
+```
+
+**Quarterly advisory add-on based on tax complexity:**
+```javascript
+({{individualTaxTotal}} + {{businessTaxTotal}}) * 0.15
+```
+
+**Service bundle with minimum:**
+```javascript
+Math.max({{bookkeepingMonthly}} * 12 + {{businessTaxTotal}}, 10000)
+```
+
+### Filtering Behavior
+
+**By Pricing Type:**
+- `includeTypes`: Only include these pricing types (default: `["Base Service", "Add-on"]`)
+- `excludeTypes`: Exclude these pricing types (default: `[]`)
+
+**By Billing Frequency:**
+- `includeBillingFrequencies`: Only include these frequencies (default: all)
+- `excludeBillingFrequencies`: Exclude these frequencies (default: `[]`)
+
+**Minimum Fee:**
+- Applied after all filtering and summing
+- Returns `Math.max(calculatedTotal, minimumFee)`
+
+### Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Variable returns $0 | Check that service has active pricing rules matching the filters |
+| Variable not found | Verify `Total Variable Name` is set and `Can Reference in Formulas` is true |
+| Unexpected total | Review `Aggregation Rules` JSON - check includeTypes and billing frequencies |
+| Missing some fees | Ensure pricing rules have correct `pricingType` and `billingFrequency` |
 
 ## Common Formula Patterns
 

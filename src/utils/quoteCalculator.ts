@@ -139,7 +139,9 @@ const calculateRulePrice = (
   rule: PricingConfig,
   formData: FormData,
   hasAdvisoryService: boolean,
-  calculatedPrices: Map<string, number>
+  calculatedPrices: Map<string, number>,
+  serviceConfig: ServiceConfig[] = [],
+  priceMetadata: Map<string, { price: number; serviceId: string; pricingType: string; billingFrequency: string }> = new Map()
 ): number => {
   let price = 0;
 
@@ -151,7 +153,7 @@ const calculateRulePrice = (
   switch (method) {
     case 'formula':
       // Use FormulaEvaluator for formula-based pricing
-      const evaluator = new FormulaEvaluator(formData, calculatedPrices);
+      const evaluator = new FormulaEvaluator(formData, calculatedPrices, serviceConfig, priceMetadata);
       price = evaluator.evaluateFormula(rule);
       break;
 
@@ -267,6 +269,9 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
   // Create a Map to store calculated prices for formula references
   const calculatedPrices = new Map<string, number>();
 
+  // Create a Map to store pricing rule metadata (for service total calculations)
+  const priceMetadata = new Map<string, { price: number; serviceId: string; pricingType: string; billingFrequency: string }>();
+
   // Debug logging
   console.log('=== QUOTE CALCULATION DEBUG ===');
   console.log('Selected services:', formData.services);
@@ -381,10 +386,18 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
     }
 
     // Calculate price for this rule
-    const rulePrice = calculateRulePrice(rule, formData, hasAdvisoryService, calculatedPrices);
+    const rulePrice = calculateRulePrice(rule, formData, hasAdvisoryService, calculatedPrices, serviceConfig, priceMetadata);
 
     // Store calculated price for this rule (formula evaluator needs access to all entries)
     calculatedPrices.set(rule.pricingRuleId, rulePrice);
+
+    // Store metadata for service total calculations
+    priceMetadata.set(rule.pricingRuleId, {
+      price: rulePrice,
+      serviceId: rule.serviceId,
+      pricingType: rule.pricingType,
+      billingFrequency: rule.billingFrequency
+    });
 
     if (rulePrice > 0) {
       console.log(`💰 ${rule.pricingRuleId}: $${rulePrice} (method: ${rule.calculationMethod || 'simple'})`);
@@ -461,7 +474,7 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
       let addOnFees = 0;
 
       for (const rule of bookkeepingGroup.rules) {
-        const rulePrice = calculateRulePrice(rule, formData, hasAdvisoryService);
+        const rulePrice = calculateRulePrice(rule, formData, hasAdvisoryService, calculatedPrices, serviceConfig, priceMetadata);
 
         if (baseFeeRuleIds.includes(rule.pricingRuleId) && rule.billingFrequency === 'Monthly') {
           calculatedBaseFee += rulePrice;
@@ -531,7 +544,7 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
     
     // Determine included features from pricing rules
     const includedFeatures: string[] = group.rules
-      .filter(r => r.pricingType === 'Base Service' || (r.pricingType === 'Add-on' && calculateRulePrice(r, formData, hasAdvisoryService) > 0))
+      .filter(r => r.pricingType === 'Base Service' || (r.pricingType === 'Add-on' && calculateRulePrice(r, formData, hasAdvisoryService, calculatedPrices, serviceConfig, priceMetadata) > 0))
       .map(r => r.serviceName);
     
     // Generate pricing factors for individual tax service
@@ -565,7 +578,7 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
       annualPrice: Math.round(group.totalMonthlyFees * 12 + group.totalOneTimeFees),
       included: includedFeatures,
       addOns: group.rules
-        .filter(r => r.pricingType === 'Add-on' && calculateRulePrice(r, formData, hasAdvisoryService) === 0)
+        .filter(r => r.pricingType === 'Add-on' && calculateRulePrice(r, formData, hasAdvisoryService, calculatedPrices, serviceConfig, priceMetadata) === 0)
         .map(r => `${r.serviceName} (+$${r.basePrice || r.unitPrice})`),
       pricingFactors: pricingFactors.length > 0 ? pricingFactors : undefined
     };
