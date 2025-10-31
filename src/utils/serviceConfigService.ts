@@ -25,12 +25,14 @@ export interface AirtableServiceRecord {
     'Has Detail Form'?: boolean;
     'Included Features Card Title'?: string;
     'Included Features Card List'?: string;
-    // Service-level pricing total fields
+    // APPROACH 1: Individual fields (for simple services with one total)
     'Total Variable Name'?: string;
     'Default Billing Frequency'?: string;
     'Aggregation Rules'?: string;         // JSON string
     'Display Name (Quote)'?: string;
     'Can Reference in Formulas'?: boolean;
+    // APPROACH 2: Array of total variables (for complex services with multiple totals)
+    'Total Variables'?: string;           // JSON string - array of ServiceTotalVariable objects
   };
 }
 
@@ -98,19 +100,44 @@ const defaultServiceConfig: ServiceConfig[] = [
 ];
 
 // Parse JSON strings from Airtable fields
-const parseJsonField = (field: string | undefined): any => {
+// Handles both string JSON and already-parsed objects
+const parseJsonField = (field: string | undefined | any): any => {
   if (!field) return [];
-  try {
-    return JSON.parse(field);
-  } catch (error) {
-    console.warn('Failed to parse JSON field:', field, error);
-    return [];
+
+  // If already an object or array, return as-is
+  if (typeof field === 'object') {
+    return field;
   }
+
+  // If string, try to parse JSON
+  if (typeof field === 'string') {
+    try {
+      return JSON.parse(field);
+    } catch (error) {
+      console.warn('Failed to parse JSON field:', field, error);
+      return [];
+    }
+  }
+
+  // Fallback for unexpected types
+  return [];
 };
 
 // Convert Airtable record to ServiceConfig
 const convertAirtableServiceRecord = (record: AirtableServiceRecord): ServiceConfig => {
   const fields = record.fields;
+
+  // Parse Total Variables array (APPROACH 2)
+  let totalVariables = undefined;
+  if (fields['Total Variables']) {
+    const parsed = parseJsonField(fields['Total Variables']);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      totalVariables = parsed;
+      console.log(`Service "${fields['Service ID']}" loaded with ${parsed.length} total variable(s) from array`);
+    } else if (parsed && !Array.isArray(parsed)) {
+      console.warn(`Service "${fields['Service ID']}": Total Variables field is not an array, ignoring`);
+    }
+  }
 
   return {
     serviceId: fields['Service ID'],
@@ -125,12 +152,14 @@ const convertAirtableServiceRecord = (record: AirtableServiceRecord): ServiceCon
     hasDetailForm: fields['Has Detail Form'] || false,
     includedFeaturesCardTitle: fields['Included Features Card Title'] || '',
     includedFeaturesCardList: parseJsonField(fields['Included Features Card List']),
-    // Service-level pricing total fields
+    // APPROACH 1: Individual fields (for simple services with one total)
     totalVariableName: fields['Total Variable Name'] || undefined,
     defaultBillingFrequency: fields['Default Billing Frequency'] || undefined,
     aggregationRules: parseJsonField(fields['Aggregation Rules']) || undefined,
     displayNameQuote: fields['Display Name (Quote)'] || undefined,
-    canReferenceInFormulas: fields['Can Reference in Formulas'] || false
+    canReferenceInFormulas: fields['Can Reference in Formulas'] || false,
+    // APPROACH 2: Array of total variables (for complex services with multiple totals)
+    totalVariables: totalVariables
   };
 };
 

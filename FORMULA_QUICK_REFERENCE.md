@@ -36,51 +36,178 @@
 
 Service-level total variables are dynamically calculated from all pricing rules for each service, based on configuration in the Services table. These variables update in real-time as pricing rules are calculated.
 
+### Two Configuration Approaches
+
+**APPROACH 1: Individual Fields (Simple Services)**
+Use for services with ONE total variable. Cleanest Airtable UI.
+
+**APPROACH 2: Total Variables Array (Complex Services)**
+Use for services with MULTIPLE total variables (e.g., monthly + one-time totals).
+
+**Resolution Priority:**
+1. System checks `Total Variables` array first
+2. Falls back to individual fields (`Total Variable Name`, etc.)
+3. Returns 0 if neither is configured
+
+**Important:** Don't mix both approaches on the same service. Use one or the other.
+
+---
+
 ### How They Work
 
-1. Configured in Services table via `Total Variable Name` field
+1. Configured in Services table (via individual fields OR array)
 2. Filtered by `Aggregation Rules` (pricingType and billingFrequency)
 3. Calculated on-demand during formula evaluation
-4. Can enforce service-level minimum fees
-5. Must have `Can Reference in Formulas` = true
+4. Can enforce service-level minimum fees independently
+5. Must have `Can Reference in Formulas` = true (individual fields approach)
 
-### Configuration in Services Table
+---
 
-**Field: Total Variable Name**
-- Example: `individualTaxTotal`, `businessTaxTotal`, `bookkeepingMonthly`
+### APPROACH 1: Individual Fields Configuration
 
-**Field: Aggregation Rules** (JSON format)
+Use this for simple services with **one total variable**.
+
+**Airtable Fields:**
+
+| Field Name | Type | Example Value |
+|------------|------|---------------|
+| `Total Variable Name` | Text | `individualTaxTotal` |
+| `Aggregation Rules` | Long Text (JSON) | `{"includeBillingFrequencies": ["One-Time Fee"]}` |
+| `Display Name (Quote)` | Text | `Total Individual Tax Fee` |
+| `Can Reference in Formulas` | Checkbox | ✓ true |
+
+**Example Configuration:**
+
 ```json
-{
+Total Variable Name: individualTaxTotal
+Aggregation Rules: {
   "includeTypes": ["Base Service", "Add-on"],
   "excludeTypes": ["Discount"],
   "includeBillingFrequencies": ["One-Time Fee"],
-  "excludeBillingFrequencies": [],
   "minimumFee": 0
 }
+Can Reference in Formulas: true
 ```
 
-**Field: Can Reference in Formulas**
-- Set to `true` to allow formula access
+**Usage in Formulas:**
+```javascript
+{{individualTaxTotal}} * 0.15
+```
+
+---
+
+### APPROACH 2: Total Variables Array Configuration
+
+Use this for complex services with **multiple total variables** (e.g., Bookkeeping with separate monthly and one-time totals).
+
+**Airtable Field:**
+
+| Field Name | Type | Example Value |
+|------------|------|---------------|
+| `Total Variables` | Long Text (JSON array) | See below |
+
+**Example Configuration (Bookkeeping Service):**
+
+```json
+[
+  {
+    "variableName": "monthlyBookkeepingTotal",
+    "displayName": "Monthly Bookkeeping Total",
+    "aggregationRules": {
+      "includeTypes": ["Base Service", "Add-on"],
+      "excludeTypes": ["Discount"],
+      "includeBillingFrequencies": ["Monthly"],
+      "excludeBillingFrequencies": ["One-Time Fee"],
+      "minimumFee": 150
+    }
+  },
+  {
+    "variableName": "catchupBookkeepingTotal",
+    "displayName": "Catch-Up Bookkeeping Total",
+    "aggregationRules": {
+      "includeTypes": ["Base Service", "Add-on"],
+      "excludeTypes": ["Discount"],
+      "includeBillingFrequencies": ["One-Time Fee"],
+      "excludeBillingFrequencies": ["Monthly"],
+      "minimumFee": 0
+    }
+  }
+]
+```
+
+**Usage in Formulas:**
+```javascript
+// Reference monthly total
+{{monthlyBookkeepingTotal}} * 12
+
+// Reference one-time catch-up (which itself uses monthly total)
+{{monthlyBookkeepingTotal}} * {{bookkeeping.monthsBehind}} * 1.25
+
+// Cross-reference between totals
+{{monthlyBookkeepingTotal}} + {{catchupBookkeepingTotal}}
+```
+
+---
+
+### Configuration Examples by Use Case
+
+#### Simple Service (Individual Tax)
+**Scenario:** One total for all one-time tax fees
+
+**Use:** Individual Fields (APPROACH 1)
+
+```
+Total Variable Name: individualTaxTotal
+Aggregation Rules: {
+  "includeBillingFrequencies": ["One-Time Fee"]
+}
+Can Reference in Formulas: true
+```
+
+#### Complex Service (Bookkeeping)
+**Scenario:** Separate totals for monthly fees vs. catch-up fees
+
+**Use:** Total Variables Array (APPROACH 2)
+
+```json
+[
+  {
+    "variableName": "monthlyBookkeepingTotal",
+    "displayName": "Monthly Bookkeeping",
+    "aggregationRules": {
+      "includeBillingFrequencies": ["Monthly"],
+      "minimumFee": 150
+    }
+  },
+  {
+    "variableName": "catchupBookkeepingTotal",
+    "displayName": "Catch-Up Bookkeeping",
+    "aggregationRules": {
+      "includeBillingFrequencies": ["One-Time Fee"]
+    }
+  }
+]
+```
 
 ### Available Service Total Variables
 
 Variables are defined in your Services table. Common examples:
 
-| Variable | Service | Billing Frequency | Description |
-|----------|---------|-------------------|-------------|
-| `{{individualTaxTotal}}` | Individual Tax | One-Time Fee | Total of all individual tax preparation fees |
-| `{{businessTaxTotal}}` | Business Tax | One-Time Fee | Total of all business tax fees including add-ons |
-| `{{bookkeepingMonthly}}` | Bookkeeping | Monthly | Monthly bookkeeping base fee (includes minimum) |
-| `{{additionalServicesTotal}}` | Additional Services | One-Time Fee | Total additional services fees |
+| Variable | Service | Approach | Billing Frequency | Description |
+|----------|---------|----------|-------------------|-------------|
+| `{{individualTaxTotal}}` | Individual Tax | Individual Fields | One-Time Fee | Total of all individual tax fees |
+| `{{businessTaxTotal}}` | Business Tax | Individual Fields | One-Time Fee | Total of all business tax fees |
+| `{{monthlyBookkeepingTotal}}` | Bookkeeping | Array | Monthly | Monthly bookkeeping fees only ($150 min) |
+| `{{catchupBookkeepingTotal}}` | Bookkeeping | Array | One-Time Fee | Catch-up bookkeeping fees only |
+| `{{additionalServicesTotal}}` | Additional Services | Individual Fields | One-Time Fee | Total additional services fees |
 
-**Note:** Actual variable names depend on your Services table configuration. Check the `Total Variable Name` field in Airtable.
+**Note:** Actual variable names depend on your Services table configuration.
 
 ### Usage Examples
 
-**Catch-up bookkeeping based on monthly rate:**
+**Catch-up bookkeeping based on monthly rate (cross-reference between totals):**
 ```javascript
-{{bookkeepingMonthly}} * {{bookkeeping.monthsBehind}} * 1.25
+{{monthlyBookkeepingTotal}} * {{bookkeeping.monthsBehind}} * 1.25
 ```
 
 **Annual tax package discount:**
@@ -95,7 +222,12 @@ Variables are defined in your Services table. Common examples:
 
 **Service bundle with minimum:**
 ```javascript
-Math.max({{bookkeepingMonthly}} * 12 + {{businessTaxTotal}}, 10000)
+Math.max({{monthlyBookkeepingTotal}} * 12 + {{businessTaxTotal}}, 10000)
+```
+
+**Annual bookkeeping contract (reference monthly total):**
+```javascript
+{{monthlyBookkeepingTotal}} * 12 * 0.85
 ```
 
 ### Filtering Behavior
@@ -117,9 +249,56 @@ Math.max({{bookkeepingMonthly}} * 12 + {{businessTaxTotal}}, 10000)
 | Issue | Solution |
 |-------|----------|
 | Variable returns $0 | Check that service has active pricing rules matching the filters |
-| Variable not found | Verify `Total Variable Name` is set and `Can Reference in Formulas` is true |
+| Variable not found (Individual) | Verify `Total Variable Name` is set and `Can Reference in Formulas` = true |
+| Variable not found (Array) | Check `Total Variables` JSON array has matching `variableName` |
+| Wrong approach used | Console shows which path was used: "(FROM ARRAY)" or "(FROM INDIVIDUAL FIELDS)" |
 | Unexpected total | Review `Aggregation Rules` JSON - check includeTypes and billing frequencies |
 | Missing some fees | Ensure pricing rules have correct `pricingType` and `billingFrequency` |
+| Minimum not applied | Check `minimumFee` in aggregation rules (not at pricing rule level) |
+| Multiple totals not working | Use array approach, not individual fields |
+
+### Migration Guide
+
+**From Individual Fields to Array:**
+
+If you need to add a second total variable to a service currently using individual fields:
+
+1. Copy existing configuration to array format
+2. Add new total variable to the array
+3. Clear individual fields (or leave for backward compatibility)
+4. Test both variables in formulas
+
+**Example Migration (Bookkeeping):**
+
+**Before (Individual Fields):**
+```
+Total Variable Name: bookkeepingMonthly
+Aggregation Rules: {"includeBillingFrequencies": ["Monthly"], "minimumFee": 150}
+Can Reference in Formulas: true
+```
+
+**After (Array - adds catch-up total):**
+```json
+Total Variables: [
+  {
+    "variableName": "monthlyBookkeepingTotal",
+    "displayName": "Monthly Bookkeeping",
+    "aggregationRules": {
+      "includeBillingFrequencies": ["Monthly"],
+      "minimumFee": 150
+    }
+  },
+  {
+    "variableName": "catchupBookkeepingTotal",
+    "displayName": "Catch-Up Bookkeeping",
+    "aggregationRules": {
+      "includeBillingFrequencies": ["One-Time Fee"]
+    }
+  }
+]
+```
+
+Clear individual fields after migration, or leave them for backward compatibility (array takes priority).
 
 ## Common Formula Patterns
 

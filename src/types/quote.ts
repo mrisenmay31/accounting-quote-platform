@@ -192,6 +192,49 @@ export interface AggregationRules {
   minimumFee?: number;                  // Service-level minimum
 }
 
+/**
+ * ServiceTotalVariable - Definition for a single total variable within a service
+ *
+ * Used when a service needs multiple total variables (e.g., Bookkeeping with both
+ * monthly and one-time totals). Each variable has its own aggregation rules and
+ * can be independently referenced in formulas.
+ *
+ * Example:
+ * {
+ *   variableName: "monthlyBookkeepingTotal",
+ *   displayName: "Monthly Bookkeeping Total",
+ *   aggregationRules: {
+ *     includeBillingFrequencies: ["Monthly"],
+ *     minimumFee: 150
+ *   }
+ * }
+ */
+export interface ServiceTotalVariable {
+  variableName: string;              // e.g., "monthlyBookkeepingTotal"
+  displayName: string;               // e.g., "Monthly Bookkeeping Total"
+  aggregationRules: AggregationRules;
+}
+
+/**
+ * ServiceConfig - Configuration for a service in the quote calculator
+ *
+ * DUAL-PATH TOTAL VARIABLE CONFIGURATION:
+ *
+ * For SIMPLE services with ONE total variable:
+ *   Use individual fields: totalVariableName, aggregationRules, displayNameQuote
+ *   Example: Individual Tax Service with just "individualTaxTotal"
+ *
+ * For COMPLEX services with MULTIPLE total variables:
+ *   Use totalVariables array with multiple ServiceTotalVariable objects
+ *   Example: Bookkeeping with "monthlyBookkeepingTotal" and "catchupBookkeepingTotal"
+ *
+ * RESOLUTION PRIORITY:
+ *   1. totalVariables array (checked first)
+ *   2. Individual fields (fallback)
+ *   3. No total variables defined
+ *
+ * Do NOT mix both approaches on the same service - use one or the other.
+ */
 export interface ServiceConfig {
   serviceId: string;
   title: string;
@@ -206,12 +249,15 @@ export interface ServiceConfig {
   includedFeaturesCardTitle?: string;
   includedFeaturesCardList?: string[];
 
-  // Service-level pricing configuration
+  // APPROACH 1: Individual Fields (for simple services with ONE total variable)
   totalVariableName?: string;           // e.g., "individualTaxTotal"
   defaultBillingFrequency?: string;     // "Monthly", "One-Time Fee", etc.
   aggregationRules?: AggregationRules;  // Rules for calculating service totals
   displayNameQuote?: string;            // "Total Individual Tax Fee"
   canReferenceInFormulas?: boolean;     // Allow formula references (default: false)
+
+  // APPROACH 2: Array of Total Variables (for complex services with MULTIPLE totals)
+  totalVariables?: ServiceTotalVariable[];  // Array of total variable configs
 }
 
 // Dynamic Form Field Types

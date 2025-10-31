@@ -145,17 +145,32 @@ export class FormulaEvaluator {
       return rate;
     }
 
-    // Check if it's a service-level total variable
-    const matchingService = this.serviceConfigs.find(
-      svc => svc.totalVariableName === variable && svc.canReferenceInFormulas
-    );
+    // Check if it's a service-level total variable (DUAL-PATH RESOLUTION)
+    // Priority 1: Check totalVariables array (for complex services with multiple totals)
+    // Priority 2: Check individual fields (for simple services with one total)
+    for (const service of this.serviceConfigs) {
+      // APPROACH 1: Check totalVariables array first
+      if (service.totalVariables && service.totalVariables.length > 0) {
+        for (const totalVar of service.totalVariables) {
+          if (totalVar.variableName === variable) {
+            console.log(`    🎯 Matched service total variable (ARRAY): {{${variable}}}`);
+            console.log(`       Service: ${service.title} (${service.serviceId})`);
+            console.log(`       Display Name: ${totalVar.displayName}`);
+            const total = this.calculateServiceTotalFromVariable(totalVar, service);
+            console.log(`    ✓ Resolved service total: {{${variable}}} = ${total}`);
+            return total;
+          }
+        }
+      }
 
-    if (matchingService) {
-      console.log(`    🎯 Matched service total variable: {{${variable}}}`);
-      console.log(`       Service: ${matchingService.title} (${matchingService.serviceId})`);
-      const total = this.calculateServiceTotal(matchingService);
-      console.log(`    ✓ Resolved service total: {{${variable}}} = ${total}`);
-      return total;
+      // APPROACH 2: Fall back to individual fields
+      if (service.totalVariableName === variable && service.canReferenceInFormulas) {
+        console.log(`    🎯 Matched service total variable (INDIVIDUAL FIELDS): {{${variable}}}`);
+        console.log(`       Service: ${service.title} (${service.serviceId})`);
+        const total = this.calculateServiceTotalFromIndividualFields(service);
+        console.log(`    ✓ Resolved service total: {{${variable}}} = ${total}`);
+        return total;
+      }
     }
 
     // Check for nested form field values (e.g., "bookkeeping.monthsBehind")
@@ -230,22 +245,67 @@ export class FormulaEvaluator {
   }
 
   /**
-   * Dynamically calculate service-level total based on aggregation rules
-   * This is called on-demand during formula evaluation when a service total variable is referenced
+   * Calculate service total from a ServiceTotalVariable (APPROACH 1: array-based)
+   * Used for complex services with multiple total variables
    *
-   * @param serviceConfig - The service configuration with aggregation rules
-   * @returns Calculated total based on current calculatedPrices state
+   * @param totalVar - The specific total variable definition
+   * @param service - The parent service configuration
+   * @returns Calculated total based on the variable's aggregation rules
    */
-  private calculateServiceTotal(serviceConfig: ServiceConfig): number {
+  private calculateServiceTotalFromVariable(totalVar: any, service: ServiceConfig): number {
     console.log('═══════════════════════════════════════════════════════════');
-    console.log('🔢 CALCULATING SERVICE TOTAL DYNAMICALLY');
+    console.log('🔢 CALCULATING SERVICE TOTAL (FROM ARRAY)');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('Service ID:', service.serviceId);
+    console.log('Variable Name:', totalVar.variableName);
+    console.log('Display Name:', totalVar.displayName);
+    console.log('Aggregation Rules:', JSON.stringify(totalVar.aggregationRules, null, 2));
+
+    return this.calculateServiceTotalWithRules(
+      service.serviceId,
+      totalVar.variableName,
+      totalVar.aggregationRules
+    );
+  }
+
+  /**
+   * Calculate service total from individual fields (APPROACH 2: individual fields)
+   * Used for simple services with one total variable
+   *
+   * @param serviceConfig - The service configuration with individual field definitions
+   * @returns Calculated total based on the service's aggregation rules
+   */
+  private calculateServiceTotalFromIndividualFields(serviceConfig: ServiceConfig): number {
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('🔢 CALCULATING SERVICE TOTAL (FROM INDIVIDUAL FIELDS)');
     console.log('═══════════════════════════════════════════════════════════');
     console.log('Service ID:', serviceConfig.serviceId);
     console.log('Total Variable Name:', serviceConfig.totalVariableName);
     console.log('Aggregation Rules:', JSON.stringify(serviceConfig.aggregationRules, null, 2));
 
+    return this.calculateServiceTotalWithRules(
+      serviceConfig.serviceId,
+      serviceConfig.totalVariableName || '',
+      serviceConfig.aggregationRules || {}
+    );
+  }
+
+  /**
+   * Core calculation logic for service totals
+   * Applies aggregation rules to filter and sum pricing rules
+   *
+   * @param serviceId - The service ID to filter by
+   * @param variableName - The variable name (for logging)
+   * @param aggregationRules - The rules to apply
+   * @returns Calculated total with minimum fee applied
+   */
+  private calculateServiceTotalWithRules(
+    serviceId: string,
+    variableName: string,
+    aggregationRules: any
+  ): number {
     // Get aggregation rules with defaults
-    const rules = serviceConfig.aggregationRules || {};
+    const rules = aggregationRules || {};
     const includeTypes = rules.includeTypes || ['Base Service', 'Add-on'];
     const excludeTypes = rules.excludeTypes || [];
     const includeBillingFrequencies = rules.includeBillingFrequencies || ['Monthly', 'One-Time Fee', 'Annual'];
@@ -259,18 +319,13 @@ export class FormulaEvaluator {
     console.log('  Exclude Billing Frequencies:', excludeBillingFrequencies);
     console.log('  Minimum Fee:', minimumFee);
 
-    // We need access to the full pricing rules with their metadata
-    // Since calculatedPrices only has rule IDs and prices, we'll need to use a different approach
-    // For now, we'll sum all prices matching the serviceId from calculatedPrices
-    // Note: This requires pricing rules to be stored with full metadata, which we'll handle in quoteCalculator
-
     let total = 0;
     let matchedRules = 0;
 
     console.log('\n📋 Evaluating calculatedPrices entries:');
     Array.from(this.priceMetadata.entries()).forEach(([ruleId, metadata]) => {
       // Check if this rule belongs to the current service
-      if (metadata.serviceId === serviceConfig.serviceId) {
+      if (metadata.serviceId === serviceId) {
         console.log(`  Rule: ${ruleId}`);
         console.log(`    Service ID: ${metadata.serviceId}`);
         console.log(`    Pricing Type: ${metadata.pricingType}`);
@@ -295,7 +350,7 @@ export class FormulaEvaluator {
     if (this.priceMetadata.size === 0) {
       console.log('⚠️  No metadata available, falling back to simple serviceId matching');
       Array.from(this.calculatedPrices.entries()).forEach(([ruleId, price]) => {
-        if (ruleId.startsWith(serviceConfig.serviceId)) {
+        if (ruleId.startsWith(serviceId)) {
           console.log(`  Rule: ${ruleId}, Price: $${price}`);
           total += price;
           matchedRules++;
@@ -312,7 +367,7 @@ export class FormulaEvaluator {
       total = minimumFee;
     }
 
-    console.log(`✅ Final Service Total: $${total}`);
+    console.log(`✅ Final Service Total for ${variableName}: $${total}`);
     console.log('═══════════════════════════════════════════════════════════\n');
 
     return total;
