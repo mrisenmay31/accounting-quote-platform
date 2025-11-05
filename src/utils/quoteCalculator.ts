@@ -521,9 +521,36 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
   // Use serviceConfig order as the base, then apply conditional reordering
   const services: ServiceQuote[] = [];
 
-  // Process services in serviceConfig order (already sorted by serviceOrder)
-  for (const serviceConfigItem of serviceConfig) {
-    const serviceId = serviceConfigItem.serviceId;
+  // GROUP SERVICECONFIG ENTRIES BY SERVICE ID
+  // Multiple rows in Services table with same serviceId represent different billing frequencies
+  // We need ONE card per serviceId, not one card per Services table row
+  const serviceConfigByServiceId = new Map<string, ServiceConfig[]>();
+
+  for (const configItem of serviceConfig) {
+    if (!serviceConfigByServiceId.has(configItem.serviceId)) {
+      serviceConfigByServiceId.set(configItem.serviceId, []);
+    }
+    serviceConfigByServiceId.get(configItem.serviceId)!.push(configItem);
+  }
+
+  console.log('\n=== SERVICE CONFIG GROUPING ===');
+  for (const [serviceId, configs] of serviceConfigByServiceId.entries()) {
+    console.log(`${serviceId}: ${configs.length} config row(s)`);
+    configs.forEach(c => console.log(`  - ${c.title} (${c.billingFrequency || 'no billing freq'})`));
+  }
+  console.log('================================\n');
+
+  // Get unique service IDs in the correct order (based on minimum serviceOrder)
+  const uniqueServiceIds = Array.from(serviceConfigByServiceId.keys()).sort((a, b) => {
+    const configsA = serviceConfigByServiceId.get(a)!;
+    const configsB = serviceConfigByServiceId.get(b)!;
+    const minOrderA = Math.min(...configsA.map(c => c.serviceOrder || 999));
+    const minOrderB = Math.min(...configsB.map(c => c.serviceOrder || 999));
+    return minOrderA - minOrderB;
+  });
+
+  // Process each unique service ID
+  for (const serviceId of uniqueServiceIds) {
     const group = serviceGroups[serviceId];
 
     // SKIP ADDITIONAL SERVICES - they are displayed in a separate section
@@ -535,18 +562,27 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
     }
 
     if (!group || group.rules.length === 0) continue;
-    
-    // Get the service configuration from Airtable
-    const serviceConfigData = serviceConfigItem;
-    
-    // Get the main service name and description from service config or fallback
+
+    // SELECT PRIMARY SERVICE CONFIG ROW for display metadata
+    // Priority: Monthly billing frequency > lowest service order > first occurrence
+    const configRows = serviceConfigByServiceId.get(serviceId)!;
+    const primaryConfig = configRows.find(c => c.billingFrequency === 'Monthly') ||
+                          configRows.sort((a, b) => (a.serviceOrder || 999) - (b.serviceOrder || 999))[0];
+
+    console.log(`\n=== PROCESSING SERVICE: ${serviceId} ===`);
+    console.log(`Primary config: ${primaryConfig.title}`);
+    console.log(`Config rows available: ${configRows.length}`);
+    console.log(`Monthly fees: $${group.totalMonthlyFees}`);
+    console.log(`One-time fees: $${group.totalOneTimeFees}`);
+
+    // Get the main service name and description from primary config or fallback
     const baseRule = group.rules.find(r => r.pricingType === 'Base Service') || group.rules[0];
-    
+
     // Determine included features from pricing rules
     const includedFeatures: string[] = group.rules
       .filter(r => r.pricingType === 'Base Service' || (r.pricingType === 'Add-on' && calculateRulePrice(r, formData, hasAdvisoryService, calculatedPrices, serviceConfig, priceMetadata) > 0))
       .map(r => r.serviceName);
-    
+
     // Generate pricing factors for individual tax service
     let pricingFactors: string[] = [];
     if (serviceId === 'individual-tax' && formData.individualTax) {
@@ -569,10 +605,10 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
         pricingFactors.push(`${formData.individualTax.rentalPropertyCount} Rental Properties`);
       }
     }
-    
+
     const serviceQuote: ServiceQuote = {
-      name: serviceConfigData?.title || getServiceDisplayName(serviceId),
-      description: serviceConfigData?.description || baseRule.description || getServiceDescription(serviceId),
+      name: primaryConfig?.title || getServiceDisplayName(serviceId),
+      description: primaryConfig?.description || baseRule.description || getServiceDescription(serviceId),
       monthlyFee: Math.round(group.totalMonthlyFees),
       oneTimeFee: Math.round(group.totalOneTimeFees),
       annualPrice: Math.round(group.totalMonthlyFees * 12 + group.totalOneTimeFees),
@@ -582,7 +618,12 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
         .map(r => `${r.serviceName} (+$${r.basePrice || r.unitPrice})`),
       pricingFactors: pricingFactors.length > 0 ? pricingFactors : undefined
     };
-    
+
+    console.log(`Created service quote card: ${serviceQuote.name}`);
+    console.log(`  Monthly: $${serviceQuote.monthlyFee}, One-time: $${serviceQuote.oneTimeFee}`);
+    console.log(`  Included features: ${serviceQuote.included.length}`);
+    console.log('=====================================\n');
+
     services.push(serviceQuote);
   }
   
