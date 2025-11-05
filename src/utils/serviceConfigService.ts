@@ -20,12 +20,15 @@ export interface AirtableServiceRecord {
     'Color': string;
     'Featured': boolean;
     'Benefits': string;
-    'Quote Included Features': string;
     'Active': boolean;
     'Service Order': number;
     'Has Detail Form'?: boolean;
     'Included Features Card Title'?: string;
     'Included Features Card List'?: string;
+    // Service-Level Total Variable Configuration (Single-Row-Per-Endpoint)
+    'Billing Frequency'?: string;         // "Monthly", "One-Time Fee", "Annual"
+    'Total Variable Name'?: string;       // e.g., "monthly_bookkeeping_fee"
+    'Display Name (Quote)'?: string;      // e.g., "Monthly Bookkeeping Total"
   };
 }
 
@@ -93,14 +96,27 @@ const defaultServiceConfig: ServiceConfig[] = [
 ];
 
 // Parse JSON strings from Airtable fields
-const parseJsonField = (field: string | undefined): any => {
+// Handles both string JSON and already-parsed objects
+const parseJsonField = (field: string | undefined | any): any => {
   if (!field) return [];
-  try {
-    return JSON.parse(field);
-  } catch (error) {
-    console.warn('Failed to parse JSON field:', field, error);
-    return [];
+
+  // If already an object or array, return as-is
+  if (typeof field === 'object') {
+    return field;
   }
+
+  // If string, try to parse JSON
+  if (typeof field === 'string') {
+    try {
+      return JSON.parse(field);
+    } catch (error) {
+      console.warn('Failed to parse JSON field:', field, error);
+      return [];
+    }
+  }
+
+  // Fallback for unexpected types
+  return [];
 };
 
 // Convert Airtable record to ServiceConfig
@@ -115,12 +131,15 @@ const convertAirtableServiceRecord = (record: AirtableServiceRecord): ServiceCon
     color: fields['Color'],
     featured: fields['Featured'] || false,
     benefits: parseJsonField(fields['Benefits']),
-    quoteIncludedFeatures: parseJsonField(fields['Quote Included Features']),
     active: fields['Active'] || false,
     serviceOrder: fields['Service Order'] || 999,
     hasDetailForm: fields['Has Detail Form'] || false,
     includedFeaturesCardTitle: fields['Included Features Card Title'] || '',
-    includedFeaturesCardList: parseJsonField(fields['Included Features Card List'])
+    includedFeaturesCardList: parseJsonField(fields['Included Features Card List']),
+    // Service-Level Total Variable Configuration (Single-Row-Per-Endpoint)
+    billingFrequency: fields['Billing Frequency'] || undefined,
+    totalVariableName: fields['Total Variable Name'] || undefined,
+    displayNameQuote: fields['Display Name (Quote)'] || undefined
   };
 };
 

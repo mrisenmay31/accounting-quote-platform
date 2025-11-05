@@ -229,14 +229,53 @@ const DynamicFormFieldAirtable: React.FC<DynamicFormFieldProps> = ({ field, valu
   const renderFieldInput = () => {
     const layoutType = field.layoutType || 'standard';
 
+    // Validate layout type and field type combinations
+    if (layoutType === 'checkbox-grid' && field.fieldType !== 'multi-select') {
+      console.warn(
+        `[DynamicFormField] Invalid configuration for field "${field.fieldName}": ` +
+        `Layout type "checkbox-grid" requires field type "multi-select", but got "${field.fieldType}". ` +
+        `Using standard layout instead.`
+      );
+    }
+
+    if (layoutType === 'radio-group' && field.fieldType !== 'radio') {
+      console.warn(
+        `[DynamicFormField] Invalid configuration for field "${field.fieldName}": ` +
+        `Layout type "radio-group" requires field type "radio", but got "${field.fieldType}". ` +
+        `Using standard layout instead.`
+      );
+    }
+
+    if (layoutType === 'textarea' && field.fieldType !== 'textarea') {
+      console.warn(
+        `[DynamicFormField] Invalid configuration for field "${field.fieldName}": ` +
+        `Layout type "textarea" requires field type "textarea", but got "${field.fieldType}". ` +
+        `Using standard layout instead.`
+      );
+    }
+
+    // Render based on layout type (with validation)
     switch (layoutType) {
       case 'checkbox-grid':
-        return renderCheckboxGrid();
+        if (field.fieldType === 'multi-select') {
+          return renderCheckboxGrid();
+        }
+        // Fall back to standard multi-select if field type doesn't match
+        return field.fieldType === 'multi-select' ? renderMultiSelect() : renderTextInput();
+
       case 'radio-group':
-        return renderRadioGroup();
+        if (field.fieldType === 'radio') {
+          return renderRadioGroup();
+        }
+        // Fall back to standard radio if field type doesn't match
+        return field.fieldType === 'radio' ? renderRadio() : renderTextInput();
+
       case 'textarea':
         return renderTextarea();
+
+      case 'standard':
       default:
+        // Standard rendering based on field type
         switch (field.fieldType) {
           case 'text':
             return renderTextInput();
@@ -253,7 +292,11 @@ const DynamicFormFieldAirtable: React.FC<DynamicFormFieldProps> = ({ field, valu
           case 'multi-select':
             return renderMultiSelect();
           default:
-            console.warn(`[DynamicFormField] Unsupported field type: ${field.fieldType}`);
+            console.warn(
+              `[DynamicFormField] Unsupported field type "${field.fieldType}" for field "${field.fieldName}". ` +
+              `Supported types: text, number, dropdown, checkbox, textarea, radio, multi-select. ` +
+              `Falling back to text input.`
+            );
             return renderTextInput();
         }
     }
@@ -304,114 +347,3 @@ const DynamicFormFieldAirtable: React.FC<DynamicFormFieldProps> = ({ field, valu
 };
 
 export default DynamicFormFieldAirtable;
-
-// Legacy export for backward compatibility with BusinessTaxDetails and BookkeepingDetails
-interface LegacyDynamicFormFieldProps {
-  label: string;
-  fieldName: string;
-  fieldType: 'text' | 'number' | 'dropdown';
-  required?: boolean;
-  options?: string[];
-  value: string | number;
-  onChange: (value: string | number) => void;
-  placeholder?: string;
-  icon?: React.ReactNode;
-  description?: string;
-  className?: string;
-}
-
-export const DynamicFormField: React.FC<LegacyDynamicFormFieldProps> = ({
-  label,
-  fieldName,
-  fieldType,
-  required = false,
-  options = [],
-  value,
-  onChange,
-  placeholder,
-  icon,
-  description,
-  className = ''
-}) => {
-  if (fieldType === 'dropdown' && options.length > 0) {
-    return (
-      <div className={`space-y-3 ${className}`}>
-        <label className="block text-sm font-semibold text-gray-700 flex items-center space-x-2">
-          {icon}
-          <span>
-            {label} {required && '*'}
-          </span>
-        </label>
-        {description && (
-          <p className="text-sm text-gray-600">{description}</p>
-        )}
-        <select
-          id={fieldName}
-          name={fieldName}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          required={required}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-        >
-          <option value="">Select...</option>
-          {options.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </div>
-    );
-  }
-
-  if (fieldType === 'number') {
-    return (
-      <div className={`space-y-3 ${className}`}>
-        <label className="block text-sm font-semibold text-gray-700 flex items-center space-x-2">
-          {icon}
-          <span>
-            {label} {required && '*'}
-          </span>
-        </label>
-        {description && (
-          <p className="text-sm text-gray-600">{description}</p>
-        )}
-        <input
-          type="number"
-          id={fieldName}
-          name={fieldName}
-          min="0"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          required={required}
-          placeholder={placeholder}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className={`space-y-3 ${className}`}>
-      <label className="block text-sm font-semibold text-gray-700 flex items-center space-x-2">
-        {icon}
-        <span>
-          {label} {required && '*'}
-        </span>
-      </label>
-      {description && (
-        <p className="text-sm text-gray-600">{description}</p>
-      )}
-      <input
-        type="text"
-        id={fieldName}
-        name={fieldName}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        required={required}
-        placeholder={placeholder}
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-      />
-    </div>
-  );
-};

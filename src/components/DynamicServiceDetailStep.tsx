@@ -192,19 +192,19 @@ const DynamicServiceDetailStep: React.FC<DynamicServiceDetailStepProps> = ({
     const processedFields = new Set<string>();
 
     sortedFields.forEach((field) => {
-      if (processedFields.has(field.fieldId)) return;
+      if (processedFields.has(field.fieldName)) return;
 
       if (field.rowGroup !== undefined && field.rowGroup !== null) {
         // Find all fields with the same Row Group
         const fieldsInGroup = sortedFields.filter(f =>
-          f.rowGroup === field.rowGroup && !processedFields.has(f.fieldId)
+          f.rowGroup === field.rowGroup && !processedFields.has(f.fieldName)
         );
 
         // Sort by Display Order within the group
         fieldsInGroup.sort((a, b) => a.displayOrder - b.displayOrder);
 
         // Mark all fields in this group as processed
-        fieldsInGroup.forEach(f => processedFields.add(f.fieldId));
+        fieldsInGroup.forEach(f => processedFields.add(f.fieldName));
 
         // Add as a group
         groupedFields.push({
@@ -218,18 +218,18 @@ const DynamicServiceDetailStep: React.FC<DynamicServiceDetailStepProps> = ({
         // Handle half-width fields without explicit Row Group
         // Look for consecutive half-width fields to pair them
         const nextFieldIndex = sortedFields.findIndex(f =>
-          f.fieldId === field.fieldId
+          f.fieldName === field.fieldName
         ) + 1;
 
         const nextField = nextFieldIndex < sortedFields.length ? sortedFields[nextFieldIndex] : null;
 
         if (nextField &&
             nextField.fieldWidth === 'half' &&
-            !processedFields.has(nextField.fieldId) &&
+            !processedFields.has(nextField.fieldName) &&
             Math.abs(nextField.displayOrder - field.displayOrder) <= 1) {
           // Pair these two half-width fields
-          processedFields.add(field.fieldId);
-          processedFields.add(nextField.fieldId);
+          processedFields.add(field.fieldName);
+          processedFields.add(nextField.fieldName);
 
           groupedFields.push({
             type: 'group',
@@ -239,7 +239,7 @@ const DynamicServiceDetailStep: React.FC<DynamicServiceDetailStepProps> = ({
           });
         } else {
           // Single half-width field (will still render at half width)
-          processedFields.add(field.fieldId);
+          processedFields.add(field.fieldName);
           groupedFields.push({
             type: 'single',
             field: field
@@ -247,7 +247,7 @@ const DynamicServiceDetailStep: React.FC<DynamicServiceDetailStepProps> = ({
         }
       } else {
         // Full-width single field (no group, no special width)
-        processedFields.add(field.fieldId);
+        processedFields.add(field.fieldName);
         groupedFields.push({
           type: 'single',
           field: field
@@ -278,7 +278,7 @@ const DynamicServiceDetailStep: React.FC<DynamicServiceDetailStepProps> = ({
       } else if (item.type === 'single' && item.field?.sectionHeader && item.field.sectionHeader !== lastSectionHeader) {
         lastSectionHeader = item.field.sectionHeader;
         elements.push(
-          <div key={`section-single-${item.field.fieldId}`} className="mt-8 mb-4">
+          <div key={`section-single-${item.field.fieldName}`} className="mt-8 mb-4">
             <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
               {item.field.sectionIcon && (
                 <DynamicIcon name={item.field.sectionIcon} className="w-5 h-5 text-emerald-600" size={20} />
@@ -305,7 +305,7 @@ const DynamicServiceDetailStep: React.FC<DynamicServiceDetailStepProps> = ({
           >
             <div className={`grid ${gridClass} gap-4`}>
               {item.fields.map(field => (
-                <div key={field.fieldId}>
+                <div key={field.fieldName}>
                   <DynamicFormField
                     field={field}
                     value={getFieldValue(field.fieldName)}
@@ -325,7 +325,7 @@ const DynamicServiceDetailStep: React.FC<DynamicServiceDetailStepProps> = ({
 
         elements.push(
           <div
-            key={`single-${field.fieldId}`}
+            key={`single-${field.fieldName}`}
             className={`${widthClass} mb-6 transition-all duration-300 ease-in-out animate-fadeIn`}
           >
             <DynamicFormField

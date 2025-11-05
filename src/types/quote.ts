@@ -136,6 +136,19 @@ export interface QuoteData {
   complexity: 'low' | 'medium' | 'high' | 'very-high';
 }
 
+export type ComparisonOperator =
+  | 'equals'
+  | 'notEquals'
+  | 'contains'
+  | 'notContains'
+  | 'isEmpty'
+  | 'isNotEmpty'
+  | 'lessThan'
+  | 'lessThanOrEqual'
+  | 'greaterThan'
+  | 'greaterThanOrEqual'
+  | 'includes';  // Legacy support
+
 export interface PricingConfig {
   serviceId: string;
   pricingRuleId: string;
@@ -147,7 +160,7 @@ export interface PricingConfig {
   active: boolean;
   triggerFormField?: string;
   requiredFormValue?: string;
-  comparisonLogic?: 'equals' | 'includes' | 'notEquals' | 'greaterThan' | 'lessThan' | 'contains';
+  comparisonLogic?: ComparisonOperator;
   perUnitPricing: boolean;
   unitPrice?: number;
   unitName?: string;
@@ -162,8 +175,37 @@ export interface PricingConfig {
     name: string;
     price: number;
   }>;
+
+  // Formula-based pricing fields
+  calculationMethod?: 'simple' | 'formula' | 'per-unit';
+  formulaExpression?: string;
+  formulaInputFields?: string[];
+  minimumValue?: number;
+  maximumValue?: number;
 }
 
+// DEPRECATED: AggregationRules and ServiceTotalVariable interfaces
+// These are part of the APPROACH 2 (array-based) configuration which is no longer used.
+// Kept for backward compatibility but should not be used in new code.
+
+/**
+ * ServiceConfig - Configuration for a service in the quote calculator
+ *
+ * SINGLE-ROW-PER-ENDPOINT CONFIGURATION:
+ *
+ * Each Services table row represents ONE pricing endpoint.
+ * Multiple rows with the same serviceId can exist to define different billing frequencies.
+ *
+ * Example:
+ * Row 1: serviceId="bookkeeping", billingFrequency="Monthly", totalVariableName="monthly_bookkeeping_fee"
+ * Row 2: serviceId="bookkeeping", billingFrequency="One-Time Fee", totalVariableName="catchup_bookkeeping_fee"
+ *
+ * Formula Evaluation:
+ * When {{monthly_bookkeeping_fee}} is referenced, the system:
+ * 1. Finds ServiceConfig where totalVariableName="monthly_bookkeeping_fee"
+ * 2. Extracts serviceId="bookkeeping" and billingFrequency="Monthly"
+ * 3. Sums all pricing rules where serviceId="bookkeeping" AND billingFrequency="Monthly"
+ */
 export interface ServiceConfig {
   serviceId: string;
   title: string;
@@ -172,17 +214,20 @@ export interface ServiceConfig {
   color: string;
   featured: boolean;
   benefits: string[];
-  quoteIncludedFeatures?: string[];
   active: boolean;
   serviceOrder?: number;
   hasDetailForm?: boolean;
   includedFeaturesCardTitle?: string;
   includedFeaturesCardList?: string[];
+
+  // Service-Level Total Variable Configuration (Single-Row-Per-Endpoint)
+  billingFrequency?: string;            // "Monthly", "One-Time Fee", "Annual" - filters which pricing rules to sum
+  totalVariableName?: string;           // e.g., "monthly_bookkeeping_fee" - variable name for formula references
+  displayNameQuote?: string;            // "Monthly Bookkeeping Total" - display name in quote output
 }
 
 // Dynamic Form Field Types
 export interface FormField {
-  fieldId: string;
   serviceId: string;
   fieldName: string;
   fieldType: 'text' | 'number' | 'dropdown' | 'checkbox' | 'textarea' | 'radio' | 'multi-select';

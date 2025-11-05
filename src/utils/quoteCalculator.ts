@@ -1,6 +1,7 @@
 import { FormData, QuoteData, ServiceQuote, HourlyService } from '../types/quote';
 import { PricingConfig, getServicePricing } from './pricingService';
 import { ServiceConfig, getServiceConfig } from './serviceConfigService';
+import { FormulaEvaluator } from './formulaEvaluator';
 
 // Helper function to safely get nested object values using dot notation
 const getNestedValue = (obj: any, path: string): any => {
@@ -16,7 +17,34 @@ const getNestedValue = (obj: any, path: string): any => {
   return result;
 };
 
-// Helper function to evaluate pricing rule conditions
+/**
+ * Evaluates conditional logic for pricing rules
+ *
+ * @param formData - Complete form data object
+ * @param triggerField - Field name to check (supports dot notation for nested fields)
+ * @param requiredValue - Value to compare against (empty string for isEmpty/isNotEmpty)
+ * @param comparisonLogic - Comparison operator
+ *
+ * Supported Operators:
+ *
+ * TEXT OPERATORS:
+ * - equals: Exact match (case-insensitive, trimmed)
+ * - notEquals: Not equal (case-insensitive, trimmed)
+ * - contains: Field contains value (case-insensitive)
+ * - notContains: Field does not contain value (case-insensitive)
+ *
+ * NUMERIC OPERATORS:
+ * - lessThan: Field < value (strips currency formatting)
+ * - lessThanOrEqual: Field <= value
+ * - greaterThan: Field > value
+ * - greaterThanOrEqual: Field >= value
+ *
+ * EXISTENCE OPERATORS:
+ * - isEmpty: Field is undefined, null, empty string, or empty array
+ * - isNotEmpty: Field has a value
+ *
+ * @returns true if condition is met, false otherwise
+ */
 const evaluateCondition = (
   formData: FormData,
   triggerField: string,
@@ -25,80 +53,151 @@ const evaluateCondition = (
 ): boolean => {
   const fieldValue = getNestedValue(formData, triggerField);
 
-  if (fieldValue === undefined || fieldValue === null) {
+  // Handle isEmpty check first (before value comparisons)
+  if (comparisonLogic === 'isEmpty') {
+    return fieldValue === undefined ||
+           fieldValue === null ||
+           fieldValue === '' ||
+           (Array.isArray(fieldValue) && fieldValue.length === 0);
+  }
+
+  if (comparisonLogic === 'isNotEmpty') {
+    return fieldValue !== undefined &&
+           fieldValue !== null &&
+           fieldValue !== '' &&
+           !(Array.isArray(fieldValue) && fieldValue.length === 0);
+  }
+
+  // If field value is empty and not checking for empty, return false
+  if (fieldValue === undefined || fieldValue === null || fieldValue === '') {
     return false;
   }
+
+  // Detect if we're working with numbers
+  const isNumericComparison = ['lessThan', 'lessThanOrEqual', 'greaterThan', 'greaterThanOrEqual'].includes(comparisonLogic);
 
   let result = false;
 
   switch (comparisonLogic) {
+    // TEXT OPERATORS (work on strings)
     case 'equals':
-      const trimmedFieldValue = String(fieldValue).trim();
-      const trimmedRequiredValue = String(requiredValue).trim();
-      result = trimmedFieldValue === trimmedRequiredValue;
-      return result;
-    case 'includes':
-      if (Array.isArray(fieldValue)) {
-        result = fieldValue.includes(requiredValue);
-      } else {
-        result = String(fieldValue).includes(requiredValue);
-      }
-      return result;
+      result = String(fieldValue).toLowerCase().trim() === String(requiredValue).toLowerCase().trim();
+      break;
+
     case 'notEquals':
-      result = fieldValue !== requiredValue;
-      return result;
-    case 'greaterThan':
-      result = Number(fieldValue) > Number(requiredValue);
-      return result;
-    case 'lessThan':
-      result = Number(fieldValue) < Number(requiredValue);
-      return result;
+      result = String(fieldValue).toLowerCase().trim() !== String(requiredValue).toLowerCase().trim();
+      break;
+
     case 'contains':
       result = String(fieldValue).toLowerCase().includes(String(requiredValue).toLowerCase());
-      return result;
+      break;
+
+    case 'notContains':
+      result = !String(fieldValue).toLowerCase().includes(String(requiredValue).toLowerCase());
+      break;
+
+    // NUMERIC OPERATORS (work on numbers)
+    case 'lessThan':
+      const ltValue = parseFloat(String(fieldValue).replace(/[^0-9.-]/g, ''));
+      const ltRequired = parseFloat(String(requiredValue).replace(/[^0-9.-]/g, ''));
+      result = !isNaN(ltValue) && !isNaN(ltRequired) && ltValue < ltRequired;
+      break;
+
+    case 'lessThanOrEqual':
+      const lteValue = parseFloat(String(fieldValue).replace(/[^0-9.-]/g, ''));
+      const lteRequired = parseFloat(String(requiredValue).replace(/[^0-9.-]/g, ''));
+      result = !isNaN(lteValue) && !isNaN(lteRequired) && lteValue <= lteRequired;
+      break;
+
+    case 'greaterThan':
+      const gtValue = parseFloat(String(fieldValue).replace(/[^0-9.-]/g, ''));
+      const gtRequired = parseFloat(String(requiredValue).replace(/[^0-9.-]/g, ''));
+      result = !isNaN(gtValue) && !isNaN(gtRequired) && gtValue > gtRequired;
+      break;
+
+    case 'greaterThanOrEqual':
+      const gteValue = parseFloat(String(fieldValue).replace(/[^0-9.-]/g, ''));
+      const gteRequired = parseFloat(String(requiredValue).replace(/[^0-9.-]/g, ''));
+      result = !isNaN(gteValue) && !isNaN(gteRequired) && gteValue >= gteRequired;
+      break;
+
+    // LEGACY: includes (alias for contains - backward compatibility)
+    case 'includes':
+      result = String(fieldValue).toLowerCase().includes(String(requiredValue).toLowerCase());
+      break;
+
     default:
-      return false;
+      console.warn(`Unknown comparison logic: ${comparisonLogic}`);
+      result = false;
   }
+
+  return result;
 };
 
 // Helper function to calculate price for a pricing rule
 const calculateRulePrice = (
   rule: PricingConfig,
   formData: FormData,
-  hasAdvisoryService: boolean
+  hasAdvisoryService: boolean,
+  calculatedPrices: Map<string, number>,
+  serviceConfig: ServiceConfig[] = [],
+  priceMetadata: Map<string, { price: number; serviceId: string; pricingType: string; billingFrequency: string }> = new Map()
 ): number => {
   let price = 0;
-  
-  if (rule.perUnitPricing && rule.quantitySourceField && rule.unitPrice) {
-    const quantity = getNestedValue(formData, rule.quantitySourceField);
-    let adjustedQuantity = Number(quantity) || 0;
 
-    // Special handling for additional owners fee - entity-type-specific thresholds
-    if (rule.pricingRuleId?.startsWith('business-tax-additional-owners') &&
-        rule.quantitySourceField === 'businessTax.numberOfOwners') {
+  // Determine calculation method (default to 'simple' for backward compatibility)
+  const method = rule.calculationMethod || (rule.perUnitPricing ? 'per-unit' : 'simple');
 
-      // Determine threshold based on entity type
-      let threshold = 0;
+  console.log(`Calculating price for ${rule.pricingRuleId} using method: ${method}`);
 
-      if (rule.pricingRuleId === 'business-tax-additional-owners-partnership' ||
-          rule.pricingRuleId === 'business-tax-additional-owners-llc') {
-        threshold = 2; // Partnership and LLC: charge for owners beyond 2
-      } else if (rule.pricingRuleId === 'business-tax-additional-owners-scorp' ||
-                 rule.pricingRuleId === 'business-tax-additional-owners-ccorp') {
-        threshold = 1; // S-Corp and C-Corp: charge for owners beyond 1
-      } else if (rule.pricingRuleId === 'business-tax-additional-owners') {
-        // Legacy rule (if still active) - use threshold of 2
-        threshold = 2;
+  switch (method) {
+    case 'formula':
+      // Use FormulaEvaluator for formula-based pricing
+      const evaluator = new FormulaEvaluator(formData, calculatedPrices, serviceConfig, priceMetadata);
+      price = evaluator.evaluateFormula(rule);
+      break;
+
+    case 'per-unit':
+      // Per-unit pricing (quantity × unit price)
+      if (rule.quantitySourceField && rule.unitPrice) {
+        const quantity = getNestedValue(formData, rule.quantitySourceField);
+        let adjustedQuantity = Number(quantity) || 0;
+
+        // Special handling for additional owners fee - entity-type-specific thresholds
+        if (rule.pricingRuleId?.startsWith('business-tax-additional-owners') &&
+            rule.quantitySourceField === 'businessTax.numberOfOwners') {
+
+          // Determine threshold based on entity type
+          let threshold = 0;
+
+          if (rule.pricingRuleId === 'business-tax-additional-owners-partnership' ||
+              rule.pricingRuleId === 'business-tax-additional-owners-llc') {
+            threshold = 2; // Partnership and LLC: charge for owners beyond 2
+          } else if (rule.pricingRuleId === 'business-tax-additional-owners-scorp' ||
+                     rule.pricingRuleId === 'business-tax-additional-owners-ccorp') {
+            threshold = 1; // S-Corp and C-Corp: charge for owners beyond 1
+          } else if (rule.pricingRuleId === 'business-tax-additional-owners') {
+            // Legacy rule (if still active) - use threshold of 2
+            threshold = 2;
+          }
+
+          adjustedQuantity = Math.max(0, adjustedQuantity - threshold);
+        }
+
+        price = adjustedQuantity * rule.unitPrice;
+      } else {
+        // Fallback to base price if per-unit fields are missing
+        price = rule.basePrice;
       }
+      break;
 
-      adjustedQuantity = Math.max(0, adjustedQuantity - threshold);
-    }
-
-    price = adjustedQuantity * rule.unitPrice;
-  } else {
-    price = rule.basePrice;
+    case 'simple':
+    default:
+      // Simple base price
+      price = rule.basePrice;
+      break;
   }
-  
+
   // Diagnostic logging for Advisory Services discount
   if (hasAdvisoryService) {
     console.log('=== ADVISORY DISCOUNT DEBUG ===');
@@ -108,50 +207,94 @@ const calculateRulePrice = (
     console.log('Advisory Discount Eligible:', rule.advisoryDiscountEligible);
     console.log('Advisory Discount Percentage:', rule.advisoryDiscountPercentage);
   }
-  
-  // Apply advisory discount if applicable
-  if (hasAdvisoryService && rule.advisoryDiscountEligible && rule.advisoryDiscountPercentage > 0) {
+
+  // Apply advisory discount if applicable (ONLY for non-formula methods)
+  // Formula methods should handle discounts within their expressions
+  if (method !== 'formula' && hasAdvisoryService && rule.advisoryDiscountEligible && rule.advisoryDiscountPercentage > 0) {
     price = price * (1 - rule.advisoryDiscountPercentage);
     console.log('Discounted Price:', price);
   }
-  
+
   if (hasAdvisoryService) {
     console.log('Final Price:', price);
     console.log('================================');
   }
-  
+
   return Math.round(price * 100) / 100; // Round to 2 decimal places
 };
 
+// Helper function to sort pricing rules by dependency
+// Formula rules should be processed AFTER the rules they reference
+const sortRulesByDependency = (rules: PricingConfig[]): PricingConfig[] => {
+  const formulaRules = rules.filter(r => r.calculationMethod === 'formula');
+  const otherRules = rules.filter(r => r.calculationMethod !== 'formula');
+
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('📊 RULE PROCESSING ORDER');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('Rules to process FIRST (non-formula):');
+  otherRules.forEach((rule, i) => {
+    console.log(`  ${i + 1}. ${rule.pricingRuleId} (method: ${rule.calculationMethod || 'simple'})`);
+  });
+  console.log('');
+  console.log('Rules to process LAST (formula):');
+  formulaRules.forEach((rule, i) => {
+    console.log(`  ${i + 1}. ${rule.pricingRuleId} (method: formula)`);
+  });
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('');
+
+  // Process non-formula rules first, then formula rules
+  // This ensures all base prices are calculated before formulas that reference them
+  return [...otherRules, ...formulaRules];
+};
+
 export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[] = [], serviceConfig: ServiceConfig[] = []): QuoteData => {
+  console.log('╔══════════════════════════════════════════════════════╗');
+  console.log('║         QUOTE CALCULATION STARTED                    ║');
+  console.log('╚══════════════════════════════════════════════════════╝');
+  console.log('Form Data Keys:', Object.keys(formData));
+  console.log('Total Pricing Rules:', pricingConfig.length);
+  console.log('');
+
   let totalMonthlyFees = 0;
   let totalOneTimeFees = 0;
   let totalAnnual = 0;
   let complexity: 'low' | 'medium' | 'high' | 'very-high' = 'low';
   const recommendations: string[] = [];
-  
+
   // Check if advisory service is selected
   const hasAdvisoryService = formData.services.includes('advisory');
-  
+
+  // Create a Map to store calculated prices for formula references
+  const calculatedPrices = new Map<string, number>();
+
+  // Create a Map to store pricing rule metadata (for service total calculations)
+  const priceMetadata = new Map<string, { price: number; serviceId: string; pricingType: string; billingFrequency: string }>();
+
   // Debug logging
   console.log('=== QUOTE CALCULATION DEBUG ===');
   console.log('Selected services:', formData.services);
   console.log('Has advisory service:', hasAdvisoryService);
   console.log('Pricing config length:', pricingConfig.length);
   console.log('Pricing config:', pricingConfig);
-  
+
   // If no pricing config is available, fall back to original logic
   if (pricingConfig.length === 0) {
     console.log('No pricing config available, using defaults');
     return calculateQuoteWithDefaults(formData, serviceConfig);
   }
-  
+
+  // Sort rules to ensure base pricing rules are calculated before formulas that reference them
+  const sortedRules = sortRulesByDependency(pricingConfig);
+  console.log('Rules sorted by dependency. Formula rules will be processed last.');
+
   // Group pricing rules by service for better organization
   const serviceGroups: { [key: string]: { rules: PricingConfig[], totalMonthlyFees: number, totalOneTimeFees: number } } = {};
   const hourlyServices: HourlyService[] = [];
-  
+
   // Process each pricing rule
-  for (const rule of pricingConfig) {
+  for (const rule of sortedRules) {
     console.log(`\n--- Processing rule: ${rule.pricingRuleId} ---`);
     console.log('Rule details:', {
       pricingRuleId: rule.pricingRuleId,
@@ -243,7 +386,22 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
     }
 
     // Calculate price for this rule
-    const rulePrice = calculateRulePrice(rule, formData, hasAdvisoryService);
+    const rulePrice = calculateRulePrice(rule, formData, hasAdvisoryService, calculatedPrices, serviceConfig, priceMetadata);
+
+    // Store calculated price for this rule (formula evaluator needs access to all entries)
+    calculatedPrices.set(rule.pricingRuleId, rulePrice);
+
+    // Store metadata for service total calculations
+    priceMetadata.set(rule.pricingRuleId, {
+      price: rulePrice,
+      serviceId: rule.serviceId,
+      pricingType: rule.pricingType,
+      billingFrequency: rule.billingFrequency
+    });
+
+    if (rulePrice > 0) {
+      console.log(`💰 ${rule.pricingRuleId}: $${rulePrice} (method: ${rule.calculationMethod || 'simple'})`);
+    }
 
     if (rulePrice <= 0) continue;
 
@@ -316,7 +474,7 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
       let addOnFees = 0;
 
       for (const rule of bookkeepingGroup.rules) {
-        const rulePrice = calculateRulePrice(rule, formData, hasAdvisoryService);
+        const rulePrice = calculateRulePrice(rule, formData, hasAdvisoryService, calculatedPrices, serviceConfig, priceMetadata);
 
         if (baseFeeRuleIds.includes(rule.pricingRuleId) && rule.billingFrequency === 'Monthly') {
           calculatedBaseFee += rulePrice;
@@ -363,9 +521,36 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
   // Use serviceConfig order as the base, then apply conditional reordering
   const services: ServiceQuote[] = [];
 
-  // Process services in serviceConfig order (already sorted by serviceOrder)
-  for (const serviceConfigItem of serviceConfig) {
-    const serviceId = serviceConfigItem.serviceId;
+  // GROUP SERVICECONFIG ENTRIES BY SERVICE ID
+  // Multiple rows in Services table with same serviceId represent different billing frequencies
+  // We need ONE card per serviceId, not one card per Services table row
+  const serviceConfigByServiceId = new Map<string, ServiceConfig[]>();
+
+  for (const configItem of serviceConfig) {
+    if (!serviceConfigByServiceId.has(configItem.serviceId)) {
+      serviceConfigByServiceId.set(configItem.serviceId, []);
+    }
+    serviceConfigByServiceId.get(configItem.serviceId)!.push(configItem);
+  }
+
+  console.log('\n=== SERVICE CONFIG GROUPING ===');
+  for (const [serviceId, configs] of serviceConfigByServiceId.entries()) {
+    console.log(`${serviceId}: ${configs.length} config row(s)`);
+    configs.forEach(c => console.log(`  - ${c.title} (${c.billingFrequency || 'no billing freq'})`));
+  }
+  console.log('================================\n');
+
+  // Get unique service IDs in the correct order (based on minimum serviceOrder)
+  const uniqueServiceIds = Array.from(serviceConfigByServiceId.keys()).sort((a, b) => {
+    const configsA = serviceConfigByServiceId.get(a)!;
+    const configsB = serviceConfigByServiceId.get(b)!;
+    const minOrderA = Math.min(...configsA.map(c => c.serviceOrder || 999));
+    const minOrderB = Math.min(...configsB.map(c => c.serviceOrder || 999));
+    return minOrderA - minOrderB;
+  });
+
+  // Process each unique service ID
+  for (const serviceId of uniqueServiceIds) {
     const group = serviceGroups[serviceId];
 
     // SKIP ADDITIONAL SERVICES - they are displayed in a separate section
@@ -377,26 +562,27 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
     }
 
     if (!group || group.rules.length === 0) continue;
-    
-    // Get the service configuration from Airtable
-    const serviceConfigData = serviceConfigItem;
-    
-    // Get the main service name and description from service config or fallback
+
+    // SELECT PRIMARY SERVICE CONFIG ROW for display metadata
+    // Priority: Monthly billing frequency > lowest service order > first occurrence
+    const configRows = serviceConfigByServiceId.get(serviceId)!;
+    const primaryConfig = configRows.find(c => c.billingFrequency === 'Monthly') ||
+                          configRows.sort((a, b) => (a.serviceOrder || 999) - (b.serviceOrder || 999))[0];
+
+    console.log(`\n=== PROCESSING SERVICE: ${serviceId} ===`);
+    console.log(`Primary config: ${primaryConfig.title}`);
+    console.log(`Config rows available: ${configRows.length}`);
+    console.log(`Monthly fees: $${group.totalMonthlyFees}`);
+    console.log(`One-time fees: $${group.totalOneTimeFees}`);
+
+    // Get the main service name and description from primary config or fallback
     const baseRule = group.rules.find(r => r.pricingType === 'Base Service') || group.rules[0];
-    
-    // Determine included features based on service type and configuration
-    let includedFeatures: string[] = [];
-    
-    if (serviceId === 'advisory' && serviceConfigData?.quoteIncludedFeatures && serviceConfigData.quoteIncludedFeatures.length > 0) {
-      // Use comprehensive features from Airtable for Advisory Services
-      includedFeatures = serviceConfigData.quoteIncludedFeatures;
-    } else {
-      // Use pricing rules for other services
-      includedFeatures = group.rules
-        .filter(r => r.pricingType === 'Base Service' || (r.pricingType === 'Add-on' && calculateRulePrice(r, formData, hasAdvisoryService) > 0))
-        .map(r => r.serviceName);
-    }
-    
+
+    // Determine included features from pricing rules
+    const includedFeatures: string[] = group.rules
+      .filter(r => r.pricingType === 'Base Service' || (r.pricingType === 'Add-on' && calculateRulePrice(r, formData, hasAdvisoryService, calculatedPrices, serviceConfig, priceMetadata) > 0))
+      .map(r => r.serviceName);
+
     // Generate pricing factors for individual tax service
     let pricingFactors: string[] = [];
     if (serviceId === 'individual-tax' && formData.individualTax) {
@@ -419,20 +605,25 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
         pricingFactors.push(`${formData.individualTax.rentalPropertyCount} Rental Properties`);
       }
     }
-    
+
     const serviceQuote: ServiceQuote = {
-      name: serviceConfigData?.title || getServiceDisplayName(serviceId),
-      description: serviceConfigData?.description || baseRule.description || getServiceDescription(serviceId),
+      name: primaryConfig?.title || getServiceDisplayName(serviceId),
+      description: primaryConfig?.description || baseRule.description || getServiceDescription(serviceId),
       monthlyFee: Math.round(group.totalMonthlyFees),
       oneTimeFee: Math.round(group.totalOneTimeFees),
       annualPrice: Math.round(group.totalMonthlyFees * 12 + group.totalOneTimeFees),
       included: includedFeatures,
       addOns: group.rules
-        .filter(r => r.pricingType === 'Add-on' && calculateRulePrice(r, formData, hasAdvisoryService) === 0)
+        .filter(r => r.pricingType === 'Add-on' && calculateRulePrice(r, formData, hasAdvisoryService, calculatedPrices, serviceConfig, priceMetadata) === 0)
         .map(r => `${r.serviceName} (+$${r.basePrice || r.unitPrice})`),
       pricingFactors: pricingFactors.length > 0 ? pricingFactors : undefined
     };
-    
+
+    console.log(`Created service quote card: ${serviceQuote.name}`);
+    console.log(`  Monthly: $${serviceQuote.monthlyFee}, One-time: $${serviceQuote.oneTimeFee}`);
+    console.log(`  Included features: ${serviceQuote.included.length}`);
+    console.log('=====================================\n');
+
     services.push(serviceQuote);
   }
   
@@ -512,6 +703,13 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
   const potentialSavings = Math.round((totalMonthlyFees * 12 + totalOneTimeFees) * 0.3); // Estimate 30% savings from tax optimization
 
   const finalTotalAnnual = totalMonthlyFees * 12 + totalOneTimeFees;
+
+  console.log('');
+  console.log('╔══════════════════════════════════════════════════════╗');
+  console.log('║         QUOTE CALCULATION COMPLETE                   ║');
+  console.log('╚══════════════════════════════════════════════════════╝');
+  console.log('Total rules triggered:', calculatedPrices.size);
+  console.log('');
 
   return {
     services,

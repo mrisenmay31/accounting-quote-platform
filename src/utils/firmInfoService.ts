@@ -2,7 +2,6 @@ export interface FirmInfo {
   firmName: string;
   primaryBrandColor: string;
   secondaryBrandColor: string;
-  servicesOffered: string;
 
   // Tool Branding
   toolName?: string;
@@ -37,12 +36,6 @@ export interface FirmInfo {
   testimonial1Text?: string;
   testimonial2ClientName?: string;
   testimonial2Text?: string;
-
-  // Form field type overrides
-  annualRevenueFieldType?: 'text' | 'number' | 'dropdown';
-  annualRevenueOptions?: string[];
-  monthlyTransactionsFieldType?: 'text' | 'number' | 'dropdown';
-  monthlyTransactionsOptions?: string[];
 
   // Consultation Link
   consultationLink?: string;
@@ -110,7 +103,6 @@ export const getFirmInfo = async (
       firmName: fields['Firm Name'] || '',
       primaryBrandColor: fields['Primary Brand Color'] || '',
       secondaryBrandColor: fields['Secondary Brand Color'] || '',
-      servicesOffered: fields['Services Offered'] || '',
 
       // Tool Branding
       toolName: fields['Tool Name'] || 'Quote Calculator',
@@ -145,30 +137,6 @@ export const getFirmInfo = async (
       testimonial1Text: fields['Client Testimonial 1 - Testimonial Text'] || '',
       testimonial2ClientName: fields['Client Testimonial 2 - Client Name'] || '',
       testimonial2Text: fields['Client Testimonial 2 - Testimonial Text'] || '',
-
-      // Form field type overrides
-      annualRevenueFieldType: fields['Annual Revenue Field Type'] || 'dropdown',
-      annualRevenueOptions: (() => {
-        try {
-          return fields['Annual Revenue Options']
-            ? JSON.parse(fields['Annual Revenue Options'])
-            : [];
-        } catch (error) {
-          console.warn('[FirmInfoService] Failed to parse Annual Revenue Options:', error);
-          return [];
-        }
-      })(),
-      monthlyTransactionsFieldType: fields['Monthly Transactions Field Type'] || 'number',
-      monthlyTransactionsOptions: (() => {
-        try {
-          return fields['Monthly Transactions Options']
-            ? JSON.parse(fields['Monthly Transactions Options'])
-            : [];
-        } catch (error) {
-          console.warn('[FirmInfoService] Failed to parse Monthly Transactions Options:', error);
-          return [];
-        }
-      })(),
 
       // Consultation Link
       consultationLink: fields['Consultation Link'] || '',

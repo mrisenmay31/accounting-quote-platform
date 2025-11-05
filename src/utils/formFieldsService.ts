@@ -5,9 +5,18 @@
  */
 
 export interface FormField {
-  fieldId: string;
   serviceId: string;
   fieldName: string;
+  /**
+   * Field Type - Defines data structure and behavior
+   * - text: Single line text input
+   * - number: Numeric input with validation
+   * - dropdown: Single selection from list (one value)
+   * - checkbox: Single boolean checkbox (true/false)
+   * - textarea: Multi-line text input
+   * - radio: Single selection with radio buttons (one value)
+   * - multi-select: Multiple selections (array of values)
+   */
   fieldType: 'text' | 'number' | 'dropdown' | 'checkbox' | 'textarea' | 'radio' | 'multi-select';
   fieldLabel: string;
   placeholder?: string;
@@ -15,12 +24,19 @@ export interface FormField {
   required: boolean;
   active: boolean;
   displayOrder: number;
-  conditionalLogic?: string; // JSON string (for future implementation)
+  conditionalLogic?: string; // JSON string for show/hide logic
   helpText?: string;
   // Layout metadata
   fieldWidth?: 'full' | 'half';
   sectionHeader?: string;
   sectionIcon?: string;
+  /**
+   * Layout Type - Defines visual presentation
+   * - standard: Default rendering based on field type
+   * - checkbox-grid: Grid layout with clickable cards (requires multi-select field type)
+   * - radio-group: Large clickable cards (requires radio field type)
+   * - textarea: Multi-line text area layout (requires textarea field type)
+   */
   layoutType?: 'standard' | 'checkbox-grid' | 'radio-group' | 'textarea';
   columns?: number; // Number of columns for checkbox grids
   rowGroup?: number; // Group number for half-width fields on same row
@@ -34,13 +50,12 @@ export interface AirtableFormFieldConfig {
 interface AirtableRecord {
   id: string;
   fields: {
-    'Field ID'?: string;
     'Service ID'?: string;
     'Field Name'?: string;
     'Field Type'?: string;
     'Field Label'?: string;
     'Placeholder'?: string;
-    'Options'?: string;
+    'Field Options'?: string;
     'Required'?: boolean;
     'Active'?: boolean;
     'Display Order'?: number;
@@ -119,13 +134,12 @@ export const fetchFormFields = async (
 
     // Transform Airtable records to FormField objects
     const formFields: FormField[] = data.records.map(record => ({
-      fieldId: record.fields['Field ID'] || record.id,
       serviceId: record.fields['Service ID'] || serviceId,
       fieldName: record.fields['Field Name'] || '',
       fieldType: (record.fields['Field Type'] as FormField['fieldType']) || 'text',
       fieldLabel: record.fields['Field Label'] || '',
       placeholder: record.fields['Placeholder'],
-      options: record.fields['Options'],
+      options: record.fields['Field Options'],
       required: record.fields['Required'] || false,
       active: record.fields['Active'] !== false,
       displayOrder: record.fields['Display Order'] || 999,
