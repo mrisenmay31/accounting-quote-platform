@@ -1,4 +1,4 @@
-Service ID,Service Order,Active,Featured,Title,Description,Icon Name,Color,Benefits,Quote Included Features
+﻿Service ID,Service Order,Active,Featured,Title,Description,Icon Name,Color,Benefits,Quote Included Features
 individual-tax,1,checked,,Individual Tax Preparation,"Complete preparation and filing of your individual tax return (Form 1040)
 
 ",FileText,blue,"[""Complete tax return preparation and filing"", ""Year-end strategy consultation and comprehensive review"", ""Tax planning consultation for liability minimization"", ""50% discount pricing for Advisory clients""]",
