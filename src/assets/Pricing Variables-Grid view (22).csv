@@ -1,4 +1,4 @@
-﻿Service ID,Service Name,Pricing Rule ID,Rule Name,Description,Pricing Type,Base Price,Billing Frequency,Active,Trigger Form Field,Required Form Field,Comparison Logic,Per-Unit Pricing,Unit Price,Unit Name,Quantity Source Field
+Service ID,Service Name,Pricing Rule ID,Rule Name,Description,Pricing Type,Base Price,Billing Frequency,Active,Trigger Form Field,Required Form Field,Comparison Logic,Per-Unit Pricing,Unit Price,Unit Name,Quantity Source Field
 individual-tax,2,individual-tax-base-single,Filing Status: Single,Individual tax return prep for Single ,Base Service,$275.00,One-Time Fee,checked,"individualTax.filingStatus
 ",Single,includes,,,,
 individual-tax,2,individual-tax-base-hoh,Filing Status: Head of Household,Individual tax return prep for Head of Household,Base Service,$275.00,One-Time Fee,checked,"individualTax.filingStatus
