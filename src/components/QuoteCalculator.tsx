@@ -19,6 +19,7 @@ import { sendQuoteToZapierWebhook } from '../utils/zapierIntegration';
 import { useTenant } from '../contexts/TenantContext';
 import { saveQuote } from '../utils/quoteStorage';
 import { fetchFormFields, FormField } from '../utils/formFieldsService';
+import { createQuoteRecord } from '../utils/airtableWriteService';
 
 // Feature flag: Set to true to use dynamic Airtable form fields for Individual Tax
 const USE_DYNAMIC_INDIVIDUAL_TAX = true;
@@ -259,53 +260,94 @@ const QuoteCalculator: React.FC = () => {
         return;
       }
 
-      // ✅ OPTIONAL: Fetch form fields only if you want field labels in Zapier
-      // This is NOT required for sending dynamic form data (formData already has all values)
-      let allFormFields: FormField[] = [];
-      try {
-        const formFieldsPromises = formData.services.map(serviceId =>
-          fetchFormFields(tenant, serviceId)
-        );
-        const formFieldsArrays = await Promise.all(formFieldsPromises);
-        allFormFields = formFieldsArrays.flat();
-        console.log(`Fetched ${allFormFields.length} form field definitions for labels`);
-      } catch (error) {
-        console.warn('Could not fetch form field definitions (labels only):', error);
-        // Continue without field labels - all formData values will still be sent
-      }
+      console.log('=== QUOTE SUBMISSION STARTED ===');
+      console.log('Timestamp:', new Date().toISOString());
 
-      // Send quote data to tenant's Zapier webhook with 'new' status first
-      // This generates the Quote ID that we'll use everywhere
-      // All formData fields will be sent, even if allFormFields is empty
-      const zapierResult = await sendQuoteToZapierWebhook(
+      // Step 1: Write directly to Airtable (PRIMARY METHOD)
+      console.log('[Quote Submission] Step 1: Writing to Airtable via direct API...');
+
+      const airtableConfig = {
+        baseId: tenant.airtable.quotesBaseId || tenant.airtable.servicesBaseId,
+        apiKey: tenant.airtable.quotesApiKey || tenant.airtable.servicesApiKey,
+        tableName: tenant.airtable.quotesTableName || 'Client Quotes',
+      };
+
+      console.log('[Quote Submission] Using Airtable configuration:', {
+        baseId: airtableConfig.baseId,
+        tableName: airtableConfig.tableName,
+        hasCustomQuotesBase: !!tenant.airtable.quotesBaseId,
+      });
+
+      const airtableResult = await createQuoteRecord(
+        airtableConfig,
         formData,
         quote,
-        pricingConfig,
-        tenant.id,
-        tenant.zapierWebhookUrl,
-        allFormFields,
-        'new'
+        tenant.id
       );
 
-      // Capture the generated Quote ID
-      if (zapierResult.quoteId) {
-        setQuoteId(zapierResult.quoteId);
-        console.log('Quote ID captured:', zapierResult.quoteId);
+      let generatedQuoteId = airtableResult.quoteId;
 
-        // Save quote to database with the Quote ID
+      if (airtableResult.success) {
+        console.log('[Quote Submission] ✓ Airtable write successful!');
+        console.log('[Quote Submission] Quote ID:', airtableResult.quoteId);
+        console.log('[Quote Submission] Record ID:', airtableResult.recordId);
+        setQuoteId(airtableResult.quoteId);
+      } else {
+        console.error('[Quote Submission] ✗ Airtable write failed:', airtableResult.error);
+        console.log('[Quote Submission] Attempting fallback to Zapier webhook...');
+
+        // Step 2: Fallback to Zapier webhook (LEGACY SUPPORT)
+        let allFormFields: FormField[] = [];
+        try {
+          const formFieldsPromises = formData.services.map(serviceId =>
+            fetchFormFields(tenant, serviceId)
+          );
+          const formFieldsArrays = await Promise.all(formFieldsPromises);
+          allFormFields = formFieldsArrays.flat();
+          console.log(`[Quote Submission] Fetched ${allFormFields.length} form field definitions for Zapier`);
+        } catch (error) {
+          console.warn('[Quote Submission] Could not fetch form field definitions:', error);
+        }
+
+        const zapierResult = await sendQuoteToZapierWebhook(
+          formData,
+          quote,
+          pricingConfig,
+          tenant.id,
+          tenant.zapierWebhookUrl,
+          allFormFields,
+          'new'
+        );
+
+        if (zapierResult.success && zapierResult.quoteId) {
+          console.log('[Quote Submission] ✓ Zapier webhook fallback successful!');
+          console.log('[Quote Submission] Quote ID:', zapierResult.quoteId);
+          generatedQuoteId = zapierResult.quoteId;
+          setQuoteId(zapierResult.quoteId);
+        } else {
+          console.error('[Quote Submission] ✗ Zapier webhook fallback also failed');
+        }
+      }
+
+      // Step 3: Save quote to Supabase database (always attempt)
+      if (generatedQuoteId) {
+        console.log('[Quote Submission] Step 3: Saving to Supabase database...');
         await saveQuote({
           tenantId: tenant.id,
           formData,
           quoteData: quote,
           tenant: tenant,
-          quoteId: zapierResult.quoteId,
+          quoteId: generatedQuoteId,
         });
+        console.log('[Quote Submission] ✓ Supabase save complete');
       }
 
-      // Advance to quote results page regardless of webhook success/failure
+      console.log('=== QUOTE SUBMISSION COMPLETED ===');
+
+      // Advance to quote results page regardless of write success/failure
       nextStep();
     } catch (error) {
-      console.error('Error during quote submission:', error);
+      console.error('[Quote Submission] Unexpected error during quote submission:', error);
       // Still advance to quote results page
       nextStep();
     } finally {
