@@ -1,0 +1,306 @@
+﻿Service ID,Airtable Column Name,Field Name,Display Order,Field Label,Field Type,Placeholder,Help Text,Section Header,Section Icon,Field Options,Field Options (Editable),Required,Active,Field Width,Layout Type,Columns,Row Group,Conditional Field,Conditional Operator,Conditional Value,Conditional Logic,Has Pricing Potential,Parsed Options,Options Count,Comparison Logic,Push to Pricing Variables Table,Validation Rules (INACTIVE - Future Feature)
+contact-info,First Name,firstName,10,First Name,text,,,,,"[""""]",,,checked,half,standard,,1,,,,,✅ Yes,,1,equals,,
+contact-info,Last Name,lastName,20,Last Name,text,,,,,"[""""]",,,checked,half,standard,,1,,,,,✅ Yes,,1,equals,,
+contact-info,Email,email,30,Email,email,,,,,"[""""]",,,checked,half,standard,,2,,,,,❌ No,,0,equals,,
+contact-info,Phone,phoneNumber,40,Phone Number,phone,,,,,"[""""]",,,checked,half,standard,,2,,,,,❌ No,,0,equals,,
+individual-tax,Filing Status,filingStatus,10,Filing Status,dropdown,,,General information,user-check,"[""Single"", ""Married Filing Jointly"", ""Married Filing Separately"", ""Head of Household""]","Single
+Married Filing Jointly
+Married Filing Separately
+Head of Household",,checked,half,standard,,1,,,,,✅ Yes,"Single, Married Filing Jointly, Married Filing Separately, Head of Household",4,equals,,
+individual-tax,Taxpayer Age,taxpayerAge,20,What is your age?,dropdown,,Taxpayers 65+ may qualify for Form 1040-SR with lower preparation fees,,,"[""Under 65"", ""65 or older""]","Under 65
+65 or older",,checked,half,standard,,1,,,,,✅ Yes,"Under 65, 65 or older",2,equals,checked,
+individual-tax,Annual Income,annualIncome,30,Annual Income,dropdown,,,,dollar-sign,"[""$0 - $50,000"", ""$50,001 - $100,000"", ""$100,001 - $200,000"", ""$200,001 - $500,000"", ""$500,001+""]","$0 - $50,000
+$50,001 - $100,000
+$100,001 - $200,000
+$200,001 - $500,000
+$500,001+",,checked,half,standard,,2,,,,,✅ Yes,"$0 - $50,000, $50,001 - $100,000, $100,001 - $200,000, $200,001 - $500,000, $500,001+",13,equals,,
+individual-tax,Tax Year,taxYear,40,Tax Year Needed,dropdown,,,,calendar,"[""2024"", ""2023"", ""Multiple years""]","2024
+2023
+Multiple years",,checked,half,standard,,2,,,,,✅ Yes,"2024, 2023, Multiple years",3,equals,,
+individual-tax,Amended Return,amendedReturn,50,Are you amending a prior year return?,dropdown,,,,,"[""Yes"", ""No""]","Yes
+No",,checked,half,standard,,3,,,,,✅ Yes,"Yes, No",2,equals,checked,
+individual-tax,Timeline,timeline,60,When do you need this completed?,dropdown,,,,clock,"[""ASAP (within 1 week)"", ""Within 2 weeks"", ""Within 1 month"", ""Before tax deadline"", ""Not urgent - flexible timing""]","ASAP (within 1 week)
+Within 2 weeks
+Within 1 month
+Before tax deadline
+Not urgent - flexible timing",,checked,half,standard,,3,,,,,✅ Yes,"ASAP (within 1 week), Within 2 weeks, Within 1 month, Before tax deadline, Not urgent - flexible timing",5,equals,,
+individual-tax,Income Types,IncomeTypes,70,Types of Income (Select all that apply),multi-select,,,Types of Income (Select all that apply),briefcase,"[""W-2 wages"", ""1099 income"", ""Social Security"", ""Unemployment"", ""Interest/Dividend Income"", ""Investment income (stocks, bonds)"", ""Retirement distributions"", ""Self-Employment Income"", ""Other Income""]","W-2 wages
+1099 income
+Social Security
+Unemployment
+Interest/Dividend Income
+Investment income (stocks, bonds)
+Retirement distributions
+Self-Employment Income
+Other Income",,checked,full,checkbox-grid,2,,,,,,✅ Yes,"W-2 wages, 1099 income, Social Security, Unemployment, Interest/Dividend Income, Investment income (stocks, bonds), Retirement distributions, Self-Employment Income, Other Income",10,includes,,
+individual-tax,1099 Number,1099number,71,How many 1099's do you have?,number,,,,,"[""""]",,,checked,full,standard,,,IncomeTypes,includes,1099 income,"{""showIf"":{""field"":""IncomeTypes"",""operator"":""includes"",""value"":""1099 income""}}",✅ Yes,,1,greaterThanOrEqual,,
+individual-tax,Interest/Dividend Amount,interestDividendAmount,80,Total interest and dividend income,dropdown,,,,,"[""Under $1,500 "", "" Over $1,500""]"," Under $1,500 
+ Over $1,500 
+",,checked,half,standard,,,IncomeTypes,includes,Interest/Dividend Income,"{""showIf"":{""field"":""IncomeTypes"",""operator"":""includes"",""value"":""Interest/Dividend Income""}}",✅ Yes,"Under $1,500 ,  Over $1,500",4,equals,checked,
+individual-tax,Self-Employment Income Sources,selfEmploymentIncome,90,How many sources of self-employment income do you have?,dropdown,,,,,"[""1"", ""2"", ""3"", ""4"", ""5+""]","1
+2
+3
+4
+5+",,checked,half,standard,,4,IncomeTypes,includes,Self-Employment Income,"{""showIf"":{""field"":""IncomeTypes"",""operator"":""includes"",""value"":""Self-Employment Income""}}",✅ Yes,"1, 2, 3, 4, 5+",5,equals,,
+individual-tax,Self-Employment Income,businessIncome,91,What was your approximate gross income for this business?,dropdown,,,,,"[""Under $10,000"", ""$10,000 - $24,999"", ""$25,000 - $49,999"", ""$50,000 - $99,999"", ""$100,000 or more""]","Under $10,000
+$10,000 - $24,999
+$25,000 - $49,999
+$50,000 - $99,999
+$100,000 or more",,checked,full,standard,,,IncomeTypes,includes,Self-Employment Income,"{""showIf"":{""field"":""IncomeTypes"",""operator"":""includes"",""value"":""Self-Employment Income""}}",✅ Yes,"Under $10,000, $10,000 - $24,999, $25,000 - $49,999, $50,000 - $99,999, $100,000 or more",13,equals,checked,
+individual-tax,Business Complexity Factors,businessComplexityFactors,92,Do any of these apply to your business?,multi-select,,,,,"[""I have business inventory"", ""I have employees"", ""I have significant equipment or vehicles"", ""I have multiple business locations""]","I have business inventory
+I have employees
+I have significant equipment or vehicles
+I have multiple business locations",,checked,full,checkbox-grid,2,,businessIncome,equals,"$100,000 or more","{""showIf"":{""field"":""businessIncome"",""operator"":""equals"",""value"":""$100,000 or more""}}",✅ Yes,"I have business inventory, I have employees, I have significant equipment or vehicles, I have multiple business locations",4,includes,checked,
+individual-tax,Schedule SE Needed,needScheduleSE,100,Do you need to calculate self-employment tax?,dropdown,,Required if you have net self-employment income of $400 or more,,,"[""Yes"", ""No""]","Yes
+No",,checked,half,standard,,4,IncomeTypes,includes,Self-Employment Income,"{""showIf"":{""field"":""IncomeTypes"",""operator"":""includes"",""value"":""Self-Employment Income""}}",✅ Yes,"Yes, No",2,equals,checked,
+individual-tax,Home Office Deduction,homeOfficeDeduction,101,Do you claim a home office deduction?,dropdown,,,,,"[""Yes"", ""No""]","Yes
+No",,checked,half,standard,,5,IncomeTypes,includes,Self-Employment Income,"{""showIf"":{""field"":""IncomeTypes"",""operator"":""includes"",""value"":""Self-Employment Income""}}",✅ Yes,"Yes, No",2,equals,checked,
+individual-tax,Business Assets,businessAssets,102,Do you have business assets to depreciate?,dropdown,,,,,"[""Yes"", ""No""]","Yes
+No",,checked,half,standard,,5,IncomeTypes,includes,Self-Employment Income,"{""showIf"":{""field"":""IncomeTypes"",""operator"":""includes"",""value"":""Self-Employment Income""}}",✅ Yes,"Yes, No",2,equals,checked,
+individual-tax,Employee Business Expenses,employeeBusinessExpenses,103,Do you have unreimbursed employee expenses?,dropdown,,,,,"[""Yes"", ""No""]","Yes
+No",,checked,half,standard,,6,IncomeTypes,includes,Self-Employment Income,"{""showIf"":{""field"":""IncomeTypes"",""operator"":""includes"",""value"":""Self-Employment Income""}}",✅ Yes,"Yes, No",2,equals,checked,
+individual-tax,General Business Credit,generalBusinessCredit,104,Do you have business tax credits to claim?,dropdown,,,,,"[""Yes"", ""No""]","Yes
+No",,checked,full,standard,,6,IncomeTypes,includes,Self-Employment Income,"{""showIf"":{""field"":""IncomeTypes"",""operator"":""includes"",""value"":""Self-Employment Income""}}",✅ Yes,"Yes, No",2,equals,checked,
+individual-tax,Other Income Sources,otherIncome,105,What other sources of income do you have?,textarea,,,,,"[""""]",,,checked,full,standard,,,IncomeTypes,includes,Other Income,"{""showIf"":{""field"":""IncomeTypes"",""operator"":""includes"",""value"":""Other Income""}}",❌ No,,0,equals,,
+individual-tax,Interest/Dividend Amount,interestDividendAmount,106,Number of investment sales/transactions,dropdown,,,,,"[""1-10 transactions"", ""11-50 transactions"", ""51+ transactions""]","1-10 transactions
+11-50 transactions
+51+ transactions",,checked,full,standard,,,IncomeTypes,includes,"Investment income (stocks, bonds)","{""showIf"":{""field"":""IncomeTypes"",""operator"":""includes"",""value"":""Investment income (stocks, bonds)""}}",✅ Yes,"1-10 transactions, 11-50 transactions, 51+ transactions",3,equals,checked,
+individual-tax,Loss Carry Forward,lossCarryForward,107,Are you carrying any losses from prior years?,dropdown,,,,,"[""Yes"", ""No""]","Yes
+No",,checked,full,standard,,,IncomeTypes,includes,"Investment income (stocks, bonds)","{""showIf"":{""field"":""IncomeTypes"",""operator"":""includes"",""value"":""Investment income (stocks, bonds)""}}",✅ Yes,"Yes, No",2,equals,checked,
+individual-tax,Deduction Preference,deductionPreference,110,Deduction Preference,radio,,,Deduction Preference,file-text,"[""Standard deduction"", ""Itemized deductions"", ""Not sure - need guidance""]","Standard deduction
+Itemized deductions
+Not sure - need guidance",,checked,full,radio-group,,,,,,,✅ Yes,"Standard deduction, Itemized deductions, Not sure - need guidance",3,equals,,
+individual-tax,Business Use of Home,businessUseofHome,111,Did you use your home to run a business?,dropdown,,,,,"[""Yes"", ""No""]","Yes
+No",,checked,full,standard,,,deductionPreference,includes,Itemized deductions,"{""showIf"":{""field"":""deductionPreference"",""operator"":""includes"",""value"":""Itemized deductions""}}",✅ Yes,"Yes, No",2,equals,checked,
+individual-tax,Other Income types,otherIncomeTypes,120,Other Types of Income,multi-select,,,Other Types of Income (Select all that apply),trending-up,"[""S-Corp/Partnership Income"", ""Publicly Traded Partnership K-1s"", ""Rental Property Income"", ""Farm Income"", ""Cryptocurrency Sales"", ""Gambling Income"", ""Foreign Income"", ""Cancellation of Debt (1099-C)""]","S-Corp/Partnership Income
+Publicly Traded Partnership K-1s
+Rental Property Income
+Farm Income
+Cryptocurrency Sales
+Gambling Income
+Foreign Income
+Cancellation of Debt (1099-C)",,checked,full,checkbox-grid,2,,,,,,✅ Yes,"S-Corp/Partnership Income, Publicly Traded Partnership K-1s, Rental Property Income, Farm Income, Cryptocurrency Sales, Gambling Income, Foreign Income, Cancellation of Debt (1099-C)",8,includes,checked,
+individual-tax,Number of Rental Properties,rentalPropertyCount,130,How many rental properties do you own?,dropdown,,,,,"[""1"", ""2"", ""3"", ""4"", ""5+""]","1
+2
+3
+4
+5+",,checked,half,,,,otherIncomeTypes,includes,Rental Property Income,"{""showIf"":{""field"":""otherIncomeTypes"",""operator"":""includes"",""value"":""Rental Property Income""}}",✅ Yes,"1, 2, 3, 4, 5+",5,equals,,
+individual-tax,Number of K1s,K1Count,140,How many K1s do you have?,dropdown,,,,,"[""1"", ""2"", ""3"", ""4"", ""5+""]","1
+2
+3
+4
+5+",,checked,half,,,,otherIncomeTypes,includes,S-Corp/Partnership Income,"{""showIf"":{""field"":""otherIncomeTypes"",""operator"":""includes"",""value"":""S-Corp/Partnership Income""}}",✅ Yes,"1, 2, 3, 4, 5+",5,equals,,
+individual-tax,Do you have any Dependents?,dependents,141,Do you have any dependents?,dropdown,,,Dependent Information,,"[""Yes"", ""No""]","Yes
+No",,checked,half,standard,,,,,,,✅ Yes,"Yes, No",2,equals,,
+individual-tax,Earned Income Credit,earnedIncomeCredit,142,Do you qualify for the Earned Income Tax Credit?,dropdown,,"Income limits: Single <$63K, Married <$69K (with children)",,,"[""Yes"", ""No""]","Yes
+No",,checked,half,standard,,,dependents,includes,Yes,"{""showIf"":{""field"":""dependents"",""operator"":""includes"",""value"":""Yes""}}",✅ Yes,"Yes, No",2,equals,checked,
+individual-tax,Childcare Expenses,childcareExpenses,143,Did you pay for any childcare or daycare expenses so you could work?,dropdown,,,,,"[""Yes"", ""No""]","Yes
+No",,checked,half,standard,,,dependents,includes,Yes,"{""showIf"":{""field"":""dependents"",""operator"":""includes"",""value"":""Yes""}}",✅ Yes,"Yes, No",2,equals,checked,
+individual-tax,Additional Considerations,additionalConsiderations,150,Additional Considerations,multi-select,,,Additional Considerations,home,"[""Primary home sale"", ""Investment Property sale"", ""Income from multiple states"", ""Adopted a child"", ""Divorce"", ""Marriage"", ""Education Expenses"", ""Alternative Minimum Tax"", ""Passive Activity Losses"", ""Injured Spouse Allocation"", ""Innocent Spouse Relief"", ""Reclaim Credits after Disallowance"", ""Higher Education Expenses""]","Primary home sale
+Investment Property sale
+Income from multiple states
+Adopted a child
+Divorce
+Marriage
+Education Expenses
+Alternative Minimum Tax
+Passive Activity Losses
+Injured Spouse Allocation
+Innocent Spouse Relief
+Reclaim Credits after Disallowance
+Higher Education Expenses",,checked,full,checkbox-grid,2,,,,,,✅ Yes,"Primary home sale, Investment Property sale, Income from multiple states, Adopted a child, Divorce, Marriage, Education Expenses, Alternative Minimum Tax, Passive Activity Losses, Injured Spouse Allocation, Innocent Spouse Relief, Reclaim Credits after Disallowance, Higher Education Expenses",13,includes,checked,
+individual-tax,Student Loan Interest,studentLoanInterest,151,Did you pay interest on student loans?,dropdown,,,,,"[""Yes"", ""No""]","Yes
+No",,checked,half,standard,,7,otherIncomeTypes,includes,Higher Education Expenses,"{""showIf"":{""field"":""otherIncomeTypes"",""operator"":""includes"",""value"":""Higher Education Expenses""}}",✅ Yes,"Yes, No",2,equals,checked,
+individual-tax,Education Expenses,educationExpenses,151,Did you pay college tuition or other education expenses?,dropdown,,,,,"[""Yes"", ""No""]","Yes
+No",,checked,half,standard,,7,otherIncomeTypes,includes,Higher Education Expenses,"{""showIf"":{""field"":""otherIncomeTypes"",""operator"":""includes"",""value"":""Higher Education Expenses""}}",✅ Yes,"Yes, No",2,equals,checked,
+individual-tax,Foreign Income,foreignIncome,152,What type of foreign income did you have?,multi-select,,,,,"[""Worked abroad/Earned foreign income"", ""Paid taxes to a foreign govdernment""]","Worked abroad/Earned foreign income
+Paid taxes to a foreign govdernment",,checked,full,checkbox-grid,,,otherIncomeTypes,includes,Foreign Income,"{""showIf"":{""field"":""otherIncomeTypes"",""operator"":""includes"",""value"":""Foreign Income""}}",✅ Yes,"Worked abroad/Earned foreign income, Paid taxes to a foreign govdernment",2,includes,,
+individual-tax,Need a state return?,stateReturnsIndividual,160,Do you need to file a state tax return?,dropdown,,,,,"[""Yes"", ""No""]","Yes
+No",,checked,half,standard,,,stateReturnsIndividual,equals,Yes,"{""showIf"":{""field"":""stateReturnsIndividual"",""operator"":""equals"",""value"":""Yes""}}",✅ Yes,"Yes, No",2,equals,,
+individual-tax,What states need to file a return,Individualstates,170,In which states did you receive income?  (Please select all that apply,multi-select,,,,,"[""Alabama"", ""Alaska"", ""Arizona"", ""Arkansas"", ""California"", ""Colorado"", ""Connecticut"", ""Delaware"", ""Florida"", ""Georgia"", ""Hawaii"", ""Idaho"", ""Illinois"", ""Indiana"", ""Iowa"", ""Kansas"", ""Kentucky"", ""Louisiana"", ""Maine"", ""Maryland"", ""Massachusetts"", ""Michigan"", ""Minnesota"", ""Mississippi"", ""Missouri"", ""Montana"", ""Nebraska"", ""Nevada"", ""New Hampshire"", ""New Jersey"", ""New Mexico"", ""New York"", ""North Carolina"", ""North Dakota"", ""Ohio"", ""Oklahoma"", ""Oregon"", ""Pennsylvania"", ""Rhode Island"", ""South Carolina"", ""South Dakota"", ""Tennessee"", ""Texas"", ""Utah"", ""Vermont"", ""Virginia"", ""Washington"", ""West Virginia"", ""Wisconsin"", ""Wyoming""]","Alabama
+Alaska
+Arizona
+Arkansas
+California
+Colorado
+Connecticut
+Delaware
+Florida
+Georgia
+Hawaii
+Idaho
+Illinois
+Indiana
+Iowa
+Kansas
+Kentucky
+Louisiana
+Maine
+Maryland
+Massachusetts
+Michigan
+Minnesota
+Mississippi
+Missouri
+Montana
+Nebraska
+Nevada
+New Hampshire
+New Jersey
+New Mexico
+New York
+North Carolina
+North Dakota
+Ohio
+Oklahoma
+Oregon
+Pennsylvania
+Rhode Island
+South Carolina
+South Dakota
+Tennessee
+Texas
+Utah
+Vermont
+Virginia
+Washington
+West Virginia
+Wisconsin
+Wyoming",,checked,full,checkbox-grid,5,,,,,,✅ Yes,"Alabama, Alaska, Arizona, Arkansas, California, Colorado, Connecticut, Delaware, Florida, Georgia, Hawaii, Idaho, Illinois, Indiana, Iowa, Kansas, Kentucky, Louisiana, Maine, Maryland, Massachusetts, Michigan, Minnesota, Mississippi, Missouri, Montana, Nebraska, Nevada, New Hampshire, New Jersey, New Mexico, New York, North Carolina, North Dakota, Ohio, Oklahoma, Oregon, Pennsylvania, Rhode Island, South Carolina, South Dakota, Tennessee, Texas, Utah, Vermont, Virginia, Washington, West Virginia, Wisconsin, Wyoming",50,includes,checked,
+individual-tax,Any other income sources?,otherIncomeSources,180,Do you have any other sources of income?,dropdown,,,,,"[""Yes - will provide details"", ""No""]","Yes - will provide details
+No",,checked,full,standard,,,,,,,✅ Yes,"Yes - will provide details, No",2,equals,,
+individual-tax,Any other income sources (other),otherIncomeSourcestext,190,Please describe your other sources of income,textarea,Please describe your other sources of income,,,,"[""""]",,,checked,full,textarea,,,otherIncomeSources,equals,Yes - will provide details,"{""showIf"":{""field"":""otherIncomeSources"",""operator"":""equals"",""value"":""Yes - will provide details""}}",❌ No,,0,equals,,
+individual-tax,Previous Tax Preparation,previousTaxPrep,200,Previous Tax Preparation,radio,,,Previous Tax Preparation,folder,"[""Self-prepared (TurboTax, etc.)"", ""Other CPA/Tax Professional"", ""RCC Group"", ""First time filing""]","Self-prepared (TurboTax, etc.)
+Other CPA/Tax Professional
+RCC Group
+First time filing",,checked,full,radio-group,,,,,,,✅ Yes,"Self-prepared (TurboTax, etc.), Other CPA/Tax Professional, RCC Group, First time filing",5,equals,,
+individual-tax,Special Circumstances,specialCircumstances,210,Special Circumstances or Questions,textarea,,,,,"[""""]",,,checked,full,textarea,,,,,,,❌ No,,0,equals,,
+business-tax,Business Name (Business Tax),businessName,1,Business Name,text,Enter your business name,,,briefcase,"[""""]",,,checked,half,standard,,1,,,,,✅ Yes,,1,equals,,
+business-tax,Annual Revenue (Business Tax),annualRevenue,2,Annual Revenue,dropdown,,,,dollar-sign,"[""$0 - $50,000"", ""$50,000 - $250,000"", ""$250,000 - $750,000"", ""$750,000 - $1,500,000"", ""$1,500,000+""]","$0 - $50,000
+$50,000 - $250,000
+$250,000 - $750,000
+$750,000 - $1,500,000
+$1,500,000+",,checked,half,standard,,1,,,,,✅ Yes,"$0 - $50,000, $50,000 - $250,000, $250,000 - $750,000, $750,000 - $1,500,000, $1,500,000+",15,equals,,
+business-tax,Entity Type (Business Tax),entityType,3,Entity Type,dropdown,entity type,,,building,"[""Sole Proprietorship"", ""Partnership"", ""LLC"", ""S-Corporation"", ""C-Corporation"", ""Non-Profit"", ""Other""]","Sole Proprietorship
+Partnership
+LLC
+S-Corporation
+C-Corporation
+Non-Profit
+Other
+",,checked,half,standard,,2,,,,,✅ Yes,"Sole Proprietorship, Partnership, LLC, S-Corporation, C-Corporation, Non-Profit, Other",7,equals,,
+business-tax,Business Industry (Business Tax),businessIndustry,4,Business Industry,dropdown,business industry,,,briefcase,"[""Professional Services"", ""Healthcare"", ""Technology"", ""Retail"", ""Construction"", ""Real Estate"", ""Manufacturing"", ""Food & Beverage"", ""Transportation"", ""Financial Services"", ""Education"", ""Consulting"", ""Marketing & Advertising"", ""Non-Profit"", ""Other""]","Professional Services
+Healthcare
+Technology
+Retail
+Construction
+Real Estate
+Manufacturing
+Food & Beverage
+Transportation
+Financial Services
+Education
+Consulting
+Marketing & Advertising
+Non-Profit
+Other",,checked,half,standard,,2,,,,,✅ Yes,"Professional Services, Healthcare, Technology, Retail, Construction, Real Estate, Manufacturing, Food & Beverage, Transportation, Financial Services, Education, Consulting, Marketing & Advertising, Non-Profit, Other",15,equals,,
+business-tax,Tax Year (Business Tax),taxYear,5,Tax Year Needed,dropdown,,,,calendar,"[""2024 (Current Year)"", ""2023"", ""2022"", ""2021"", ""Multiple Years""]","2024 (Current Year)
+2023
+2022
+2021
+Multiple Years",,checked,half,standard,,3,,,,,✅ Yes,"2024 (Current Year), 2023, 2022, 2021, Multiple Years",5,equals,,
+business-tax,Timeline (Business Tax),timeline,6,When do you need this completed?,dropdown,,,,clock,"[""ASAP (within 1 week)"", ""Within 2 weeks"", ""Within 1 month"", ""Before tax deadline"", ""Not urgent - flexible timing""]","ASAP (within 1 week)
+Within 2 weeks
+Within 1 month
+Before tax deadline
+Not urgent - flexible timing",,checked,half,standard,,3,,,,,✅ Yes,"ASAP (within 1 week), Within 2 weeks, Within 1 month, Before tax deadline, Not urgent - flexible timing",5,equals,,
+business-tax,Number of Owners,numberOfOwners,7,Number of Owners/Partners,number,enter number of owners,,,users,"[""""]",,,checked,half,standard,,4,,,,,✅ Yes,,1,greaterThanOrEqual,,
+business-tax,Number of Employees,numberOfEmployees,8,Number of Employees,dropdown,employee count,,,users,"[""Just me"", ""2-5 employees"", ""6-10 employees"", ""11-25 employees"", ""26-50 employees"", ""51-100 employees"", ""Over 100 employees""]","Just me
+2-5 employees
+6-10 employees
+11-25 employees
+26-50 employees
+51-100 employees
+Over 100 employees
+",,checked,half,standard,,4,,,,,✅ Yes,"Just me, 2-5 employees, 6-10 employees, 11-25 employees, 26-50 employees, 51-100 employees, Over 100 employees",7,equals,,
+business-tax,Other Tax Situations (Business Tax),otherTaxSituations,9,Other Tax Situations (Select all that apply),multi-select,,,Other Tax Situations (Select all that apply),trending-up,"[""Multi-state operations"", ""International transactions"", ""Inventory Management"", ""Equipment depreciation"", ""R&D tax credits"", ""Cost Segregation Studies""]","Multi-state operations
+International transactions
+Inventory Management
+Equipment depreciation
+R&D tax credits
+Cost Segregation Studies",,checked,full,checkbox-grid,2,,,,,,✅ Yes,"Multi-state operations, International transactions, Inventory Management, Equipment depreciation, R&D tax credits, Cost Segregation Studies",6,includes,,
+business-tax,Additional States,otherStates,10,Number of Additional States (beyond your primary state),number,Enter number of additional states,,,,"[""""]",,,checked,half,,,,otherTaxSituations,includes,Multi-state operations,"{""showIf"":{""field"":""otherTaxSituations"",""operator"":""includes"",""value"":""Multi-state operations""}}",✅ Yes,,1,greaterThanOrEqual,,
+business-tax,Additional Considerations,additionalConsiderations,11,Additional Considerations,multi-select,,,Additional Considerations,file-text,"[""First Year Entity"", ""Ownership changes"", ""Fixed Asset/Equipment acquisitions""]","First Year Entity
+Ownership changes
+Fixed Asset/Equipment acquisitions",,checked,full,checkbox-grid,2,,,,,,✅ Yes,"First Year Entity, Ownership changes, Fixed Asset/Equipment acquisitions",3,includes,,
+business-tax,Fixed Assets,fixedAssets,12,Number of Fixed Asset/Equipment Acquisitions,number,Enter number of acquisitions,,,,"[""""]",,,checked,half,,,,additionalConsiderations,includes,Fixed Asset/Equipment acquisitions,"{""showIf"":{""field"":""additionalConsiderations"",""operator"":""includes"",""value"":""Fixed Asset/Equipment acquisitions""}}",✅ Yes,,1,greaterThanOrEqual,,
+business-tax,Previous Preparer,previousPreparer,13,Previous Tax Preparation,radio,,,Previous Tax Preparation,folder,"[""Self-prepared (TurboTax, etc.)"", ""Other CPA/Tax Professional"", ""Elevated Tax & Accounting"", ""First time filing""]","Self-prepared (TurboTax, etc.)
+Other CPA/Tax Professional
+Elevated Tax & Accounting
+First time filing",,checked,full,radio-group,,,,,,,✅ Yes,"Self-prepared (TurboTax, etc.), Other CPA/Tax Professional, Elevated Tax & Accounting, First time filing",5,equals,,
+business-tax,Special Circumstances (Business Tax),specialCircumstances,14,Special Circumstances or Questions,textarea,"Tell us about any special circumstances, recent changes, or specific questions you have about your business tax situation...",,,,"[""""]",,,checked,full,textarea,,,,,,,❌ No,,0,equals,,
+bookkeeping,Business Name (Bookkeeping),businessName,10,Business Name,text,,,,briefcase,"[""""]",,,checked,half,standard,,1,,,,,✅ Yes,,1,equals,,
+bookkeeping,,annualRevenue,20,Annual Revenue,dropdown,business type,,,dollar-sign,"[""$0 - $50,000"", ""$50,000 - $250,000"", ""$250,000 - $750,000"", ""$750,000 - $1,500,000"", ""$1,500,000+""]","$0 - $50,000
+$50,000 - $250,000
+$250,000 - $750,000
+$750,000 - $1,500,000
+$1,500,000+",,checked,half,standard,,1,,,,,✅ Yes,"$0 - $50,000, $50,000 - $250,000, $250,000 - $750,000, $750,000 - $1,500,000, $1,500,000+",15,equals,,
+bookkeeping,,businessType,30,Business Type,dropdown,,,,building,"[""Sole Proprietorship"", ""Partnership"", ""LLC"", ""S-Corporation"", ""C-Corporation"", ""Non-Profit"", ""Other""]","Sole Proprietorship
+Partnership
+LLC
+S-Corporation
+C-Corporation
+Non-Profit
+Other",,checked,half,standard,,2,,,,,✅ Yes,"Sole Proprietorship, Partnership, LLC, S-Corporation, C-Corporation, Non-Profit, Other",7,equals,,
+bookkeeping,,businessIndustry,40,Business Industry,dropdown,business industry,,,briefcase,"[""Professional Services"", ""Healthcare"", ""Technology"", ""Retail"", ""Construction"", ""Real Estate"", ""Manufacturing"", ""Food & Beverage"", ""Transportation"", ""Financial Services"", ""Education"", ""Consulting"", ""Marketing & Advertising"", ""Non-Profit"", ""Other""]","Professional Services
+Healthcare
+Technology
+Retail
+Construction
+Real Estate
+Manufacturing
+Food & Beverage
+Transportation
+Financial Services
+Education
+Consulting
+Marketing & Advertising
+Non-Profit
+Other",,checked,half,standard,,2,,,,,✅ Yes,"Professional Services, Healthcare, Technology, Retail, Construction, Real Estate, Manufacturing, Food & Beverage, Transportation, Financial Services, Education, Consulting, Marketing & Advertising, Non-Profit, Other",15,equals,,
+bookkeeping,,currentBookkeepingStatus,50,Current Bookkeeping Status,dropdown,current status,,,clipboard,"[""Books are current"", ""Books need to be caught up"", ""Starting from scratch""]","Books are current
+Books need to be caught up
+Starting from scratch
+",,checked,half,standard,,3,,,,,✅ Yes,"Books are current, Books need to be caught up, Starting from scratch",3,equals,,
+bookkeeping,,currentBookkeepingMethod,60,Current Bookkeeping Method,dropdown,current method,,,settings,"[""Excel/Spreadsheets"", ""QuickBooks Online"", ""QuickBooks Desktop"", ""Xero"", ""Other software"", ""No current system""]","Excel/Spreadsheets
+QuickBooks Online
+QuickBooks Desktop
+Xero
+Other software
+No current system",,checked,half,standard,,3,,,,,✅ Yes,"Excel/Spreadsheets, QuickBooks Online, QuickBooks Desktop, Xero, Other software, No current system",6,equals,,
+bookkeeping,,catchupBookkeepingMonths,70,How many months behind are you?,number,Enter number of months,,,calendar,"[""""]",,,checked,half,standard,,,currentBookkeepingStatus,equals,Books need to be caught up,"{""showIf"":{""field"":""currentBookkeepingStatus"",""operator"":""equals"",""value"":""Books need to be caught up""}}",✅ Yes,,1,greaterThanOrEqual,,
+bookkeeping,,bankAccounts,80,Total Number of Financial Accounts,number,"Please input the total number of bank accounts, credit cards, and bank loans",,Financial Accounts,dollar-sign,"[""""]",,,checked,half,standard,,8,,,,,✅ Yes,,1,greaterThanOrEqual,checked,
+bookkeeping,,monthlyTransactionVolume,90,Monthly Transaction Volume,dropdown,,,,trending-up,"[""0-75 transactions"", ""76-100 transactions"", ""101-150 transactions"", ""151-200 transactions"", ""201-250 transactions"", ""251-300 transactions"", ""301+ transactions""]","0-75 transactions
+76-100 transactions
+101-150 transactions
+151-200 transactions
+201-250 transactions
+251-300 transactions
+301+ transactions",,checked,full,standard,,,,,,,✅ Yes,"0-75 transactions, 76-100 transactions, 101-150 transactions, 151-200 transactions, 201-250 transactions, 251-300 transactions, 301+ transactions",7,equals,checked,
+bookkeeping,,preferredBookkeepingFrequency,100,Preferred Bookkeeping Service Frequency,radio,,,,calendar,"[""Monthly"", ""Quarterly""]","Monthly
+Quarterly
+",,checked,full,radio-group,,,,,,,✅ Yes,"Monthly, Quarterly",2,equals,,
+bookkeeping,,additionalConsiderationsBookkeeping,110,Additional Considerations,multi-select,,,Additional Considerations,check-square,"[""QuickBooks setup or training"", ""3rd party app integration"", ""Fixed Assets/Equipment"", ""Inventory Management""]","QuickBooks setup or training
+3rd party app integration
+Fixed Assets/Equipment
+Inventory Management",,checked,full,checkbox-grid,2,,,,,,✅ Yes,"QuickBooks setup or training, 3rd party app integration, Fixed Assets/Equipment, Inventory Management",4,includes,,
+bookkeeping,,fixed-assets-bookkeeping,120,Number of Fixed Assets/Equipment,number,,,,,"[""""]",,,checked,half,,,,additionalConsiderationsBookkeeping,includes,Fixed Assets/Equipment,"{""showIf"":{""field"":""additionalConsiderationsBookkeeping"",""operator"":""includes"",""value"":""Fixed Assets/Equipment""}}",✅ Yes,,1,greaterThanOrEqual,,
+bookkeeping,,bookkeepingChallenges,130,Current Bookkeeping Challenges or Goals,textarea,"Tell us about any current bookkeeping challenges, specific goals, or requirements you have...",,,,"[""""]",,,checked,full,textarea,,,,,,,❌ No,,0,equals,,
+payroll,Number of Employees,numberOfEmployees,10,How many employees do you have?,number,Enter the number of employees,,,,"[""""]",,,checked,full,standard,,,,,,,✅ Yes,,1,greaterThanOrEqual,,
+payroll,Payroll Frequency,payrollFrequency,20,How often do you run payroll?,dropdown,,,,,"[""Monthly"", ""Bi-weekly"", ""Weekly""]","Monthly
+Bi-weekly
+Weekly",,checked,full,standard,,,,,,,✅ Yes,"Monthly, Bi-weekly, Weekly",3,equals,,
+payroll,1099,1099,30,How many 1099s will you need created at year-end?,number,,,,,"[""""]",,,checked,full,standard,,,,,,,✅ Yes,,1,greaterThanOrEqual,,
+additional-services,,selectedAdditionalServices,1,Select any additional professional services you need. Pricing details will be shown in your quote summary.,multi-select,,,Additional Services,plus-circle,"[""Corporation Formation Services"", ""Sales and Use Return"", ""Accounts Receivable"", ""Accounts Payable""]","Corporation Formation Services
+Sales and Use Return
+Accounts Receivable
+Accounts Payable",,checked,full,standard,2,,,,,,✅ Yes,"Corporation Formation Services, Sales and Use Return, Accounts Receivable, Accounts Payable",4,includes,,
