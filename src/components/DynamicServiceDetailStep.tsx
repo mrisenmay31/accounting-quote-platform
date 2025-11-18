@@ -83,25 +83,40 @@ const DynamicServiceDetailStep: React.FC<DynamicServiceDetailStepProps> = ({
   }, [tenant, serviceId, serviceTitle]);
 
   const handleFieldChange = (fieldName: string, value: any) => {
-    // Use flat formData structure - no service nesting
-    const updatedData = {
-      ...formData,
+    // Convert serviceId to camelCase key (e.g., 'business-tax' -> 'businessTax')
+    const serviceKey = serviceId.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+
+    // Get current service data
+    const currentServiceData = (formData as any)[serviceKey] || {};
+
+    // Update the specific field within the service data
+    const updatedServiceData = {
+      ...currentServiceData,
       [fieldName]: value,
     };
 
     // Clear values of conditional fields that should be hidden after this change
-    const fieldsToClear = getFieldsToClear(formFields, fieldName, updatedData);
+    const fieldsToClear = getFieldsToClear(formFields, fieldName, updatedServiceData);
     fieldsToClear.forEach(fieldToClear => {
-      updatedData[fieldToClear] = null;
+      updatedServiceData[fieldToClear] = null;
       console.log(`[DynamicServiceDetailStep] Clearing hidden field: ${fieldToClear}`);
     });
 
-    updateFormData(updatedData);
+    // Update formData with nested structure
+    updateFormData({
+      [serviceKey]: updatedServiceData,
+    });
+
+    console.log(`[DynamicServiceDetailStep] Updated ${serviceKey}.${fieldName} =`, value);
   };
 
   const getFieldValue = (fieldName: string): any => {
-    // Access field values directly from root level (flat structure)
-    return (formData as any)[fieldName] || '';
+    // Convert serviceId to camelCase key (e.g., 'business-tax' -> 'businessTax')
+    const serviceKey = serviceId.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+
+    // Access field values from nested service structure
+    const serviceData = (formData as any)[serviceKey] || {};
+    return serviceData[fieldName] || '';
   };
 
   // Format service ID into readable title
@@ -171,9 +186,13 @@ const DynamicServiceDetailStep: React.FC<DynamicServiceDetailStepProps> = ({
   }
 
   const renderFields = () => {
+    // Convert serviceId to camelCase key for accessing nested service data
+    const serviceKey = serviceId.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+    const serviceData = (formData as any)[serviceKey] || {};
+
     // Filter fields by active status and conditional logic
     const visibleFields = formFields.filter(field =>
-      field.active && shouldShowField(field, formData as any)
+      field.active && shouldShowField(field, serviceData)
     );
 
     // Sort visible fields by Display Order

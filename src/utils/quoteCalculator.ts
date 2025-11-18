@@ -4,9 +4,11 @@ import { ServiceConfig, getServiceConfig } from './serviceConfigService';
 import { FormulaEvaluator } from './formulaEvaluator';
 
 // Helper function to safely get nested object values using dot notation
+// with fallback to root level for backward compatibility
 const getNestedValue = (obj: any, path: string): any => {
   if (!path) return undefined;
-  
+
+  // Try nested path first (preferred)
   const result = path.split('.').reduce((current, key) => {
     if (current === null || current === undefined) {
       return undefined;
@@ -14,7 +16,27 @@ const getNestedValue = (obj: any, path: string): any => {
     return current[key];
   }, obj);
 
-  return result;
+  // If nested path succeeded, return the value
+  if (result !== undefined) {
+    return result;
+  }
+
+  // FALLBACK: Check if the field exists at root level (backward compatibility)
+  // This handles legacy data where fields were stored flat instead of nested
+  const pathParts = path.split('.');
+  if (pathParts.length > 1) {
+    // Get the last part of the path (the field name)
+    const fieldName = pathParts[pathParts.length - 1];
+    const rootValue = obj[fieldName];
+
+    if (rootValue !== undefined) {
+      console.warn(`[getNestedValue] Field found at root level instead of nested path: ${path} -> ${fieldName}`);
+      console.warn(`[getNestedValue] Consider updating data structure to use nested format: ${path}`);
+      return rootValue;
+    }
+  }
+
+  return undefined;
 };
 
 /**
@@ -256,6 +278,22 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
   console.log('Form Data Keys:', Object.keys(formData));
   console.log('Total Pricing Rules:', pricingConfig.length);
   console.log('');
+  console.log('=== DATA STRUCTURE VALIDATION ===');
+  if (formData.services.includes('individual-tax')) {
+    console.log('Individual Tax Data:', formData.individualTax);
+    console.log('  filingStatus:', formData.individualTax?.filingStatus);
+    console.log('  Root level filingStatus (should be undefined):', (formData as any).filingStatus);
+  }
+  if (formData.services.includes('business-tax')) {
+    console.log('Business Tax Data:', formData.businessTax);
+    console.log('  entityType:', formData.businessTax?.entityType);
+  }
+  if (formData.services.includes('bookkeeping')) {
+    console.log('Bookkeeping Data:', formData.bookkeeping);
+    console.log('  currentStatus:', formData.bookkeeping?.currentStatus);
+  }
+  console.log('=================================');
+  console.log('');
 
   let totalMonthlyFees = 0;
   let totalOneTimeFees = 0;
@@ -344,6 +382,18 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
           rule.comparisonLogic
         );
 
+        // Enhanced debugging for Individual Tax Base Service rules
+        if (rule.serviceId === 'individual-tax' && rule.pricingType === 'Base Service') {
+          console.log(`\n=== INDIVIDUAL TAX BASE SERVICE RULE: ${rule.pricingRuleId} ===`);
+          console.log('Trigger Field:', rule.triggerFormField);
+          console.log('Required Value:', rule.requiredFormValue);
+          console.log('Comparison Logic:', rule.comparisonLogic);
+          console.log('Form Data Value:', getNestedValue(formData, rule.triggerFormField));
+          console.log('Condition Matches:', conditionMatches);
+          console.log('Base Price:', rule.basePrice);
+          console.log('==========================================================\n');
+        }
+
         // Enhanced debugging for bookkeeping cleanup rule
         if (rule.pricingRuleId === 'bookkeeping-cleanup') {
           console.log('=== BOOKKEEPING CLEANUP RULE DEBUG ===');
@@ -367,6 +417,10 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
             console.log(`✅ Applied Base Service: ${rule.serviceName} (+$${rule.basePrice})`);
           } else if (rule.pricingType === 'Add-on') {
             console.log(`✅ Applied Add-on: ${rule.serviceName} (+$${rule.basePrice || rule.unitPrice})`);
+          }
+        } else {
+          if (rule.pricingType === 'Base Service') {
+            console.log(`❌ Base Service NOT applied: ${rule.serviceName} (condition did not match)`);
           }
         }
       } else {
@@ -470,13 +524,17 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
     // Calculate Base Service vs Add-on breakdown
     let baseServiceTotal = 0;
     let addOnTotal = 0;
+    const baseServiceRules: string[] = [];
+    const addOnRules: string[] = [];
 
     for (const rule of group.rules) {
       const rulePrice = calculatedPrices.get(rule.pricingRuleId) || 0;
       if (rule.pricingType === 'Base Service') {
         baseServiceTotal += rulePrice;
+        baseServiceRules.push(`${rule.pricingRuleId} ($${rulePrice})`);
       } else if (rule.pricingType === 'Add-on') {
         addOnTotal += rulePrice;
+        addOnRules.push(`${rule.pricingRuleId} ($${rulePrice})`);
       }
     }
 
@@ -488,6 +546,16 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
       combinedTotal: baseServiceTotal + addOnTotal,
       rulesCount: group.rules.length
     });
+    if (baseServiceRules.length > 0) {
+      console.log(`  Base Service Rules:`, baseServiceRules);
+    }
+    if (addOnRules.length > 0) {
+      console.log(`  Add-on Rules:`, addOnRules);
+    }
+    if (baseServiceTotal === 0 && serviceId === 'individual-tax') {
+      console.log(`  ⚠️ WARNING: No Base Service pricing applied for individual-tax!`);
+      console.log(`  This likely indicates a data structure mismatch in trigger field evaluation.`);
+    }
   }
 
   // Apply minimum fee enforcement for bookkeeping service
