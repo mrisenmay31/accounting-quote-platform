@@ -95,7 +95,7 @@ const buildQuoteFields = async (
 
   const fields: Record<string, any> = {
     'Quote ID': quoteId,
-    'Date': new Date().toISOString(),
+    'Date': formatAsAirtableDate(new Date()),
     'Quote Status': 'New Quote',
     'Services Requested': formData.services.join(', '),
     'Monthly Fees': quoteData.totalMonthlyFees || 0,
@@ -505,6 +505,44 @@ function transformFieldNameToColumnName(fieldName: string): string {
 }
 
 /**
+ * Format a value as a valid Airtable date string
+ * Airtable date fields expect YYYY-MM-DD format
+ */
+function formatAsAirtableDate(value: any): string | null {
+  if (!value) return null;
+
+  try {
+    // If already a Date object
+    if (value instanceof Date) {
+      if (isNaN(value.getTime())) return null;
+      return value.toISOString().split('T')[0]; // YYYY-MM-DD
+    }
+
+    // If string that can be parsed
+    if (typeof value === 'string') {
+      const parsed = new Date(value);
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toISOString().split('T')[0]; // YYYY-MM-DD
+      }
+    }
+
+    // If numeric timestamp
+    if (typeof value === 'number') {
+      const parsed = new Date(value);
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toISOString().split('T')[0]; // YYYY-MM-DD
+      }
+    }
+
+    console.warn('[Airtable Write] Could not format value as date:', value);
+    return null;
+  } catch (error) {
+    console.error('[Airtable Write] Date formatting error:', error);
+    return null;
+  }
+}
+
+/**
  * Transform value based on field type for Airtable
  */
 function transformValueByFieldType(value: any, fieldType: string): any {
@@ -518,6 +556,9 @@ function transformValueByFieldType(value: any, fieldType: string): any {
 
     case 'checkbox':
       return Boolean(value);
+
+    case 'date':
+      return formatAsAirtableDate(value);
 
     case 'multi-select':
       // Airtable expects comma-separated string for multi-select
@@ -607,6 +648,23 @@ export const createQuoteRecord = async (
       console.log('[Airtable Create] URL:', url);
       console.log('[Airtable Create] Quote ID:', generatedQuoteId);
       console.log('[Airtable Create] Timestamp:', new Date().toISOString());
+
+      // Debug: Inspect Date field and all date-related fields
+      console.log('📋 [Airtable Create] Payload Inspection:');
+      console.log('   Total fields:', Object.keys(fields).length);
+
+      if (fields['Date']) {
+        console.log('   ⚠️  "Date" field found:', fields['Date']);
+        console.log('   ⚠️  "Date" field type:', typeof fields['Date']);
+      }
+
+      // Log all fields that might be dates
+      Object.entries(fields).forEach(([key, value]) => {
+        const keyLower = key.toLowerCase();
+        if (keyLower.includes('date') || keyLower.includes('year') || keyLower.includes('timeline')) {
+          console.log(`   📅 Potential date field: "${key}" = ${JSON.stringify(value)}`);
+        }
+      });
 
       const response = await fetch(url, {
         method: 'POST',

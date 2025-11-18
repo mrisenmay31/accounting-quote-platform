@@ -138,12 +138,34 @@ async function createField(
     type: fieldType
   };
 
+  // CRITICAL FIX: Add options for number fields
+  if (fieldType === 'number') {
+    payload.options = {
+      precision: 0 // Integer precision (0 = whole numbers)
+    };
+
+    // If the field name suggests decimals/currency, use decimal precision
+    const fieldNameLower = fieldName.toLowerCase();
+    if (fieldNameLower.includes('amount') ||
+        fieldNameLower.includes('fee') ||
+        fieldNameLower.includes('price') ||
+        fieldNameLower.includes('total') ||
+        fieldNameLower.includes('cost')) {
+      payload.options.precision = 2; // 2 decimal places for currency
+    }
+
+    console.log(`[SchemaSync] 📊 Creating number field "${fieldName}" with precision ${payload.options.precision}`);
+  }
+
   // Add options if provided (for select fields, etc.)
   if (options) {
     payload.options = options;
   }
 
   console.log(`[SchemaSync] Creating field "${fieldName}" (${fieldType})`);
+  if (payload.options) {
+    console.log(`[SchemaSync] Field options:`, payload.options);
+  }
 
   try {
     const response = await fetch(url, {

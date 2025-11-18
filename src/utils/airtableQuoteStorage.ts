@@ -36,7 +36,7 @@ export const saveQuoteToAirtable = async (
       const quoteNumber = generateQuoteNumber();
       const airtableFields: Record<string, any> = {};
 
-      airtableFields['Date'] = new Date().toISOString();
+      airtableFields['Date'] = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
       airtableFields['First Name'] = formData.firstName;
       airtableFields['Last Name'] = formData.lastName;
       airtableFields['Full Name'] = `${formData.firstName} ${formData.lastName}`.trim();
