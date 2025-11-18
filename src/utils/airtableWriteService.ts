@@ -17,7 +17,7 @@ export interface AirtableQuoteRecord {
     'Full Name': string;
     'Phone'?: string;
     'Quote Status': string;
-    'Services Requested': string;
+    'Services Requested': string[]; // Array for Airtable Multiple Select field
     'Monthly Fees': number;
     'One-Time Fees': number;
     'Total Monthly Fees': number;
@@ -93,16 +93,56 @@ const buildQuoteFields = async (
   console.log('[Airtable Write] contactInfo keys:', Object.keys(formData.contactInfo || {}));
   console.log('[Airtable Write] contactInfo values:', formData.contactInfo);
 
+  // === SERVICES REQUESTED MAPPING ===
+  // This field is a Multiple Select in Airtable and MUST be an array
+  let servicesArray: string[] = [];
+
+  if (formData.services) {
+    if (Array.isArray(formData.services)) {
+      // Already an array - filter out empty strings
+      servicesArray = formData.services.filter(s => s && s.trim());
+    } else if (typeof formData.services === 'string' && formData.services.trim()) {
+      // Single string - wrap in array
+      servicesArray = [formData.services.trim()];
+    }
+  }
+
+  // Validate service values match expected Airtable options
+  const validServices = ['individual-tax', 'business-tax', 'bookkeeping', 'advisory', 'additional-services'];
+  const filteredServices = servicesArray.filter(service => validServices.includes(service));
+
+  if (filteredServices.length !== servicesArray.length) {
+    console.warn('[Airtable Write] Some services filtered out:', {
+      original: servicesArray,
+      filtered: filteredServices,
+      removed: servicesArray.filter(s => !validServices.includes(s))
+    });
+  }
+
+  // Detailed logging for debugging
+  console.log('[Airtable Write] 🔍 Services Field Debugging:');
+  console.log('[Airtable Write]   formData.services type:', typeof formData.services);
+  console.log('[Airtable Write]   formData.services value:', formData.services);
+  console.log('[Airtable Write]   formData.services isArray:', Array.isArray(formData.services));
+  console.log('[Airtable Write]   Validated services:', filteredServices);
+  console.log('[Airtable Write]   Is array check:', Array.isArray(filteredServices) ? '✅ Array' : '❌ NOT Array');
+
   const fields: Record<string, any> = {
     'Quote ID': quoteId,
     'Date': formatAsAirtableDate(new Date()),
     'Quote Status': 'New Quote',
-    'Services Requested': formData.services.join(', '),
+    'Services Requested': filteredServices.length > 0 ? filteredServices : [], // Always send as array
     'Monthly Fees': quoteData.totalMonthlyFees || 0,
     'One-Time Fees': quoteData.totalOneTimeFees || 0,
     'Total Monthly Fees': quoteData.totalMonthlyFees || 0,
     'Annual Total': quoteData.totalAnnual || 0,
   };
+
+  if (filteredServices.length === 0) {
+    console.warn('[Airtable Write] ⚠️ No valid services selected - sending empty array');
+  } else {
+    console.log('[Airtable Write] ✅ Services Requested mapped:', filteredServices);
+  }
 
   // Handle dynamic contact fields from contactInfo object
   console.log('[Airtable Write] Checking contactInfo condition...');
@@ -561,8 +601,14 @@ function transformValueByFieldType(value: any, fieldType: string): any {
       return formatAsAirtableDate(value);
 
     case 'multi-select':
-      // Airtable expects comma-separated string for multi-select
-      return Array.isArray(value) ? value.join(', ') : value;
+      // IMPORTANT: Airtable Multiple Select fields require arrays, not strings
+      // Only join to string if this is for display purposes in a text field
+      // For actual Multiple Select columns, keep as array
+      if (Array.isArray(value)) {
+        return value; // Keep as array for Multiple Select fields
+      }
+      // If single value, wrap in array
+      return [value];
 
     case 'email':
     case 'phone':

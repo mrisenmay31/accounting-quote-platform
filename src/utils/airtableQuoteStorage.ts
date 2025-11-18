@@ -47,7 +47,12 @@ export const saveQuoteToAirtable = async (
       }
 
       airtableFields['Quote Status'] = 'New Quote';
-      airtableFields['Services Requested'] = formData.services.join(', ');
+
+      // Services Requested - Must be array for Airtable Multiple Select field
+      const servicesArray = Array.isArray(formData.services)
+        ? formData.services.filter(s => s && s.trim())
+        : (formData.services ? [formData.services] : []);
+      airtableFields['Services Requested'] = servicesArray;
 
       if (formData.services.includes('individual-tax') && formData.individualTax) {
         const itax = formData.individualTax;
