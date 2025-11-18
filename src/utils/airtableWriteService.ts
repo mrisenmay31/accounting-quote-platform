@@ -79,19 +79,16 @@ export const generateQuoteId = (): string => {
   return `QUOTE-${year}${month}${day}-${random}`;
 };
 
-const buildQuoteFields = (
+const buildQuoteFields = async (
   formData: FormData,
   quoteData: QuoteData,
   quoteId: string,
-  tenantId?: string
-): Record<string, any> => {
+  tenantId?: string,
+  tenantConfig?: any
+): Promise<Record<string, any>> => {
   const fields: Record<string, any> = {
     'Quote ID': quoteId,
     'Date': new Date().toISOString(),
-    'Email': formData.email,
-    'First Name': formData.firstName,
-    'Last Name': formData.lastName,
-    'Full Name': `${formData.firstName} ${formData.lastName}`.trim(),
     'Quote Status': 'New Quote',
     'Services Requested': formData.services.join(', '),
     'Monthly Fees': quoteData.totalMonthlyFees || 0,
@@ -100,6 +97,68 @@ const buildQuoteFields = (
     'Annual Total': quoteData.totalAnnual || 0,
   };
 
+  // Handle dynamic contact fields from contactInfo object
+  if (formData.contactInfo && Object.keys(formData.contactInfo).length > 0) {
+    try {
+      // Import formFieldsService dynamically to avoid circular dependencies
+      const formFieldsService = await import('./formFieldsService');
+
+      if (tenantConfig) {
+        const airtableConfig = {
+          baseId: tenantConfig.airtable?.servicesBaseId || tenantConfig.airtable?.pricingBaseId,
+          apiKey: tenantConfig.airtable?.servicesApiKey || tenantConfig.airtable?.pricingApiKey,
+        };
+
+        // Fetch contact-info fields to get proper Airtable column mappings
+        const contactFields = await formFieldsService.getCachedFormFields(
+          airtableConfig,
+          'contact-info'
+        );
+
+        // Map dynamic contact fields using Airtable column names
+        for (const formField of contactFields) {
+          const fieldValue = formData.contactInfo[formField.fieldName];
+
+          // Skip if no value
+          if (fieldValue === null || fieldValue === undefined || fieldValue === '') {
+            continue;
+          }
+
+          // Resolve Airtable column name (explicit or auto-transform)
+          const airtableColumnName = formField.airtableColumnName && formField.airtableColumnName.trim()
+            ? formField.airtableColumnName
+            : transformFieldNameToColumnName(formField.fieldName);
+
+          // Transform value based on field type
+          const transformedValue = transformValueByFieldType(
+            fieldValue,
+            formField.fieldType
+          );
+
+          fields[airtableColumnName] = transformedValue;
+        }
+
+        console.log('[Airtable Write] Mapped dynamic contact fields:', Object.keys(formData.contactInfo));
+      }
+    } catch (error) {
+      console.warn('[Airtable Write] Could not load contact-info fields, using fallback:', error);
+      // Fallback to legacy field mapping
+    }
+  }
+
+  // Legacy field mapping (for backward compatibility)
+  if (formData.email) {
+    fields['Email'] = formData.email;
+  }
+  if (formData.firstName) {
+    fields['First Name'] = formData.firstName;
+  }
+  if (formData.lastName) {
+    fields['Last Name'] = formData.lastName;
+  }
+  if (formData.firstName && formData.lastName) {
+    fields['Full Name'] = `${formData.firstName} ${formData.lastName}`.trim();
+  }
   if (formData.phone) {
     fields['Phone'] = formData.phone;
   }
@@ -330,6 +389,51 @@ const buildQuoteFields = (
   return fields;
 };
 
+/**
+ * Transform field name to Airtable column name
+ * Converts camelCase to Title Case
+ * Example: firstName -> First Name
+ */
+function transformFieldNameToColumnName(fieldName: string): string {
+  // Split by capital letters and join with spaces
+  const words = fieldName.replace(/([A-Z])/g, ' $1').trim();
+  // Capitalize first letter of each word
+  return words
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
+ * Transform value based on field type for Airtable
+ */
+function transformValueByFieldType(value: any, fieldType: string): any {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  switch (fieldType) {
+    case 'number':
+      return typeof value === 'number' ? value : parseInt(value) || 0;
+
+    case 'checkbox':
+      return Boolean(value);
+
+    case 'multi-select':
+      // Airtable expects comma-separated string for multi-select
+      return Array.isArray(value) ? value.join(', ') : value;
+
+    case 'email':
+    case 'phone':
+    case 'text':
+    case 'textarea':
+    case 'dropdown':
+    case 'radio':
+    default:
+      return String(value);
+  }
+}
+
 export const findRecordByEmail = async (
   config: AirtableWriteConfig,
   email: string,
@@ -385,7 +489,8 @@ export const createQuoteRecord = async (
   formData: FormData,
   quoteData: QuoteData,
   tenantId?: string,
-  quoteId?: string
+  quoteId?: string,
+  tenantConfig?: any
 ): Promise<AirtableWriteResult> => {
   const tableName = config.tableName || 'Client Quotes';
   const generatedQuoteId = quoteId || generateQuoteId();
@@ -395,7 +500,7 @@ export const createQuoteRecord = async (
     try {
       await enforceRateLimit();
 
-      const fields = buildQuoteFields(formData, quoteData, generatedQuoteId, tenantId);
+      const fields = await buildQuoteFields(formData, quoteData, generatedQuoteId, tenantId, tenantConfig);
       const url = `${AIRTABLE_API_BASE}/${config.baseId}/${encodeURIComponent(tableName)}`;
 
       console.log(`[Airtable Create] Attempt ${attempt + 1}/${MAX_RETRIES}`);

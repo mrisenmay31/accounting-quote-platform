@@ -3,6 +3,7 @@ import { useMemo, useEffect } from 'react';
 import { Calculator, ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react';
 import StepIndicator from './StepIndicator';
 import ContactForm from './ContactForm';
+import ContactFormDynamic from './ContactFormDynamic';
 import ServiceSelection from './ServiceSelection';
 import AdvisorySalesPage from './AdvisorySalesPage';
 import IndividualTaxDetails from './IndividualTaxDetails';
@@ -25,6 +26,9 @@ import { syncFormFieldsToClientQuotes } from '../utils/airtableSchemaService';
 // Feature flag: Set to true to use dynamic Airtable form fields for Individual Tax
 const USE_DYNAMIC_INDIVIDUAL_TAX = true;
 
+// Feature flag: Set to true to use dynamic Airtable form fields for Contact Info
+const USE_DYNAMIC_CONTACT_FORM = true;
+
 const QuoteCalculator: React.FC = () => {
   const { tenant, firmInfo } = useTenant();
   const [currentStep, setCurrentStep] = useState(1);
@@ -36,12 +40,15 @@ const QuoteCalculator: React.FC = () => {
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [isSubmittingInitialQuote, setIsSubmittingInitialQuote] = useState(false);
   const [formData, setFormData] = useState<FormData>({
-    // Contact Information
+    // Contact Information - Dynamic
+    contactInfo: {},
+
+    // Contact Information - Legacy (backward compatibility)
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
-    
+
     // Service Selection
     services: [],
     
@@ -246,14 +253,15 @@ const QuoteCalculator: React.FC = () => {
           apiKey: tenant.airtable.servicesApiKey || tenant.airtable.pricingApiKey,
         };
 
-        // Fetch form fields for all services
-        const services = ['individual-tax', 'business-tax', 'bookkeeping', 'additional-services'];
+        // Fetch form fields for all services, including contact-info
+        const services = ['contact-info', 'individual-tax', 'business-tax', 'bookkeeping', 'additional-services'];
         const allFormFields: FormField[] = [];
 
         for (const serviceId of services) {
           try {
             const fields = await getCachedFormFields(airtableConfig, serviceId);
             allFormFields.push(...fields);
+            console.log(`[QuoteCalculator] Loaded ${fields.length} fields for ${serviceId}`);
           } catch (error) {
             console.warn(`[QuoteCalculator] Could not load fields for ${serviceId}:`, error);
             // Continue with other services even if one fails
@@ -341,7 +349,9 @@ const QuoteCalculator: React.FC = () => {
         airtableConfig,
         formData,
         quote,
-        tenant.id
+        tenant.id,
+        undefined,
+        tenant
       );
 
       let generatedQuoteId = airtableResult.quoteId;
@@ -429,6 +439,7 @@ const QuoteCalculator: React.FC = () => {
   const resetQuote = () => {
     // Reset all form data to initial state
     setFormData({
+      contactInfo: {},
       firstName: '',
       lastName: '',
       email: '',
@@ -560,12 +571,22 @@ const QuoteCalculator: React.FC = () => {
   const renderStep = () => {
     switch (currentStepType) {
       case 'contact':
-        return (
-          <ContactForm 
-            formData={formData} 
-            updateFormData={updateFormData} 
-          />
-        );
+        if (USE_DYNAMIC_CONTACT_FORM) {
+          return (
+            <ContactFormDynamic
+              formData={formData}
+              updateFormData={updateFormData}
+              onNext={nextStep}
+            />
+          );
+        } else {
+          return (
+            <ContactForm
+              formData={formData}
+              updateFormData={updateFormData}
+            />
+          );
+        }
       case 'services':
         return (
           <ServiceSelection 
@@ -684,8 +705,8 @@ const QuoteCalculator: React.FC = () => {
             {renderStep()}
           </div>
 
-          {/* Navigation */}
-          {currentStep < totalSteps && currentStepType !== 'quote' && (
+          {/* Navigation - Hide for dynamic contact form (it has internal navigation) */}
+          {currentStep < totalSteps && currentStepType !== 'quote' && !(USE_DYNAMIC_CONTACT_FORM && currentStepType === 'contact') && (
             <div className="bg-gray-50 px-8 py-6 border-t border-gray-200">
               <div className="flex justify-between items-center">
                 <button

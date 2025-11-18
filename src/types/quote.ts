@@ -1,5 +1,10 @@
 export interface FormData {
-  // Contact Information
+  // Contact Information - Dynamic fields from Airtable Form Fields table (Service ID: contact-info)
+  contactInfo: {
+    [key: string]: any; // Allow any dynamic field from Form Fields table
+  };
+
+  // Legacy contact fields - maintained for backward compatibility
   firstName: string;
   lastName: string;
   email: string;
@@ -230,8 +235,9 @@ export interface ServiceConfig {
 export interface FormField {
   serviceId: string;
   fieldName: string;
-  fieldType: 'text' | 'number' | 'dropdown' | 'checkbox' | 'textarea' | 'radio' | 'multi-select';
+  fieldType: 'text' | 'number' | 'dropdown' | 'checkbox' | 'textarea' | 'radio' | 'multi-select' | 'email' | 'phone';
   fieldLabel: string;
+  id?: string;
   placeholder?: string;
   options?: string; // JSON string containing field-specific options
   required: boolean;

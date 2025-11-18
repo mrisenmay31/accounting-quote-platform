@@ -36,6 +36,30 @@ const DynamicFormFieldAirtable: React.FC<DynamicFormFieldProps> = ({ field, valu
     />
   );
 
+  const renderEmailInput = () => (
+    <input
+      type="email"
+      name={field.fieldName}
+      value={value || ''}
+      onChange={(e) => handleChange(e.target.value)}
+      placeholder={field.placeholder}
+      required={field.required}
+      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+    />
+  );
+
+  const renderPhoneInput = () => (
+    <input
+      type="tel"
+      name={field.fieldName}
+      value={value || ''}
+      onChange={(e) => handleChange(e.target.value)}
+      placeholder={field.placeholder}
+      required={field.required}
+      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+    />
+  );
+
   const renderNumberInput = () => {
     const min = options?.min !== undefined ? options.min : 0;
     const max = options?.max;
@@ -279,6 +303,10 @@ const DynamicFormFieldAirtable: React.FC<DynamicFormFieldProps> = ({ field, valu
         switch (field.fieldType) {
           case 'text':
             return renderTextInput();
+          case 'email':
+            return renderEmailInput();
+          case 'phone':
+            return renderPhoneInput();
           case 'number':
             return renderNumberInput();
           case 'dropdown':
@@ -294,7 +322,7 @@ const DynamicFormFieldAirtable: React.FC<DynamicFormFieldProps> = ({ field, valu
           default:
             console.warn(
               `[DynamicFormField] Unsupported field type "${field.fieldType}" for field "${field.fieldName}". ` +
-              `Supported types: text, number, dropdown, checkbox, textarea, radio, multi-select. ` +
+              `Supported types: text, email, phone, number, dropdown, checkbox, textarea, radio, multi-select. ` +
               `Falling back to text input.`
             );
             return renderTextInput();
