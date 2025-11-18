@@ -40,12 +40,43 @@ const getNestedValue = (obj: any, path: string): any => {
 };
 
 /**
+ * Smart field value lookup that handles both nested and flat paths
+ * and automatically constructs the correct path based on service context
+ */
+const getFieldValueSmart = (formData: FormData, triggerField: string, serviceId?: string): any => {
+  // First, try the field path as-is (for fully qualified paths like "individualTax.filingStatus")
+  let fieldValue = getNestedValue(formData, triggerField);
+
+  if (fieldValue !== undefined) {
+    return fieldValue;
+  }
+
+  // If that didn't work and we have a serviceId, try constructing the nested path
+  if (serviceId && !triggerField.includes('.')) {
+    // Convert serviceId to camelCase (e.g., "individual-tax" → "individualTax")
+    const serviceCamelCase = serviceId.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+    const constructedPath = `${serviceCamelCase}.${triggerField}`;
+
+    fieldValue = getNestedValue(formData, constructedPath);
+
+    if (fieldValue !== undefined) {
+      console.log(`🔍 Field found using constructed path: ${constructedPath}`);
+      return fieldValue;
+    }
+  }
+
+  // Final fallback: try root level
+  return (formData as any)[triggerField];
+};
+
+/**
  * Evaluates conditional logic for pricing rules
  *
  * @param formData - Complete form data object
  * @param triggerField - Field name to check (supports dot notation for nested fields)
  * @param requiredValue - Value to compare against (empty string for isEmpty/isNotEmpty)
  * @param comparisonLogic - Comparison operator
+ * @param serviceId - Optional service ID to help construct the correct field path
  *
  * Supported Operators:
  *
@@ -71,9 +102,10 @@ const evaluateCondition = (
   formData: FormData,
   triggerField: string,
   requiredValue: string,
-  comparisonLogic: string
+  comparisonLogic: string,
+  serviceId?: string
 ): boolean => {
-  const fieldValue = getNestedValue(formData, triggerField);
+  const fieldValue = getFieldValueSmart(formData, triggerField, serviceId);
 
   // Handle isEmpty check first (before value comparisons)
   if (comparisonLogic === 'isEmpty') {
@@ -182,7 +214,7 @@ const calculateRulePrice = (
     case 'per-unit':
       // Per-unit pricing (quantity × unit price)
       if (rule.quantitySourceField && rule.unitPrice) {
-        const quantity = getNestedValue(formData, rule.quantitySourceField);
+        const quantity = getFieldValueSmart(formData, rule.quantitySourceField, rule.serviceId);
         let adjustedQuantity = Number(quantity) || 0;
 
         // Special handling for additional owners fee - entity-type-specific thresholds
@@ -374,21 +406,25 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
       const hasTriggerCondition = rule.triggerFormField && rule.requiredFormValue && rule.comparisonLogic;
 
       if (hasTriggerCondition) {
-        // Evaluate the trigger condition
+        // Evaluate the trigger condition with service context
         const conditionMatches = evaluateCondition(
           formData,
           rule.triggerFormField,
           rule.requiredFormValue,
-          rule.comparisonLogic
+          rule.comparisonLogic,
+          rule.serviceId  // Pass serviceId to help construct the correct field path
         );
 
         // Enhanced debugging for Individual Tax Base Service rules
         if (rule.serviceId === 'individual-tax' && rule.pricingType === 'Base Service') {
+          const resolvedValue = getFieldValueSmart(formData, rule.triggerFormField, rule.serviceId);
           console.log(`\n=== INDIVIDUAL TAX BASE SERVICE RULE: ${rule.pricingRuleId} ===`);
+          console.log('Service ID:', rule.serviceId);
           console.log('Trigger Field:', rule.triggerFormField);
           console.log('Required Value:', rule.requiredFormValue);
           console.log('Comparison Logic:', rule.comparisonLogic);
-          console.log('Form Data Value:', getNestedValue(formData, rule.triggerFormField));
+          console.log('🔍 Resolved Field Value:', resolvedValue);
+          console.log('   formData.individualTax:', formData.individualTax);
           console.log('Condition Matches:', conditionMatches);
           console.log('Base Price:', rule.basePrice);
           console.log('==========================================================\n');
@@ -396,16 +432,21 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
 
         // Enhanced debugging for bookkeeping cleanup rule
         if (rule.pricingRuleId === 'bookkeeping-cleanup') {
+          const resolvedTriggerValue = getFieldValueSmart(formData, rule.triggerFormField, rule.serviceId);
+          const resolvedQuantityValue = rule.quantitySourceField
+            ? getFieldValueSmart(formData, rule.quantitySourceField, rule.serviceId)
+            : undefined;
+
           console.log('=== BOOKKEEPING CLEANUP RULE DEBUG ===');
           console.log('Trigger Field:', rule.triggerFormField);
           console.log('Required Value:', rule.requiredFormValue);
           console.log('Comparison Logic:', rule.comparisonLogic);
-          console.log('Form Data Value:', getNestedValue(formData, rule.triggerFormField));
+          console.log('🔍 Resolved Trigger Value:', resolvedTriggerValue);
           console.log('Condition Matches:', conditionMatches);
           console.log('Per-Unit Pricing:', rule.perUnitPricing);
           console.log('Unit Price:', rule.unitPrice);
           console.log('Quantity Source Field:', rule.quantitySourceField);
-          console.log('Months Behind:', getNestedValue(formData, rule.quantitySourceField || ''));
+          console.log('🔍 Resolved Quantity Value:', resolvedQuantityValue);
           console.log('======================================');
         }
 
