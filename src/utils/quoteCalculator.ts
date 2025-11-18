@@ -307,7 +307,9 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
 
     if (!rule.active) continue;
 
-    // Check if this rule applies based on conditions
+    // ==========================================
+    // PHASE 1: Evaluate if rule matches form data
+    // ==========================================
     let ruleApplies = false;
 
     // Special handling for additional services - check specializedFilings
@@ -326,33 +328,57 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
         continue; // Skip normal processing for hourly services
       }
     }
-    // For all other rules, check trigger conditions
-    else if (rule.triggerFormField && rule.requiredFormValue && rule.comparisonLogic) {
-      ruleApplies = evaluateCondition(
-        formData,
-        rule.triggerFormField,
-        rule.requiredFormValue,
-        rule.comparisonLogic
-      );
+    // ==========================================
+    // PHASE 2: Apply pricing type-specific logic
+    // ==========================================
+    else {
+      // Check if rule has trigger conditions
+      const hasTriggerCondition = rule.triggerFormField && rule.requiredFormValue && rule.comparisonLogic;
 
-      // Enhanced debugging for bookkeeping cleanup rule
-      if (rule.pricingRuleId === 'bookkeeping-cleanup') {
-        console.log('=== BOOKKEEPING CLEANUP RULE DEBUG ===');
-        console.log('Trigger Field:', rule.triggerFormField);
-        console.log('Required Value:', rule.requiredFormValue);
-        console.log('Comparison Logic:', rule.comparisonLogic);
-        console.log('Form Data Value:', getNestedValue(formData, rule.triggerFormField));
-        console.log('Rule Applies:', ruleApplies);
-        console.log('Per-Unit Pricing:', rule.perUnitPricing);
-        console.log('Unit Price:', rule.unitPrice);
-        console.log('Quantity Source Field:', rule.quantitySourceField);
-        console.log('Months Behind:', getNestedValue(formData, rule.quantitySourceField || ''));
-        console.log('======================================');
+      if (hasTriggerCondition) {
+        // Evaluate the trigger condition
+        const conditionMatches = evaluateCondition(
+          formData,
+          rule.triggerFormField,
+          rule.requiredFormValue,
+          rule.comparisonLogic
+        );
+
+        // Enhanced debugging for bookkeeping cleanup rule
+        if (rule.pricingRuleId === 'bookkeeping-cleanup') {
+          console.log('=== BOOKKEEPING CLEANUP RULE DEBUG ===');
+          console.log('Trigger Field:', rule.triggerFormField);
+          console.log('Required Value:', rule.requiredFormValue);
+          console.log('Comparison Logic:', rule.comparisonLogic);
+          console.log('Form Data Value:', getNestedValue(formData, rule.triggerFormField));
+          console.log('Condition Matches:', conditionMatches);
+          console.log('Per-Unit Pricing:', rule.perUnitPricing);
+          console.log('Unit Price:', rule.unitPrice);
+          console.log('Quantity Source Field:', rule.quantitySourceField);
+          console.log('Months Behind:', getNestedValue(formData, rule.quantitySourceField || ''));
+          console.log('======================================');
+        }
+
+        // Base Service: Apply if trigger condition matches
+        // Add-on: Apply only if trigger condition matches
+        if (conditionMatches) {
+          ruleApplies = true;
+          if (rule.pricingType === 'Base Service') {
+            console.log(`✅ Applied Base Service: ${rule.serviceName} (+$${rule.basePrice})`);
+          } else if (rule.pricingType === 'Add-on') {
+            console.log(`✅ Applied Add-on: ${rule.serviceName} (+$${rule.basePrice || rule.unitPrice})`);
+          }
+        }
+      } else {
+        // No trigger condition set
+        // Base Service rules without triggers apply by default
+        if (rule.pricingType === 'Base Service') {
+          ruleApplies = true;
+          console.log(`✅ Applied Base Service (no trigger): ${rule.serviceName} (+$${rule.basePrice})`);
+        }
+        // Add-on rules without triggers do NOT apply automatically
+        // (Add-ons should always have explicit conditions)
       }
-    }
-    // Base service rules without conditions apply by default
-    else if (rule.pricingType === 'Base Service') {
-      ruleApplies = true;
     }
 
     if (!ruleApplies) continue;
@@ -438,12 +464,28 @@ export const calculateQuote = (formData: FormData, pricingConfig: PricingConfig[
     }
   }
   
-  // Debug service groups totals
+  // Debug service groups totals with Base Service vs Add-on breakdown
   console.log('\n=== SERVICE GROUPS TOTALS ===');
   for (const [serviceId, group] of Object.entries(serviceGroups)) {
+    // Calculate Base Service vs Add-on breakdown
+    let baseServiceTotal = 0;
+    let addOnTotal = 0;
+
+    for (const rule of group.rules) {
+      const rulePrice = calculatedPrices.get(rule.pricingRuleId) || 0;
+      if (rule.pricingType === 'Base Service') {
+        baseServiceTotal += rulePrice;
+      } else if (rule.pricingType === 'Add-on') {
+        addOnTotal += rulePrice;
+      }
+    }
+
     console.log(`${serviceId}:`, {
       totalMonthlyFees: group.totalMonthlyFees,
       totalOneTimeFees: group.totalOneTimeFees,
+      baseServiceTotal: baseServiceTotal,
+      addOnTotal: addOnTotal,
+      combinedTotal: baseServiceTotal + addOnTotal,
       rulesCount: group.rules.length
     });
   }
