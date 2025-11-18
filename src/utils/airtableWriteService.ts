@@ -86,6 +86,13 @@ const buildQuoteFields = async (
   tenantId?: string,
   tenantConfig?: any
 ): Promise<Record<string, any>> => {
+  console.log('[Airtable Write] ========== BUILD QUOTE FIELDS START ==========');
+  console.log('[Airtable Write] tenantConfig present?', !!tenantConfig);
+  console.log('[Airtable Write] tenantConfig.airtable?', tenantConfig?.airtable);
+  console.log('[Airtable Write] Selected services:', formData.services);
+  console.log('[Airtable Write] contactInfo keys:', Object.keys(formData.contactInfo || {}));
+  console.log('[Airtable Write] contactInfo values:', formData.contactInfo);
+
   const fields: Record<string, any> = {
     'Quote ID': quoteId,
     'Date': new Date().toISOString(),
@@ -98,29 +105,42 @@ const buildQuoteFields = async (
   };
 
   // Handle dynamic contact fields from contactInfo object
+  console.log('[Airtable Write] Checking contactInfo condition...');
+  console.log('[Airtable Write] - formData.contactInfo exists?', !!formData.contactInfo);
+  console.log('[Airtable Write] - contactInfo keys length:', Object.keys(formData.contactInfo || {}).length);
+
   if (formData.contactInfo && Object.keys(formData.contactInfo).length > 0) {
+    console.log('[Airtable Write] ✓ ContactInfo has data, processing dynamic fields...');
     try {
       // Import formFieldsService dynamically to avoid circular dependencies
       const formFieldsService = await import('./formFieldsService');
 
+      console.log('[Airtable Write] Checking tenantConfig...');
       if (tenantConfig) {
+        console.log('[Airtable Write] ✓ TenantConfig available');
         const airtableConfig = {
           baseId: tenantConfig.airtable?.servicesBaseId || tenantConfig.airtable?.pricingBaseId,
           apiKey: tenantConfig.airtable?.servicesApiKey || tenantConfig.airtable?.pricingApiKey,
         };
+        console.log('[Airtable Write] Airtable config:', { baseId: airtableConfig.baseId?.substring(0, 8) + '...', hasApiKey: !!airtableConfig.apiKey });
 
         // Fetch contact-info fields to get proper Airtable column mappings
+        console.log('[Airtable Write] Fetching contact-info form fields from Airtable...');
         const contactFields = await formFieldsService.getCachedFormFields(
           airtableConfig,
           'contact-info'
         );
+        console.log('[Airtable Write] Retrieved', contactFields.length, 'contact-info field definitions');
 
         // Map dynamic contact fields using Airtable column names
+        let mappedFieldCount = 0;
         for (const formField of contactFields) {
           const fieldValue = formData.contactInfo[formField.fieldName];
+          console.log(`[Airtable Write] Processing field: ${formField.fieldName}, value:`, fieldValue);
 
           // Skip if no value
           if (fieldValue === null || fieldValue === undefined || fieldValue === '') {
+            console.log(`[Airtable Write] - Skipping ${formField.fieldName} (empty value)`);
             continue;
           }
 
@@ -136,14 +156,20 @@ const buildQuoteFields = async (
           );
 
           fields[airtableColumnName] = transformedValue;
+          mappedFieldCount++;
+          console.log(`[Airtable Write] - ✓ Mapped ${formField.fieldName} → "${airtableColumnName}" = ${transformedValue}`);
         }
 
-        console.log('[Airtable Write] Mapped dynamic contact fields:', Object.keys(formData.contactInfo));
+        console.log(`[Airtable Write] ✓ Successfully mapped ${mappedFieldCount} contact fields to Airtable columns`);
+      } else {
+        console.warn('[Airtable Write] ✗ TenantConfig is missing - cannot fetch form field definitions');
       }
     } catch (error) {
-      console.warn('[Airtable Write] Could not load contact-info fields, using fallback:', error);
-      // Fallback to legacy field mapping
+      console.error('[Airtable Write] ✗ Error loading contact-info fields:', error);
+      console.warn('[Airtable Write] Falling back to legacy field mapping');
     }
+  } else {
+    console.log('[Airtable Write] ✗ ContactInfo is empty, skipping dynamic field processing');
   }
 
   // Legacy field mapping (for backward compatibility)
@@ -354,6 +380,78 @@ const buildQuoteFields = async (
     }
   }
 
+  // ========== DYNAMIC SERVICE FIELDS PROCESSING ==========
+  // Process dynamic fields for ALL selected services (not just contact-info)
+  // This handles fields from the Form Fields table for services like individual-tax, business-tax, bookkeeping, etc.
+  console.log('[Airtable Write] Processing dynamic fields for selected services...');
+
+  if (tenantConfig && formData.services && formData.services.length > 0) {
+    try {
+      const formFieldsService = await import('./formFieldsService');
+
+      const airtableConfig = {
+        baseId: tenantConfig.airtable?.servicesBaseId || tenantConfig.airtable?.pricingBaseId,
+        apiKey: tenantConfig.airtable?.servicesApiKey || tenantConfig.airtable?.pricingApiKey,
+      };
+
+      // Process each selected service
+      for (const serviceId of formData.services) {
+        // Skip contact-info as it's already processed above
+        if (serviceId === 'contact-info') continue;
+
+        console.log(`[Airtable Write] Fetching form fields for service: ${serviceId}`);
+
+        try {
+          const serviceFields = await formFieldsService.getCachedFormFields(
+            airtableConfig,
+            serviceId
+          );
+
+          if (serviceFields.length === 0) {
+            console.log(`[Airtable Write] No form fields configured for ${serviceId}, using legacy structure`);
+            continue;
+          }
+
+          console.log(`[Airtable Write] Retrieved ${serviceFields.length} field definitions for ${serviceId}`);
+
+          // Map dynamic fields from flat formData structure
+          let serviceMappedCount = 0;
+          for (const formField of serviceFields) {
+            // Look for field value at root level of formData (DynamicServiceDetailStep stores fields flat)
+            const fieldValue = (formData as any)[formField.fieldName];
+
+            if (fieldValue === null || fieldValue === undefined || fieldValue === '') {
+              continue;
+            }
+
+            // Resolve Airtable column name
+            const airtableColumnName = formField.airtableColumnName && formField.airtableColumnName.trim()
+              ? formField.airtableColumnName
+              : transformFieldNameToColumnName(formField.fieldName);
+
+            // Transform value based on field type
+            const transformedValue = transformValueByFieldType(
+              fieldValue,
+              formField.fieldType
+            );
+
+            fields[airtableColumnName] = transformedValue;
+            serviceMappedCount++;
+            console.log(`[Airtable Write] - ✓ Mapped ${serviceId}.${formField.fieldName} → "${airtableColumnName}" = ${transformedValue}`);
+          }
+
+          if (serviceMappedCount > 0) {
+            console.log(`[Airtable Write] ✓ Successfully mapped ${serviceMappedCount} fields for ${serviceId}`);
+          }
+        } catch (serviceError) {
+          console.warn(`[Airtable Write] Could not load form fields for ${serviceId}:`, serviceError);
+        }
+      }
+    } catch (error) {
+      console.error('[Airtable Write] Error processing dynamic service fields:', error);
+    }
+  }
+
   const individualTaxService = quoteData.services
     .find(s => s.name.toLowerCase().includes('individual tax'));
   if (individualTaxService) {
@@ -377,13 +475,15 @@ const buildQuoteFields = async (
     }
   }
 
-  console.log('[Airtable Write] Built quote fields:', {
-    quoteId,
+  console.log('[Airtable Write] ========== BUILD QUOTE FIELDS END ==========');
+  console.log('[Airtable Write] Final field count:', Object.keys(fields).length);
+  console.log('[Airtable Write] Final fields:', {
+    quoteId: fields['Quote ID'],
     email: fields['Email'],
     services: fields['Services Requested'],
     monthlyFees: fields['Monthly Fees'],
     oneTimeFees: fields['One-Time Fees'],
-    fieldCount: Object.keys(fields).length
+    allFieldNames: Object.keys(fields)
   });
 
   return fields;
