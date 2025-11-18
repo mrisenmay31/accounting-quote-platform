@@ -360,6 +360,17 @@ const QuoteCalculator: React.FC = () => {
         console.log('[Quote Submission] ✓ Airtable write successful!');
         console.log('[Quote Submission] Quote ID:', airtableResult.quoteId);
         console.log('[Quote Submission] Record ID:', airtableResult.recordId);
+
+        // Log warnings if any fields were skipped
+        if (airtableResult.warnings && airtableResult.warnings.length > 0) {
+          console.log('[Quote Submission] ⚠️ Some fields were skipped due to validation issues:');
+          airtableResult.warnings.forEach(warning => console.log(`   ${warning}`));
+        }
+
+        if (airtableResult.skippedFields && airtableResult.skippedFields.length > 0) {
+          console.log('[Quote Submission] 📋 Skipped field names:', airtableResult.skippedFields.join(', '));
+        }
+
         setQuoteId(airtableResult.quoteId);
       } else {
         console.error('[Quote Submission] ✗ Airtable write failed:', airtableResult.error);

@@ -33,6 +33,8 @@ export interface AirtableWriteResult {
   quoteId?: string;
   error?: string;
   operation?: 'create' | 'update';
+  warnings?: string[];
+  skippedFields?: string[];
 }
 
 export interface AirtableSearchResult {
@@ -583,6 +585,163 @@ function formatAsAirtableDate(value: any): string | null {
 }
 
 /**
+ * Validate a single field value for Airtable compatibility
+ * Returns { valid: boolean, sanitizedValue: any, error?: string }
+ */
+function validateFieldForAirtable(
+  fieldName: string,
+  value: any,
+  fieldType?: string
+): { valid: boolean; sanitizedValue: any; error?: string } {
+  // Handle null/undefined - always valid (Airtable accepts empty values)
+  if (value === null || value === undefined || value === '') {
+    return { valid: true, sanitizedValue: null };
+  }
+
+  try {
+    // Validate based on field type
+    switch (fieldType) {
+      case 'multi-select':
+      case 'multipleSelects':
+        // Must be an array
+        if (!Array.isArray(value)) {
+          // Auto-fix: convert string to array
+          const sanitized = [value];
+          console.warn(`⚠️ Field "${fieldName}" converted string to array:`, value, '→', sanitized);
+          return { valid: true, sanitizedValue: sanitized };
+        }
+        // Validate array items are strings
+        const validArray = value.filter(v => typeof v === 'string' && v.trim() !== '');
+        if (validArray.length !== value.length) {
+          console.warn(`⚠️ Field "${fieldName}" had invalid array items, filtered:`, value, '→', validArray);
+        }
+        return { valid: true, sanitizedValue: validArray };
+
+      case 'singleSelect':
+      case 'dropdown':
+        // Must be a string
+        if (typeof value !== 'string') {
+          return {
+            valid: false,
+            sanitizedValue: null,
+            error: `Expected string, got ${typeof value}`
+          };
+        }
+        return { valid: true, sanitizedValue: value.trim() };
+
+      case 'number':
+        // Must be a number
+        const num = Number(value);
+        if (isNaN(num)) {
+          return {
+            valid: false,
+            sanitizedValue: null,
+            error: `Cannot convert to number: ${value}`
+          };
+        }
+        return { valid: true, sanitizedValue: num };
+
+      case 'checkbox':
+      case 'boolean':
+        // Must be boolean
+        const bool = value === true || value === 'true' || value === 'Yes';
+        return { valid: true, sanitizedValue: bool };
+
+      case 'date':
+        // Validate date format
+        try {
+          const dateStr = new Date(value).toISOString().split('T')[0]; // YYYY-MM-DD
+          return { valid: true, sanitizedValue: dateStr };
+        } catch {
+          return {
+            valid: false,
+            sanitizedValue: null,
+            error: `Invalid date format: ${value}`
+          };
+        }
+
+      case 'email':
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const valueStr = String(value);
+        if (!emailRegex.test(valueStr)) {
+          return {
+            valid: false,
+            sanitizedValue: null,
+            error: `Invalid email format: ${value}`
+          };
+        }
+        return { valid: true, sanitizedValue: valueStr };
+
+      case 'phone':
+      case 'phoneNumber':
+        // Accept any string for phone (Airtable is flexible)
+        return { valid: true, sanitizedValue: String(value) };
+
+      case 'text':
+      case 'singleLineText':
+      case 'multilineText':
+      case 'textarea':
+      default:
+        // Default: convert to string
+        return { valid: true, sanitizedValue: String(value) };
+    }
+  } catch (error) {
+    return {
+      valid: false,
+      sanitizedValue: null,
+      error: `Validation error: ${error instanceof Error ? error.message : 'Unknown error'}`
+    };
+  }
+}
+
+/**
+ * Sanitize all fields before sending to Airtable
+ * Returns { validFields, invalidFields, warnings }
+ */
+function sanitizeFieldsForAirtable(
+  fieldsToSanitize: Record<string, any>,
+  formFieldsMetadata?: any[]
+): {
+  validFields: Record<string, any>;
+  invalidFields: { fieldName: string; value: any; error: string }[];
+  warnings: string[];
+} {
+  const validFields: Record<string, any> = {};
+  const invalidFields: { fieldName: string; value: any; error: string }[] = [];
+  const warnings: string[] = [];
+
+  // Create lookup map for field types
+  const fieldTypeMap = new Map<string, string>();
+  formFieldsMetadata?.forEach((field: any) => {
+    const airtableColumnName = field.airtableColumnName || transformFieldNameToColumnName(field.fieldName);
+    fieldTypeMap.set(airtableColumnName, field.fieldType);
+  });
+
+  // Validate each field
+  Object.entries(fieldsToSanitize).forEach(([fieldName, value]) => {
+    const fieldType = fieldTypeMap.get(fieldName);
+    const validation = validateFieldForAirtable(fieldName, value, fieldType);
+
+    if (validation.valid) {
+      // Only include non-null values
+      if (validation.sanitizedValue !== null && validation.sanitizedValue !== '') {
+        validFields[fieldName] = validation.sanitizedValue;
+      }
+    } else {
+      invalidFields.push({
+        fieldName,
+        value,
+        error: validation.error || 'Unknown validation error'
+      });
+      warnings.push(`⚠️ Skipped field "${fieldName}": ${validation.error}`);
+    }
+  });
+
+  return { validFields, invalidFields, warnings };
+}
+
+/**
  * Transform value based on field type for Airtable
  */
 function transformValueByFieldType(value: any, fieldType: string): any {
@@ -688,6 +847,52 @@ export const createQuoteRecord = async (
       await enforceRateLimit();
 
       const fields = await buildQuoteFields(formData, quoteData, generatedQuoteId, tenantId, tenantConfig);
+
+      // === FIELD VALIDATION AND SANITIZATION ===
+      console.log('\n📤 Starting Airtable write with field validation...');
+
+      // Gather all form field metadata for type checking
+      const allFormFields: any[] = [];
+      try {
+        const formFieldsService = await import('./formFieldsService');
+        const airtableConfig = {
+          baseId: tenantConfig?.airtable?.servicesBaseId || tenantConfig?.airtable?.pricingBaseId || config.baseId,
+          apiKey: tenantConfig?.airtable?.servicesApiKey || tenantConfig?.airtable?.pricingApiKey || config.apiKey,
+        };
+
+        const services = ['contact-info', 'individual-tax', 'business-tax', 'bookkeeping', 'additional-services'];
+        for (const serviceId of services) {
+          try {
+            const serviceFields = await formFieldsService.getCachedFormFields(airtableConfig, serviceId);
+            allFormFields.push(...serviceFields);
+          } catch (error) {
+            // Continue with other services even if one fails
+          }
+        }
+      } catch (error) {
+        console.warn('[Airtable Create] Could not load form field metadata for validation');
+      }
+
+      // Sanitize all fields
+      const sanitizationResult = sanitizeFieldsForAirtable(fields, allFormFields);
+
+      console.log('\n🔍 Field Validation Results:');
+      console.log(`   ✅ Valid fields: ${Object.keys(sanitizationResult.validFields).length}`);
+      console.log(`   ❌ Invalid fields: ${sanitizationResult.invalidFields.length}`);
+
+      if (sanitizationResult.invalidFields.length > 0) {
+        console.log('\n⚠️ Skipped Fields (validation failed):');
+        sanitizationResult.invalidFields.forEach(({ fieldName, value, error }) => {
+          console.log(`   - ${fieldName}: ${error}`);
+          console.log(`     Value was: ${JSON.stringify(value)}`);
+        });
+      }
+
+      // Use sanitized fields for Airtable
+      const fieldsToSend = sanitizationResult.validFields;
+
+      console.log(`\n📊 Sending ${Object.keys(fieldsToSend).length} validated fields to Airtable\n`);
+
       const url = `${AIRTABLE_API_BASE}/${config.baseId}/${encodeURIComponent(tableName)}`;
 
       console.log(`[Airtable Create] Attempt ${attempt + 1}/${MAX_RETRIES}`);
@@ -695,30 +900,13 @@ export const createQuoteRecord = async (
       console.log('[Airtable Create] Quote ID:', generatedQuoteId);
       console.log('[Airtable Create] Timestamp:', new Date().toISOString());
 
-      // Debug: Inspect Date field and all date-related fields
-      console.log('📋 [Airtable Create] Payload Inspection:');
-      console.log('   Total fields:', Object.keys(fields).length);
-
-      if (fields['Date']) {
-        console.log('   ⚠️  "Date" field found:', fields['Date']);
-        console.log('   ⚠️  "Date" field type:', typeof fields['Date']);
-      }
-
-      // Log all fields that might be dates
-      Object.entries(fields).forEach(([key, value]) => {
-        const keyLower = key.toLowerCase();
-        if (keyLower.includes('date') || keyLower.includes('year') || keyLower.includes('timeline')) {
-          console.log(`   📅 Potential date field: "${key}" = ${JSON.stringify(value)}`);
-        }
-      });
-
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${config.apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ fields }),
+        body: JSON.stringify({ fields: fieldsToSend }),
       });
 
       if (response.status === 429) {
@@ -762,9 +950,60 @@ export const createQuoteRecord = async (
       if (response.status === 422) {
         const errorData = await response.json();
         console.error('[Airtable Create] 422 Unprocessable - Validation error:', errorData);
+
+        // Even with validation, if it still fails, try one more time with ONLY critical fields
+        console.log('🔄 Attempting fallback with critical fields only...');
+
+        const criticalFields: Record<string, any> = {};
+        if (fieldsToSend['Email']) criticalFields['Email'] = fieldsToSend['Email'];
+        if (fieldsToSend['First Name']) criticalFields['First Name'] = fieldsToSend['First Name'];
+        if (fieldsToSend['Last Name']) criticalFields['Last Name'] = fieldsToSend['Last Name'];
+        if (fieldsToSend['Services Requested']) criticalFields['Services Requested'] = fieldsToSend['Services Requested'];
+        if (fieldsToSend['Monthly Fees']) criticalFields['Monthly Fees'] = fieldsToSend['Monthly Fees'];
+        if (fieldsToSend['One-Time Fees']) criticalFields['One-Time Fees'] = fieldsToSend['One-Time Fees'];
+        if (fieldsToSend['Quote ID']) criticalFields['Quote ID'] = fieldsToSend['Quote ID'];
+        if (fieldsToSend['Quote Status']) criticalFields['Quote Status'] = fieldsToSend['Quote Status'];
+
+        const fallbackResponse = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${config.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            records: [{ fields: criticalFields }]
+          })
+        });
+
+        if (!fallbackResponse.ok) {
+          console.error('[Airtable Create] Fallback also failed');
+          return {
+            success: false,
+            error: `Validation error: ${JSON.stringify(errorData.error)}`,
+          };
+        }
+
+        const fallbackResult = await fallbackResponse.json();
+        const recordId = fallbackResult.records[0].id;
+
+        console.log('✅ Fallback successful - created record with critical fields only');
+        console.log('Record ID:', recordId);
+
+        const allSkippedFields = [
+          ...sanitizationResult.invalidFields.map(f => f.fieldName),
+          ...Object.keys(fieldsToSend).filter(k => !Object.keys(criticalFields).includes(k))
+        ];
+
         return {
-          success: false,
-          error: `Validation error: ${JSON.stringify(errorData.error)}`,
+          recordId,
+          success: true,
+          quoteId: generatedQuoteId,
+          operation: 'create',
+          warnings: [
+            'Record created with critical fields only due to validation errors',
+            ...sanitizationResult.warnings
+          ],
+          skippedFields: allSkippedFields
         };
       }
 
@@ -790,11 +1029,27 @@ export const createQuoteRecord = async (
       console.log('[Airtable Create] Success! Record ID:', data.id);
       console.log('[Airtable Create] Quote ID:', generatedQuoteId);
 
+      // Return success with warnings if any fields were skipped
+      const warnings = sanitizationResult.warnings.length > 0
+        ? sanitizationResult.warnings
+        : undefined;
+
+      const skippedFields = sanitizationResult.invalidFields.length > 0
+        ? sanitizationResult.invalidFields.map(f => f.fieldName)
+        : undefined;
+
+      if (warnings) {
+        console.log('\n⚠️ Submission succeeded with warnings:');
+        warnings.forEach(w => console.log(`   ${w}`));
+      }
+
       return {
         success: true,
         recordId: data.id,
         quoteId: generatedQuoteId,
         operation: 'create',
+        warnings,
+        skippedFields
       };
 
     } catch (error) {
