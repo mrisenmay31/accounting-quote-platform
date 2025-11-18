@@ -1,5 +1,11 @@
 # Airtable Quick Setup Guide
 
+## 🎉 New Feature: Automatic Schema Sync
+
+The application now automatically creates columns in your "Client Quotes" table based on fields in your "Form Fields" table. Just add a field to Form Fields with `Active: true`, and the column will be created automatically in Client Quotes on next app load.
+
+**See [`SCHEMA_SYNC_GUIDE.md`](./SCHEMA_SYNC_GUIDE.md) for complete details.**
+
 ## ⚠️ Important: Inactive Fields
 
 **"Validation Rules"** field is NOT implemented yet. Do not configure it - values are ignored by the application. See `VALIDATION_RULES_STATUS.md` for details.
@@ -26,6 +32,7 @@
 | Options | Long Text | `["Single","Married"]` |
 | Required | Checkbox | ✓ |
 | Help Text | Long Text | `Choose the status that applies...` |
+| **Airtable Column Name** | Single Line Text | `Individual Tax - Filing Status` |
 
 ### New Layout Fields
 
@@ -236,6 +243,32 @@ Placeholder: Tell us about any special circumstances, life changes, or specific 
 Required: false
 Active: ✓
 Display Order: 99
+```
+
+## Airtable Column Name (NEW - Optional)
+
+The new **Airtable Column Name** field allows you to explicitly specify the column name in the Client Quotes table.
+
+**When to use:**
+- Custom naming for reports or integrations
+- Override auto-generated column names
+- Match existing column names
+
+**If left empty:**
+- System auto-generates column name from Field Name
+- Example: `filingStatus` → `Individual Tax - Filing Status`
+
+**Example:**
+```
+Field Name: filingStatus
+Service ID: individual-tax
+Airtable Column Name: (empty)
+Result: "Individual Tax - Filing Status"
+
+Field Name: filingStatus
+Service ID: individual-tax
+Airtable Column Name: Tax Filing Status 2024
+Result: "Tax Filing Status 2024"
 ```
 
 ## Field Name to FormData Mapping

@@ -18,8 +18,9 @@ import { getCachedServiceConfig, ServiceConfig } from '../utils/serviceConfigSer
 import { sendQuoteToZapierWebhook } from '../utils/zapierIntegration';
 import { useTenant } from '../contexts/TenantContext';
 import { saveQuote } from '../utils/quoteStorage';
-import { fetchFormFields, FormField } from '../utils/formFieldsService';
+import { fetchFormFields, FormField, getCachedFormFields } from '../utils/formFieldsService';
 import { createQuoteRecord } from '../utils/airtableWriteService';
+import { syncFormFieldsToClientQuotes } from '../utils/airtableSchemaService';
 
 // Feature flag: Set to true to use dynamic Airtable form fields for Individual Tax
 const USE_DYNAMIC_INDIVIDUAL_TAX = true;
@@ -231,6 +232,64 @@ const QuoteCalculator: React.FC = () => {
 
     loadConfigurations();
   }, [tenant]);
+
+  // Automatic schema synchronization - runs once on app initialization
+  useEffect(() => {
+    const initializeSchemaSync = async () => {
+      if (!tenant) return;
+
+      try {
+        console.log('[QuoteCalculator] Initiating automatic schema sync...');
+
+        const airtableConfig = {
+          baseId: tenant.airtable.servicesBaseId || tenant.airtable.pricingBaseId,
+          apiKey: tenant.airtable.servicesApiKey || tenant.airtable.pricingApiKey,
+        };
+
+        // Fetch form fields for all services
+        const services = ['individual-tax', 'business-tax', 'bookkeeping', 'additional-services'];
+        const allFormFields: FormField[] = [];
+
+        for (const serviceId of services) {
+          try {
+            const fields = await getCachedFormFields(airtableConfig, serviceId);
+            allFormFields.push(...fields);
+          } catch (error) {
+            console.warn(`[QuoteCalculator] Could not load fields for ${serviceId}:`, error);
+            // Continue with other services even if one fails
+          }
+        }
+
+        if (allFormFields.length === 0) {
+          console.log('[QuoteCalculator] No form fields found, skipping schema sync');
+          return;
+        }
+
+        console.log(`[QuoteCalculator] Found ${allFormFields.length} total form fields`);
+
+        // Run schema sync in background (non-blocking)
+        const syncResult = await syncFormFieldsToClientQuotes(tenant, allFormFields);
+
+        // Log summary
+        if (syncResult.fieldsCreated > 0) {
+          console.log(`[QuoteCalculator] ✅ Schema sync complete: ${syncResult.fieldsCreated} new fields created in Client Quotes table`);
+        } else if (syncResult.errors.length > 0) {
+          console.warn(`[QuoteCalculator] ⚠️ Schema sync completed with ${syncResult.errors.length} errors`);
+        } else {
+          console.log('[QuoteCalculator] ✅ Schema sync complete: All fields already exist');
+        }
+
+      } catch (error) {
+        // Don't block app loading - schema sync is non-critical
+        console.error('[QuoteCalculator] Schema sync failed (non-critical):', error);
+      }
+    };
+
+    // Only run schema sync once when tenant is loaded
+    if (tenant) {
+      initializeSchemaSync();
+    }
+  }, [tenant]); // Run only when tenant changes (once on mount)
 
   const updateFormData = (updates: Partial<FormData>) => {
     const newFormData = { ...formData, ...updates };

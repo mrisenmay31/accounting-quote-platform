@@ -246,6 +246,7 @@ export interface FormField {
   layoutType?: 'standard' | 'checkbox-grid' | 'radio-group' | 'textarea';
   columns?: number; // Number of columns for checkbox grids
   rowGroup?: number; // Group number for half-width fields on same row
+  airtableColumnName?: string; // Optional explicit mapping to Client Quotes table column
 }
 
 export interface AirtableFormFieldConfig {

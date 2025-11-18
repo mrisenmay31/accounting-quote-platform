@@ -40,6 +40,12 @@ export interface FormField {
   layoutType?: 'standard' | 'checkbox-grid' | 'radio-group' | 'textarea';
   columns?: number; // Number of columns for checkbox grids
   rowGroup?: number; // Group number for half-width fields on same row
+  /**
+   * Airtable Column Name - Optional explicit mapping to Client Quotes table column
+   * If not provided, column name will be auto-generated from fieldName
+   * Example: "Individual Tax - Filing Status"
+   */
+  airtableColumnName?: string;
 }
 
 export interface AirtableFormFieldConfig {
@@ -67,6 +73,7 @@ interface AirtableRecord {
     'Layout Type'?: string;
     'Columns'?: number;
     'Row Group'?: number;
+    'Airtable Column Name'?: string;
   };
 }
 
@@ -151,6 +158,7 @@ export const fetchFormFields = async (
       layoutType: (record.fields['Layout Type'] as FormField['layoutType']) || 'standard',
       columns: record.fields['Columns'] || 1,
       rowGroup: record.fields['Row Group'],
+      airtableColumnName: record.fields['Airtable Column Name'],
     }));
 
     console.log(`[FormFieldsService] Successfully fetched ${formFields.length} active fields for service: ${serviceId}`);
