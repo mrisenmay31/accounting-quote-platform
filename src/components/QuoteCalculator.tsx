@@ -3,6 +3,7 @@ import { useMemo, useEffect } from 'react';
 import { Calculator, ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react';
 import StepIndicator from './StepIndicator';
 import ContactForm from './ContactForm';
+import ContactFormDynamic from './ContactFormDynamic';
 import ServiceSelection from './ServiceSelection';
 import AdvisorySalesPage from './AdvisorySalesPage';
 import IndividualTaxDetails from './IndividualTaxDetails';
@@ -18,10 +19,15 @@ import { getCachedServiceConfig, ServiceConfig } from '../utils/serviceConfigSer
 import { sendQuoteToZapierWebhook } from '../utils/zapierIntegration';
 import { useTenant } from '../contexts/TenantContext';
 import { saveQuote } from '../utils/quoteStorage';
-import { fetchFormFields, FormField } from '../utils/formFieldsService';
+import { fetchFormFields, FormField, getCachedFormFields } from '../utils/formFieldsService';
+import { createQuoteRecord } from '../utils/airtableWriteService';
+import { syncFormFieldsToClientQuotes } from '../utils/airtableSchemaService';
 
 // Feature flag: Set to true to use dynamic Airtable form fields for Individual Tax
 const USE_DYNAMIC_INDIVIDUAL_TAX = true;
+
+// Feature flag: Set to true to use dynamic Airtable form fields for Contact Info
+const USE_DYNAMIC_CONTACT_FORM = true;
 
 const QuoteCalculator: React.FC = () => {
   const { tenant, firmInfo } = useTenant();
@@ -34,12 +40,15 @@ const QuoteCalculator: React.FC = () => {
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [isSubmittingInitialQuote, setIsSubmittingInitialQuote] = useState(false);
   const [formData, setFormData] = useState<FormData>({
-    // Contact Information
+    // Contact Information - Dynamic
+    contactInfo: {},
+
+    // Contact Information - Legacy (backward compatibility)
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
-    
+
     // Service Selection
     services: [],
     
@@ -231,6 +240,65 @@ const QuoteCalculator: React.FC = () => {
     loadConfigurations();
   }, [tenant]);
 
+  // Automatic schema synchronization - runs once on app initialization
+  useEffect(() => {
+    const initializeSchemaSync = async () => {
+      if (!tenant) return;
+
+      try {
+        console.log('[QuoteCalculator] Initiating automatic schema sync...');
+
+        const airtableConfig = {
+          baseId: tenant.airtable.servicesBaseId || tenant.airtable.pricingBaseId,
+          apiKey: tenant.airtable.servicesApiKey || tenant.airtable.pricingApiKey,
+        };
+
+        // Fetch form fields for all services, including contact-info
+        const services = ['contact-info', 'individual-tax', 'business-tax', 'bookkeeping', 'additional-services'];
+        const allFormFields: FormField[] = [];
+
+        for (const serviceId of services) {
+          try {
+            const fields = await getCachedFormFields(airtableConfig, serviceId);
+            allFormFields.push(...fields);
+            console.log(`[QuoteCalculator] Loaded ${fields.length} fields for ${serviceId}`);
+          } catch (error) {
+            console.warn(`[QuoteCalculator] Could not load fields for ${serviceId}:`, error);
+            // Continue with other services even if one fails
+          }
+        }
+
+        if (allFormFields.length === 0) {
+          console.log('[QuoteCalculator] No form fields found, skipping schema sync');
+          return;
+        }
+
+        console.log(`[QuoteCalculator] Found ${allFormFields.length} total form fields`);
+
+        // Run schema sync in background (non-blocking)
+        const syncResult = await syncFormFieldsToClientQuotes(tenant, allFormFields);
+
+        // Log summary
+        if (syncResult.fieldsCreated > 0) {
+          console.log(`[QuoteCalculator] ✅ Schema sync complete: ${syncResult.fieldsCreated} new fields created in Client Quotes table`);
+        } else if (syncResult.errors.length > 0) {
+          console.warn(`[QuoteCalculator] ⚠️ Schema sync completed with ${syncResult.errors.length} errors`);
+        } else {
+          console.log('[QuoteCalculator] ✅ Schema sync complete: All fields already exist');
+        }
+
+      } catch (error) {
+        // Don't block app loading - schema sync is non-critical
+        console.error('[QuoteCalculator] Schema sync failed (non-critical):', error);
+      }
+    };
+
+    // Only run schema sync once when tenant is loaded
+    if (tenant) {
+      initializeSchemaSync();
+    }
+  }, [tenant]); // Run only when tenant changes (once on mount)
+
   const updateFormData = (updates: Partial<FormData>) => {
     const newFormData = { ...formData, ...updates };
     setFormData(newFormData);
@@ -259,53 +327,96 @@ const QuoteCalculator: React.FC = () => {
         return;
       }
 
-      // ✅ OPTIONAL: Fetch form fields only if you want field labels in Zapier
-      // This is NOT required for sending dynamic form data (formData already has all values)
-      let allFormFields: FormField[] = [];
-      try {
-        const formFieldsPromises = formData.services.map(serviceId =>
-          fetchFormFields(tenant, serviceId)
-        );
-        const formFieldsArrays = await Promise.all(formFieldsPromises);
-        allFormFields = formFieldsArrays.flat();
-        console.log(`Fetched ${allFormFields.length} form field definitions for labels`);
-      } catch (error) {
-        console.warn('Could not fetch form field definitions (labels only):', error);
-        // Continue without field labels - all formData values will still be sent
-      }
+      console.log('=== QUOTE SUBMISSION STARTED ===');
+      console.log('Timestamp:', new Date().toISOString());
 
-      // Send quote data to tenant's Zapier webhook with 'new' status first
-      // This generates the Quote ID that we'll use everywhere
-      // All formData fields will be sent, even if allFormFields is empty
-      const zapierResult = await sendQuoteToZapierWebhook(
+      // Step 1: Write directly to Airtable (PRIMARY METHOD)
+      console.log('[Quote Submission] Step 1: Writing to Airtable via direct API...');
+
+      const airtableConfig = {
+        baseId: tenant.airtable.quotesBaseId || tenant.airtable.servicesBaseId,
+        apiKey: tenant.airtable.quotesApiKey || tenant.airtable.servicesApiKey,
+        tableName: tenant.airtable.quotesTableName || 'Client Quotes',
+      };
+
+      console.log('[Quote Submission] Using Airtable configuration:', {
+        baseId: airtableConfig.baseId,
+        tableName: airtableConfig.tableName,
+        hasCustomQuotesBase: !!tenant.airtable.quotesBaseId,
+      });
+
+      const airtableResult = await createQuoteRecord(
+        airtableConfig,
         formData,
         quote,
-        pricingConfig,
         tenant.id,
-        tenant.zapierWebhookUrl,
-        allFormFields,
-        'new'
+        undefined,
+        tenant
       );
 
-      // Capture the generated Quote ID
-      if (zapierResult.quoteId) {
-        setQuoteId(zapierResult.quoteId);
-        console.log('Quote ID captured:', zapierResult.quoteId);
+      let generatedQuoteId = airtableResult.quoteId;
 
-        // Save quote to database with the Quote ID
+      if (airtableResult.success) {
+        console.log('[Quote Submission] ✓ Airtable write successful!');
+        console.log('[Quote Submission] Quote ID:', airtableResult.quoteId);
+        console.log('[Quote Submission] Record ID:', airtableResult.recordId);
+        setQuoteId(airtableResult.quoteId);
+      } else {
+        console.error('[Quote Submission] ✗ Airtable write failed:', airtableResult.error);
+        console.log('[Quote Submission] Attempting fallback to Zapier webhook...');
+
+        // Step 2: Fallback to Zapier webhook (LEGACY SUPPORT)
+        let allFormFields: FormField[] = [];
+        try {
+          const formFieldsPromises = formData.services.map(serviceId =>
+            fetchFormFields(tenant, serviceId)
+          );
+          const formFieldsArrays = await Promise.all(formFieldsPromises);
+          allFormFields = formFieldsArrays.flat();
+          console.log(`[Quote Submission] Fetched ${allFormFields.length} form field definitions for Zapier`);
+        } catch (error) {
+          console.warn('[Quote Submission] Could not fetch form field definitions:', error);
+        }
+
+        const zapierResult = await sendQuoteToZapierWebhook(
+          formData,
+          quote,
+          pricingConfig,
+          tenant.id,
+          tenant.zapierWebhookUrl,
+          allFormFields,
+          'new'
+        );
+
+        if (zapierResult.success && zapierResult.quoteId) {
+          console.log('[Quote Submission] ✓ Zapier webhook fallback successful!');
+          console.log('[Quote Submission] Quote ID:', zapierResult.quoteId);
+          generatedQuoteId = zapierResult.quoteId;
+          setQuoteId(zapierResult.quoteId);
+        } else {
+          console.error('[Quote Submission] ✗ Zapier webhook fallback also failed');
+        }
+      }
+
+      // Step 3: Save quote to Supabase database (always attempt)
+      if (generatedQuoteId) {
+        console.log('[Quote Submission] Step 3: Saving to Supabase database...');
         await saveQuote({
           tenantId: tenant.id,
           formData,
           quoteData: quote,
           tenant: tenant,
-          quoteId: zapierResult.quoteId,
+          quoteId: generatedQuoteId,
         });
+        console.log('[Quote Submission] ✓ Supabase save complete');
       }
 
-      // Advance to quote results page regardless of webhook success/failure
+      console.log('=== QUOTE SUBMISSION COMPLETED ===');
+
+      // Advance to quote results page regardless of write success/failure
       nextStep();
     } catch (error) {
-      console.error('Error during quote submission:', error);
+      console.error('[Quote Submission] Unexpected error during quote submission:', error);
       // Still advance to quote results page
       nextStep();
     } finally {
@@ -328,6 +439,7 @@ const QuoteCalculator: React.FC = () => {
   const resetQuote = () => {
     // Reset all form data to initial state
     setFormData({
+      contactInfo: {},
       firstName: '',
       lastName: '',
       email: '',
@@ -459,12 +571,22 @@ const QuoteCalculator: React.FC = () => {
   const renderStep = () => {
     switch (currentStepType) {
       case 'contact':
-        return (
-          <ContactForm 
-            formData={formData} 
-            updateFormData={updateFormData} 
-          />
-        );
+        if (USE_DYNAMIC_CONTACT_FORM) {
+          return (
+            <ContactFormDynamic
+              formData={formData}
+              updateFormData={updateFormData}
+              onNext={nextStep}
+            />
+          );
+        } else {
+          return (
+            <ContactForm
+              formData={formData}
+              updateFormData={updateFormData}
+            />
+          );
+        }
       case 'services':
         return (
           <ServiceSelection 
@@ -583,8 +705,8 @@ const QuoteCalculator: React.FC = () => {
             {renderStep()}
           </div>
 
-          {/* Navigation */}
-          {currentStep < totalSteps && currentStepType !== 'quote' && (
+          {/* Navigation - Hide for dynamic contact form (it has internal navigation) */}
+          {currentStep < totalSteps && currentStepType !== 'quote' && !(USE_DYNAMIC_CONTACT_FORM && currentStepType === 'contact') && (
             <div className="bg-gray-50 px-8 py-6 border-t border-gray-200">
               <div className="flex justify-between items-center">
                 <button

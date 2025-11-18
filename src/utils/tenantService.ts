@@ -14,6 +14,9 @@ export interface TenantConfig {
     pricingApiKey: string;
     servicesBaseId: string;
     servicesApiKey: string;
+    quotesBaseId?: string;
+    quotesApiKey?: string;
+    quotesTableName?: string;
   };
   zapierWebhookUrl: string;
   active: boolean;
